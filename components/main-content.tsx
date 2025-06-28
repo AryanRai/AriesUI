@@ -328,46 +328,8 @@ export function MainContent() {
 
   // Grid state for saving/loading
   const [gridState, setGridState] = useState<GridState>({
-    mainWidgets: [
-      {
-        id: generateUniqueId("widget"),
-        type: "sensor",
-        title: "Temperature Sensor",
-        content: "23.5°C",
-        x: 50,
-        y: 50,
-        w: 200,
-        h: 150,
-        container: "main",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: generateUniqueId("widget"),
-        type: "chart",
-        title: "Data Flow",
-        content: "Real-time chart placeholder",
-        x: 300,
-        y: 80,
-        w: 250,
-        h: 180,
-        container: "main",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    nestContainers: [
-      {
-        id: generateUniqueId("nest"),
-        title: "Demo Nest Container",
-        x: 600,
-        y: 100,
-        w: 350,
-        h: 250,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
+    mainWidgets: [],
+    nestContainers: [],
     nestedWidgets: [],
     mainAriesWidgets: [],
     nestedAriesWidgets: [],
@@ -378,41 +340,7 @@ export function MainContent() {
   })
 
   // Initialize nested widgets after nest containers are set
-  useEffect(() => {
-    if (gridState.nestContainers.length > 0 && gridState.nestedWidgets.length === 0) {
-      const initialNestedWidgets: NestedWidget[] = [
-        {
-          id: generateUniqueId("widget"),
-          type: "gauge",
-          title: "Nested Gauge",
-          content: "85%",
-          x: 20,
-          y: 20,
-          w: 150,
-          h: 120,
-          container: "nest",
-          nestId: gridState.nestContainers[0].id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: generateUniqueId("widget"),
-          type: "status",
-          title: "Status Monitor",
-          content: "Active",
-          x: 180,
-          y: 50,
-          w: 140,
-          h: 100,
-          container: "nest",
-          nestId: gridState.nestContainers[0].id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]
-      setGridState((prev) => ({ ...prev, nestedWidgets: initialNestedWidgets }))
-    }
-  }, [gridState.nestContainers.length, gridState.nestedWidgets.length])
+  // REMOVED: Auto-adding default widgets to nests - nests should start empty
 
   const [dragState, setDragState] = useState<{
     isDragging: boolean
@@ -561,9 +489,45 @@ export function MainContent() {
     return () => clearInterval(interval)
   }, [hasUnsavedChanges, saveGridState])
 
-  // Load state on component mount
+  // Load grid state from localStorage on component mount
   useEffect(() => {
     loadGridState()
+  }, [loadGridState])
+
+  // Add keyboard shortcuts for zoom
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey) {
+        switch (e.key) {
+          case '=':
+          case '+':
+            e.preventDefault()
+            setViewport(prev => ({ ...prev, zoom: Math.min(3, prev.zoom * 1.25) }))
+            break
+          case '-':
+            e.preventDefault()
+            setViewport(prev => ({ ...prev, zoom: Math.max(0.1, prev.zoom * 0.8) }))
+            break
+          case '0':
+            e.preventDefault()
+            setViewport({ x: 0, y: 0, zoom: 1 })
+            break
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Listen for profile changes and reload grid state
+  useEffect(() => {
+    const handleProfileChange = () => {
+      loadGridState()
+    }
+    
+    window.addEventListener("profileChanged", handleProfileChange)
+    return () => window.removeEventListener("profileChanged", handleProfileChange)
   }, [loadGridState])
 
   // Handle mouse down for dragging
@@ -1634,8 +1598,42 @@ export function MainContent() {
         </Button>
       </div>
 
+      {/* Zoom Toolbar */}
+      <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-50 flex gap-1 bg-background/80 backdrop-blur border border-border/50 rounded-md p-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setViewport(prev => ({ ...prev, zoom: Math.max(0.1, prev.zoom * 0.8) }))}
+          title="Zoom Out"
+        >
+          <span className="text-sm">-</span>
+        </Button>
+        <div className="flex items-center px-2 text-xs text-muted-foreground min-w-[50px] justify-center">
+          {Math.round(viewport.zoom * 100)}%
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setViewport(prev => ({ ...prev, zoom: Math.min(3, prev.zoom * 1.25) }))}
+          title="Zoom In"
+        >
+          <span className="text-sm">+</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setViewport({ x: 0, y: 0, zoom: 1 })}
+          title="Reset View"
+        >
+          <span className="text-xs">⌂</span>
+        </Button>
+      </div>
+
       {/* Viewport Info */}
-      <div className="absolute top-4 left-4 z-50 text-xs text-muted-foreground bg-background/80 px-3 py-2 rounded backdrop-blur border border-border/50">
+      <div className="absolute top-16 left-4 z-50 text-xs text-muted-foreground bg-background/80 px-3 py-2 rounded backdrop-blur border border-border/50">
         <div>Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
         <div>
           Position: ({Math.round(viewport.x)}, {Math.round(viewport.y)})
@@ -1656,8 +1654,6 @@ export function MainContent() {
           `,
           backgroundSize: `${gridState.gridSize * viewport.zoom}px ${gridState.gridSize * viewport.zoom}px`,
           backgroundPosition: `${viewport.x * viewport.zoom}px ${viewport.y * viewport.zoom}px`,
-          transform: `scale(${viewport.zoom})`,
-          transformOrigin: "0 0",
         }}
         onMouseDown={handlePanStart}
         onDragOver={(e) => handleDragOver(e)}
@@ -1666,7 +1662,8 @@ export function MainContent() {
       >
         <div
           style={{
-            transform: `translate(${viewport.x}px, ${viewport.y}px)`,
+            transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+            transformOrigin: "0 0",
             width: "100%",
             height: "100%",
             position: "relative",

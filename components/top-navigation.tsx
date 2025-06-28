@@ -14,7 +14,7 @@ export function TopNavigation() {
   const [marqueeText] = useState("System Status: All systems operational • Data streams active • Connection stable")
 
   return (
-    <div className="h-[60px] border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 gap-4">
+    <div className="h-[60px] border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 gap-4 relative z-[60]">
       {/* Left side */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>

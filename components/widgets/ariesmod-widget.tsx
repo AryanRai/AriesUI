@@ -318,7 +318,7 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0 bg-white/80 backdrop-blur-sm"
+            className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm border border-border/50"
             onClick={refreshData}
             title="Refresh Data"
           >
@@ -327,7 +327,7 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0 bg-white/80 backdrop-blur-sm"
+            className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm border border-border/50"
             onClick={() => setIsSelecting(true)}
             title="Change AriesMod"
           >
@@ -336,7 +336,7 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0 bg-white/80 backdrop-blur-sm"
+            className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm border border-border/50"
             onClick={() => setIsConfigMode(!isConfigMode)}
             title="Configure"
           >
@@ -347,7 +347,7 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
 
       {/* AriesMod Badge */}
       <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Badge variant="secondary" className="text-xs bg-white/80 backdrop-blur-sm">
+        <Badge variant="secondary" className="text-xs bg-background/80 backdrop-blur-sm border border-border/50">
           {selectedMod.metadata.icon} {selectedMod.metadata.displayName}
         </Badge>
       </div>
