@@ -476,6 +476,59 @@ const SimpleChart: React.FC<AriesModProps> = ({ title, data, width, height }) =>
 }
 ```
 
+## External Dependencies System
+
+AriesMods support external dependencies through a secure, controlled system. This allows developers to use a combination of pre-bundled libraries (like React and Plotly.js) and dynamically-loaded CDN libraries (like D3.js and Chart.js) to build powerful, custom widgets without compromising security or performance.
+
+### Dependency Types
+
+1. **Pre-bundled (NPM)** - Libraries already included with AriesUI
+2. **CDN Dependencies** - Popular libraries loaded from trusted CDNs  
+3. **Local Dependencies** - Custom libraries uploaded by administrators
+
+### Available Pre-Approved Dependencies
+
+#### UI & Styling
+- React 19.x, Lucide React, Tailwind CSS, clsx
+
+#### Data Visualization
+- Recharts, Plotly.js, React Plotly.js
+
+#### Math & Utilities  
+- date-fns, lodash-es
+
+#### External Libraries (CDN)
+- D3.js, Chart.js, Three.js
+
+### Using Dependencies
+
+```typescript
+import { loadAriesModDependencies, createAriesModManifest } from '@/lib/ariesmods-dependency-manager'
+
+const MANIFEST = createAriesModManifest(
+  'my-mod', 'My Mod', '1.0.0', 'Author',
+  [
+    { name: 'react', version: '19.x', source: 'npm', required: true, scope: 'global' },
+    { name: 'd3', version: '7.x', source: 'cdn', required: false, scope: 'isolated' }
+  ]
+)
+
+const MyMod: React.FC<AriesModProps> = (props) => {
+  const [deps, setDeps] = useState({})
+  
+  useEffect(() => {
+    loadAriesModDependencies(MANIFEST)
+      .then(setDeps)
+      .catch(console.error)
+  }, [])
+  
+  const d3 = deps['d3']
+  // Use d3 for custom visualizations
+}
+```
+
+See the `AdvancedAriesMod.tsx` template for a complete example.
+
 ## Integration with Comms v3
 
 ### Connecting to Hardware

@@ -45,6 +45,12 @@
 - `ariesMods/visualization/PlotlyChart.tsx` - Advanced Plotly visualizations
 - `ariesMods/utility/Clock.tsx` - Digital clock with timezone support
 
+**✅ AriesMod Dependency Management** (NEWLY IMPLEMENTED):
+- `lib/ariesmods-dependency-manager.ts` - Secure, permission-based system
+- `ariesMods/templates/AdvancedAriesMod.tsx` - Example with CDN dependencies
+- Support for pre-bundled (NPM) and dynamic (CDN) libraries
+- Validation, version control, and integrity checks for all dependencies
+
 **✅ AriesMod Development Tools**:
 - `ariesMods/templates/BasicAriesMod.tsx` - Developer template
 - `ARIESMODS_DEVELOPMENT_GUIDE.md` - Comprehensive documentation

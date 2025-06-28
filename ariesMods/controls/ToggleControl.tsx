@@ -109,7 +109,7 @@ export const ToggleControlMod: AriesMod = {
     description: 'Switch control for relays, lights, and other on/off devices',
     version: '1.0.0',
     author: 'AriesUI Team',
-    category: 'control',
+    category: 'controls',
     icon: '🔌',
     defaultWidth: 180,
     defaultHeight: 160,

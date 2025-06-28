@@ -24,7 +24,7 @@ export interface AriesModMetadata {
   description: string
   version: string
   author: string
-  category: 'sensor' | 'control' | 'visualization' | 'utility' | 'custom'
+  category: 'sensors' | 'controls' | 'visualization' | 'utility' | 'custom'
   icon?: string
   defaultWidth: number
   defaultHeight: number
@@ -34,6 +34,11 @@ export interface AriesModMetadata {
   maxHeight?: number
   configSchema?: Record<string, any>
   tags?: string[]
+  
+  // Dependency management (optional)
+  manifest?: any // Will be typed as AriesModManifest when imported
+  permissions?: string[]
+  dependencies?: any[] // Will be typed as DependencyManifest[] when imported
 }
 
 export interface AriesMod {
@@ -65,12 +70,12 @@ export interface AriesWidget {
 
 // Default AriesMod categories for organization
 export const ARIESMODS_CATEGORIES = {
-  sensor: {
+  sensors: {
     label: 'Sensors',
     icon: '📊',
     description: 'Temperature, pressure, humidity sensors'
   },
-  control: {
+  controls: {
     label: 'Controls',
     icon: '🎛️',
     description: 'Switches, sliders, buttons'

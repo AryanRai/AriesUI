@@ -2,15 +2,15 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, Wifi, WifiOff, Menu } from "lucide-react"
+import { ChevronDown, Wifi, WifiOff, Menu, Users, LayoutGrid } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useComms } from "@/components/comms-context"
 
 export function TopNavigation() {
-  const { state } = useComms()
   const { toggleSidebar } = useSidebar()
+  const { state, dispatch, loadProfile } = useComms()
   const [marqueeText] = useState("System Status: All systems operational • Data streams active • Connection stable")
 
   return (
@@ -69,6 +69,33 @@ export function TopNavigation() {
             <DropdownMenuItem>Disconnect</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Users className="h-4 w-4 mr-2" />
+              <span>{state.activeProfile}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Switch Profile</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {Object.keys(state.profiles).map((name) => (
+              <DropdownMenuItem key={name} onClick={() => loadProfile(name)}>
+                {name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => dispatch({ type: "SET_MODAL", payload: "profiles" })}
+        >
+          <LayoutGrid className="h-4 w-4 mr-2" />
+          Manage Layouts
+        </Button>
       </div>
     </div>
   )

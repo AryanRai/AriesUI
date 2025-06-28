@@ -85,7 +85,7 @@ export const TemperatureSensorMod: AriesMod = {
     description: 'Displays temperature readings with visual status indicators',
     version: '1.0.0',
     author: 'AriesUI Team',
-    category: 'sensor',
+    category: 'sensors',
     icon: '🌡️',
     defaultWidth: 200,
     defaultHeight: 200,

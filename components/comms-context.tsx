@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { createContext, useContext, useReducer, type ReactNode } from "react"
+import { useLocalStorage } from '@/hooks/use-local-storage'
 
 interface Stream {
   id: string
@@ -28,6 +29,8 @@ interface CommsState {
   installedMods: string[]
   logs: string[]
   terminalHistory: string[]
+  profiles: Record<string, any>
+  activeProfile: string
 }
 
 type CommsAction =
@@ -62,6 +65,8 @@ const initialState: CommsState = {
     "[2024-01-15 10:30:19] Stream 'Hardware Monitor Gamma' connected",
   ],
   terminalHistory: [],
+  profiles: {},
+  activeProfile: "default",
 }
 
 function commsReducer(state: CommsState, action: CommsAction): CommsState {
@@ -109,12 +114,24 @@ function commsReducer(state: CommsState, action: CommsAction): CommsState {
 const CommsContext = createContext<{
   state: CommsState
   dispatch: React.Dispatch<CommsAction>
+  loadProfile: (name: string) => void
+  updateProfiles: (profiles: Record<string, any>) => void
 } | null>(null)
 
 export function CommsProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(commsReducer, initialState)
+  const [profiles, setProfiles] = useLocalStorage<Record<string, any>>("aries-grid-profiles", { default: {} })
+  const [activeProfile, setActiveProfile] = useLocalStorage<string>("aries-grid-active-profile", "default")
 
-  return <CommsContext.Provider value={{ state, dispatch }}>{children}</CommsContext.Provider>
+  const [state, dispatch] = useReducer(commsReducer, { ...initialState, profiles, activeProfile })
+
+  const value = {
+    state: { ...state, profiles, activeProfile },
+    dispatch,
+    loadProfile: setActiveProfile,
+    updateProfiles: setProfiles,
+  }
+
+  return <CommsContext.Provider value={value}>{children}</CommsContext.Provider>
 }
 
 export function useComms() {

@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Settings, Zap, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
+import { Settings, Zap, RefreshCw, AlertTriangle, X } from 'lucide-react'
 import { AriesModSelector } from './ariesmod-selector'
 import { getAriesMod, generateDummyDataForMod } from '@/lib/ariesmods-registry'
 import type { AriesWidget, AriesModData } from '@/types/ariesmods'
@@ -194,6 +199,111 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
           <div className="text-center space-y-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
             <div className="text-xs text-muted-foreground">Loading data...</div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // If in config mode, show configuration interface
+  if (isConfigMode) {
+    return (
+      <Card className={`w-full h-full ${className}`}>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between text-sm">
+            <span>{selectedMod.metadata.displayName} Configuration</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsConfigMode(false)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 overflow-y-auto max-h-[calc(100%-80px)]">
+          {selectedMod.metadata.configSchema && Object.entries(selectedMod.metadata.configSchema).map(([key, field]) => (
+            <div key={key} className="space-y-2">
+              <Label htmlFor={key} className="text-xs font-medium">
+                {field.label}
+              </Label>
+              {field.type === 'text' && (
+                <Input
+                  id={key}
+                  value={widget.config?.[key] || field.default || ''}
+                  placeholder={field.placeholder}
+                  onChange={(e) => handleConfigChange({ [key]: e.target.value })}
+                  className="h-8 text-xs"
+                />
+              )}
+              {field.type === 'number' && (
+                <Input
+                  id={key}
+                  type="number"
+                  value={widget.config?.[key] || field.default || 0}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  onChange={(e) => handleConfigChange({ [key]: parseFloat(e.target.value) || 0 })}
+                  className="h-8 text-xs"
+                />
+              )}
+              {field.type === 'boolean' && (
+                <Switch
+                  checked={widget.config?.[key] ?? field.default ?? false}
+                  onCheckedChange={(checked) => handleConfigChange({ [key]: checked })}
+                />
+              )}
+              {field.type === 'select' && (
+                <Select
+                  value={widget.config?.[key] || field.default}
+                  onValueChange={(value) => handleConfigChange({ [key]: value })}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((option: { value: string; label: string }) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {field.type === 'range' && (
+                <div className="space-y-2">
+                  <Slider
+                    value={[widget.config?.[key] || field.default || 50]}
+                    onValueChange={([value]) => handleConfigChange({ [key]: value })}
+                    min={field.min || 0}
+                    max={field.max || 100}
+                    step={field.step || 1}
+                    className="w-full"
+                  />
+                  <div className="text-xs text-center text-muted-foreground">
+                    {widget.config?.[key] || field.default || 50}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          <div className="flex gap-2 pt-4">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setIsConfigMode(false)}
+              className="flex-1"
+            >
+              Done
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={refreshData}
+              className="flex-1"
+            >
+              Apply & Refresh
+            </Button>
           </div>
         </CardContent>
       </Card>
