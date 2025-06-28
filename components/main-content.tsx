@@ -61,6 +61,11 @@ interface GridState {
   version: string
 }
 
+interface MainContentProps {
+  gridState: GridState
+  setGridState: React.Dispatch<React.SetStateAction<GridState>>
+}
+
 type Widget = MainGridWidget | NestedWidget
 type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w"
 
@@ -307,7 +312,7 @@ const calculateNestAutoSize = (
   return { w: calculatedWidth, h: calculatedHeight }
 }
 
-export function MainContent() {
+export function MainContent({ gridState, setGridState }: MainContentProps) {
   const { 
     state,
     dispatch, 
@@ -326,19 +331,6 @@ export function MainContent() {
   const [isPanning, setIsPanning] = useState(false)
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
-
-  // Grid state for saving/loading
-  const [gridState, setGridState] = useState<GridState>({
-    mainWidgets: [],
-    nestContainers: [],
-    nestedWidgets: [],
-    mainAriesWidgets: [],
-    nestedAriesWidgets: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
-    gridSize: 20,
-    lastSaved: null,
-    version: "1.0.0",
-  })
 
   // Initialize nested widgets after nest containers are set
   // REMOVED: Auto-adding default widgets to nests - nests should start empty

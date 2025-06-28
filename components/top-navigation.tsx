@@ -4,10 +4,11 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, Wifi, WifiOff, Menu, Users, LayoutGrid } from "lucide-react"
+import { ChevronDown, Wifi, WifiOff, Menu, Users, LayoutGrid, Cloud, PanelRightOpen } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useComms } from "@/components/comms-context"
 import HeartbeatVisualizer from './heartbeat-visualizer'
+import { MainMenu } from "@/components/main-menu"
 
 export function TopNavigation() {
   const { toggleSidebar } = useSidebar()
@@ -110,13 +111,15 @@ export function TopNavigation() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => dispatch({ type: "SET_MODAL", payload: "profiles" })}
-        >
-          <LayoutGrid className="h-4 w-4 mr-2" />
-          Manage Layouts
+        <Button variant="ghost" onClick={() => dispatch({ type: "SET_MODAL", payload: "profiles" })}>
+          Profiles
+        </Button>
+        <Button variant="ghost" onClick={() => dispatch({ type: "SET_MODAL", payload: "marketplace" })}>
+          Marketplace
+        </Button>
+        <Button variant="ghost" onClick={() => dispatch({ type: "TOGGLE_RIGHT_SIDEBAR" })} className="gap-2">
+          <PanelRightOpen className="h-4 w-4" />
+          Inspector
         </Button>
       </div>
     </div>

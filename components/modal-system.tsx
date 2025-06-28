@@ -8,6 +8,7 @@ import { PerformanceModal } from "@/components/modals/performance-modal"
 import { AriesModsModal } from "@/components/modals/ariesmods-modal"
 import { WidgetConfigModal } from "@/components/modals/widget-config-modal"
 import { ProfilesModal } from "@/components/modals/profiles-modal"
+import { MarketplaceModal } from "@/components/modals/marketplace-modal"
 
 export function ModalSystem() {
   const { state, loadProfile, updateProfiles, dispatch } = useComms()
@@ -51,6 +52,8 @@ export function ModalSystem() {
     dispatch({ type: "ADD_LOG", payload: `Profile "${name}" deleted successfully` })
   }
 
+  const handleClose = () => dispatch({ type: "SET_MODAL", payload: null })
+
   return (
     <>
       {state.activeModal === "config" && <ConfigModal />}
@@ -66,8 +69,11 @@ export function ModalSystem() {
           onLoadProfile={handleLoadProfile}
           onSaveProfile={handleSaveProfile}
           onDeleteProfile={handleDeleteProfile}
-          onClose={() => dispatch({ type: "SET_MODAL", payload: null })}
+          onClose={handleClose}
         />
+      )}
+      {state.activeModal === "marketplace" && (
+        <MarketplaceModal isOpen={true} onClose={handleClose} />
       )}
     </>
   )

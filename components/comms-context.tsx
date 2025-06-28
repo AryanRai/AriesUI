@@ -31,6 +31,7 @@ interface CommsState {
   terminalHistory: string[]
   profiles: Record<string, any>
   activeProfile: string
+  isRightSidebarOpen: boolean
 }
 
 type CommsAction =
@@ -45,6 +46,7 @@ type CommsAction =
   | { type: "ADD_TERMINAL_COMMAND"; payload: string }
   | { type: "TOGGLE_THEME" }
   | { type: "CLEAR_WIDGETS" }
+  | { type: "TOGGLE_RIGHT_SIDEBAR" }
 
 const initialState: CommsState = {
   streams: [
@@ -67,6 +69,7 @@ const initialState: CommsState = {
   terminalHistory: [],
   profiles: {},
   activeProfile: "default",
+  isRightSidebarOpen: false,
 }
 
 function commsReducer(state: CommsState, action: CommsAction): CommsState {
@@ -106,6 +109,8 @@ function commsReducer(state: CommsState, action: CommsAction): CommsState {
       return { ...state, theme: state.theme === "light" ? "dark" : "light" }
     case "CLEAR_WIDGETS":
       return { ...state, widgets: [] }
+    case "TOGGLE_RIGHT_SIDEBAR":
+      return { ...state, isRightSidebarOpen: !state.isRightSidebarOpen }
     default:
       return state
   }

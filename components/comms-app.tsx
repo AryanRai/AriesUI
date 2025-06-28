@@ -9,8 +9,44 @@ import { FloatingToolbar } from "@/components/floating-toolbar"
 import { ModalSystem } from "@/components/modal-system"
 import { StatusBar } from "@/components/status-bar"
 import { ThemeProvider } from "@/components/theme-provider"
-import { CommsProvider } from "@/components/comms-context"
+import { CommsProvider, useComms } from "@/components/comms-context"
 import { WidgetPalette } from "@/components/widget-palette"
+import RightSidebar from "./right-sidebar"
+
+function AppContent() {
+  const { state, dispatch } = useComms()
+  const { isRightSidebarOpen } = state
+
+  const [gridState, setGridState] = useState({
+    mainWidgets: [],
+    nestContainers: [],
+    nestedWidgets: [],
+    mainAriesWidgets: [],
+    nestedAriesWidgets: [],
+    viewport: { x: 0, y: 0, zoom: 1 },
+    gridSize: 20,
+    lastSaved: null,
+    version: "1.0.0",
+  });
+
+  return (
+    <div className="flex h-screen">
+      <AppSidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <TopNavigation />
+        <div className="flex-1 relative">
+          <MainContent gridState={gridState} setGridState={setGridState} />
+        </div>
+        <StatusBar />
+      </div>
+      <RightSidebar
+        isOpen={isRightSidebarOpen}
+        gridState={gridState}
+        onToggle={() => dispatch({ type: "TOGGLE_RIGHT_SIDEBAR" })}
+      />
+    </div>
+  )
+}
 
 export function CommsApp() {
   const [mounted, setMounted] = useState(false)
@@ -71,14 +107,7 @@ export function CommsApp() {
               onMouseEnter={() => setSidebarOpen(true)}
             />
 
-            <div className="flex h-screen">
-              <AppSidebar />
-              <div className="flex-1 flex flex-col">
-                <TopNavigation />
-                <MainContent />
-                <StatusBar />
-              </div>
-            </div>
+            <AppContent />
             <FloatingToolbar />
             <WidgetPalette />
             <ModalSystem />
