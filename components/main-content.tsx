@@ -6,10 +6,11 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Settings, Hash, GripVertical, Grid3X3, Save, Download, Upload } from "lucide-react"
+import { Plus, X, Settings, Hash, GripVertical, Grid3X3, Save, Download, Upload, Eye, EyeOff } from "lucide-react"
 import { useComms } from "@/components/comms-context"
 import { AriesModWidget } from "@/components/widgets/ariesmod-widget"
 import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 
 interface BaseWidget {
   id: string
@@ -387,6 +388,8 @@ export function MainContent() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const [isViewportInfoVisible, setIsViewportInfoVisible] = useLocalStorage("aries-show-viewport-info", true)
 
   // Update grid state helper
   const updateGridState = useCallback((updater: (prev: GridState) => GridState) => {
@@ -1691,16 +1694,27 @@ export function MainContent() {
         >
           <span className="text-xs">⌂</span>
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setIsViewportInfoVisible(!isViewportInfoVisible)}
+          title={isViewportInfoVisible ? "Hide Viewport Info" : "Show Viewport Info"}
+        >
+          {isViewportInfoVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </Button>
       </div>
 
       {/* Viewport Info */}
-      <div className="absolute top-16 left-4 z-50 text-xs text-muted-foreground bg-background/80 px-3 py-2 rounded backdrop-blur border border-border/50">
-        <div>Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
-        <div>
-          Position: ({Math.round(viewport.x)}, {Math.round(viewport.y)})
+      {isViewportInfoVisible && (
+        <div className="absolute top-16 left-4 z-50 text-xs text-muted-foreground bg-background/80 px-3 py-2 rounded backdrop-blur border border-border/50">
+          <div>Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
+          <div>
+            Position: ({Math.round(viewport.x)}, {Math.round(viewport.y)})
+          </div>
+          <div className="text-xs opacity-75 mt-1">Ctrl+Wheel: Zoom • Middle Click: Pan • Ctrl+Click: Pan</div>
         </div>
-        <div className="text-xs opacity-75 mt-1">Ctrl+Wheel: Zoom • Middle Click: Pan • Ctrl+Click: Pan</div>
-      </div>
+      )}
 
       {/* Infinite Grid Container */}
       <div

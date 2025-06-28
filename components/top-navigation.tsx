@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { ChevronDown, Wifi, WifiOff, Menu, Users, LayoutGrid } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useComms } from "@/components/comms-context"
+import HeartbeatVisualizer from './heartbeat-visualizer'
 
 export function TopNavigation() {
   const { toggleSidebar } = useSidebar()
@@ -43,9 +44,9 @@ export function TopNavigation() {
         </Button>
       </div>
 
-      {/* Center - Scrolling marquee */}
-      <div className="flex-1 overflow-hidden">
-        <div className="animate-marquee whitespace-nowrap text-sm text-muted-foreground">{marqueeText}</div>
+      {/* Center - Heartbeat visualizer */}
+      <div className="flex-1 flex items-center justify-center">
+        <HeartbeatVisualizer />
       </div>
 
       {/* Right side */}

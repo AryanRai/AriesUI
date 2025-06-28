@@ -1,10 +1,6 @@
 // AriesMods Plugin System Types
 
-export interface AriesModData {
-  value: any
-  timestamp: string
-  metadata?: Record<string, any>
-}
+export type AriesModData = Record<string, any>
 
 export interface AriesModProps {
   id: string

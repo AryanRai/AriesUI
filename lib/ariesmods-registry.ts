@@ -40,12 +40,14 @@ export class AriesModsRegistry {
       const { ToggleControlMod } = await import('@/ariesMods/controls/ToggleControl')
       const { LineChartMod } = await import('@/ariesMods/visualization/LineChart')
       const { PlotlyChartMod } = await import('@/ariesMods/visualization/PlotlyChart')
+      const { PointCloudVisMod } = await import('@/ariesMods/visualization/PointCloudVis')
       const { ClockMod } = await import('@/ariesMods/utility/Clock')
       
       this.registerMod(TemperatureSensorMod)
       this.registerMod(ToggleControlMod)
       this.registerMod(LineChartMod)
       this.registerMod(PlotlyChartMod)
+      this.registerMod(PointCloudVisMod)
       this.registerMod(ClockMod)
     } catch (error) {
       console.warn('Some built-in AriesMods failed to load:', error)
