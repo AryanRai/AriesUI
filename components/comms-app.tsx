@@ -13,11 +13,42 @@ import { CommsProvider, useComms } from "@/components/comms-context"
 import { WidgetPalette } from "@/components/widget-palette"
 import RightSidebar from "./right-sidebar"
 
+// Redefining types here to avoid export/import issues.
+// Ideally, these would be in a central types file.
+interface BaseWidget {
+  id: string;
+  type: string;
+  title: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  createdAt: string;
+  updatedAt: string;
+}
+interface MainGridWidget extends BaseWidget { container: "main"; content: string; }
+interface NestedWidget extends BaseWidget { container: "nest"; nestId: string; content: string; }
+interface NestContainer { id: string; title: string; x: number; y: number; w: number; h: number; createdAt: string; updatedAt: string; }
+interface AriesWidget { id: string; type: 'ariesmods'; ariesModType: string; title: string; x: number; y: number; w: number; h: number; config: any; data?: any; createdAt: string; updatedAt: string; }
+interface NestedAriesWidget extends AriesWidget { nestId: string; }
+
+export interface GridState {
+  mainWidgets: MainGridWidget[];
+  nestContainers: NestContainer[];
+  nestedWidgets: NestedWidget[];
+  mainAriesWidgets: AriesWidget[];
+  nestedAriesWidgets: NestedAriesWidget[];
+  viewport: { x: number; y: number; zoom: number; };
+  gridSize: number;
+  lastSaved: string | null;
+  version: string;
+}
+
 function AppContent() {
   const { state, dispatch } = useComms()
   const { isRightSidebarOpen } = state
 
-  const [gridState, setGridState] = useState({
+  const [gridState, setGridState] = useState<GridState>({
     mainWidgets: [],
     nestContainers: [],
     nestedWidgets: [],
@@ -30,15 +61,15 @@ function AppContent() {
   });
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <AppSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
         <TopNavigation />
         <div className="flex-1 relative">
           <MainContent gridState={gridState} setGridState={setGridState} />
         </div>
         <StatusBar />
-      </div>
+      </main>
       <RightSidebar
         isOpen={isRightSidebarOpen}
         gridState={gridState}

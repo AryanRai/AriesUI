@@ -1,97 +1,148 @@
 "use client"
 
-import React, { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Search, Cloud, Boxes, Download } from 'lucide-react'
+import { useState, useEffect } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { useComms } from "@/components/comms-context"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Download, Loader2 } from "lucide-react"
 
-// Dummy data for marketplace mods
-const availableMods = [
-  { id: 'weather-station', name: 'Weather Station', description: 'Displays current weather conditions.', author: 'AriesLabs', version: '1.2.0', tags: ['weather', 'api', 'data'], icon: '☀️' },
-  { id: 'stock-ticker', name: 'Stock Ticker', description: 'Live stock market data.', author: 'FinanceMods', version: '2.0.1', tags: ['stocks', 'finance'], icon: '📈' },
-  { id: 'system-monitor', name: 'System Monitor', description: 'Monitors CPU, RAM, and disk usage.', author: 'SysAdmins', version: '1.5.3', tags: ['system', 'monitoring', 'cpu'], icon: '💻' },
-  { id: 'world-clock', name: 'World Clock', description: 'Shows time across different timezones.', author: 'AriesLabs', version: '1.0.0', tags: ['time', 'clock', 'world'], icon: '🌍' },
-]
+interface GitHubFile {
+  name: string
+  path: string
+  sha: string
+  size: number
+  url: string
+  html_url: string
+  git_url: string
+  download_url: string
+  type: string
+  _links: {
+    self: string
+    git: string
+    html: string
+  }
+}
 
-const ModCard = ({ mod, onInstall, isInstalled }) => (
-  <div className="flex items-center justify-between p-3 border rounded-md bg-card/50">
-    <div className="flex items-center gap-4">
-      <div className="text-2xl">{mod.icon}</div>
-      <div>
-        <h3 className="font-semibold">{mod.name} <span className="text-xs text-muted-foreground">v{mod.version}</span></h3>
-        <p className="text-sm text-muted-foreground">{mod.description}</p>
-        <p className="text-xs text-muted-foreground italic">by {mod.author}</p>
-      </div>
-    </div>
-    <Button size="sm" onClick={() => onInstall(mod.id)} disabled={isInstalled}>
-      <Download className="h-4 w-4 mr-2" />
-      {isInstalled ? 'Installed' : 'Install'}
-    </Button>
-  </div>
-)
+async function fetchModsFromRepo(repoUrl: string): Promise<GitHubFile[]> {
+  // Example URL: https://github.com/inspo-soft/Aries-Dev-Mods
+  // We need to convert it to the API format:
+  // https://api.github.com/repos/inspo-soft/Aries-Dev-Mods/contents/aries-mods
+  try {
+    const urlParts = new URL(repoUrl)
+    const pathParts = urlParts.pathname.split("/").filter(Boolean)
+    if (pathParts.length < 2) throw new Error("Invalid GitHub repository URL")
+    
+    const owner = pathParts[0]
+    const repo = pathParts[1]
+    
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/aries-mods`
+    
+    const response = await fetch(apiUrl)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch repository contents: ${response.statusText}`)
+    }
+    const data: GitHubFile[] = await response.json()
+    // Filter for .tsx files only, as other files might exist (e.g., README)
+    return data.filter(file => file.name.endsWith('.tsx'))
+  } catch (error) {
+    console.error("Error fetching mods from repo:", error)
+    // Silently fail and return empty array
+    return []
+  }
+}
 
-export const MarketplaceModal = ({ isOpen, onClose }) => {
-  const [installedMods, setInstalledMods] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
+export function MarketplaceModal() {
+  const { state, dispatch } = useComms()
+  const [availableMods, setAvailableMods] = useState<GitHubFile[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [repoUrl, setRepoUrl] = useState("https://github.com/inspo-soft/Aries-Dev-Mods")
 
-  const handleInstall = (modId) => {
-    setInstalledMods(prev => [...prev, modId])
-    // Here you would also trigger the actual download/registration logic
+  const handleClose = () => {
+    dispatch({ type: "SET_MODAL", payload: null })
   }
 
-  const filteredMods = availableMods.filter(mod => 
-    mod.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    mod.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    mod.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  const handleFetchMods = async () => {
+    setIsLoading(true)
+    const mods = await fetchModsFromRepo(repoUrl)
+    setAvailableMods(mods)
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    handleFetchMods()
+  }, [])
+
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl h-[70vh]">
+    <Dialog open={state.activeModal === "marketplace"} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-4xl h-[70vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Cloud className="h-6 w-6" /> AriesMods Marketplace</DialogTitle>
-          <DialogDescription>Discover and install new widgets for your dashboard.</DialogDescription>
+          <DialogTitle>AriesMods Marketplace</DialogTitle>
+          <DialogDescription>
+            Discover, install, and manage community-made and official mods from GitHub.
+          </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="discover" className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="discover"><Search className="h-4 w-4 mr-2" />Discover</TabsTrigger>
-            <TabsTrigger value="installed"><Boxes className="h-4 w-4 mr-2" />Installed</TabsTrigger>
-          </TabsList>
-          <div className="relative mt-4">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden p-1">
+          <div className="flex items-center gap-2">
             <Input 
-              placeholder="Search mods..." 
-              className="pl-8" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Enter GitHub repository URL..." 
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
             />
+            <Button onClick={handleFetchMods} disabled={isLoading}>
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load Repo"}
+            </Button>
           </div>
-          <TabsContent value="discover" className="flex-1 overflow-y-auto mt-4 space-y-3 pr-2">
-            {filteredMods.map(mod => (
-              <ModCard 
-                key={mod.id} 
-                mod={mod} 
-                onInstall={handleInstall}
-                isInstalled={installedMods.includes(mod.id)}
-              />
-            ))}
-          </TabsContent>
-          <TabsContent value="installed" className="flex-1 overflow-y-auto mt-4 space-y-3 pr-2">
-            {availableMods.filter(m => installedMods.includes(m.id)).map(mod => (
-               <ModCard 
-                key={mod.id} 
-                mod={mod} 
-                onInstall={handleInstall}
-                isInstalled
-              />
-            ))}
-            {installedMods.length === 0 && (
-              <div className="text-center text-muted-foreground py-10">No mods installed yet.</div>
+
+          <div className="flex-1 overflow-auto pr-2">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : availableMods.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableMods.map((mod) => (
+                  <Card key={mod.sha} className="flex flex-col">
+                    <CardContent className="p-4 flex-1 flex flex-col">
+                      <div className="flex-1">
+                        <div className="font-semibold">{mod.name.replace('.tsx', '')}</div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          A community-provided mod.
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between mt-4">
+                        <Badge variant="outline">{(mod.size / 1024).toFixed(2)} KB</Badge>
+                        <Button variant="default" size="sm" className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Install
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-10">
+                No mods found in the specified repository path, or the repository is invalid.
+              </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>Close</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
