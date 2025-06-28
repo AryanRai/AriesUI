@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Settings, Hash, GripVertical, Grid3X3, Save, Download, Upload, Eye, EyeOff, GripHorizontal } from "lucide-react"
+import { Plus, X, Settings, Hash, GripVertical, Grid3X3, Save, Download, Upload, Eye, EyeOff, Clock } from "lucide-react"
 import { useComms } from "@/components/comms-context"
 import { AriesModWidget } from "@/components/widgets/ariesmod-widget"
 import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
@@ -382,12 +382,22 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [isViewportInfoVisible, setIsViewportInfoVisible] = useLocalStorage("aries-show-viewport-info", true)
+  const [actionsToolbarPosition, setActionsToolbarPosition] = useLocalStorage("aries-actions-toolbar-pos", { top: 80, right: 20 })
+  const [isDraggingToolbar, setIsDraggingToolbar] = useState(false)
+  const [toolbarDragStart, setToolbarDragStart] = useState({ x: 0, y: 0, top: 0, right: 0 })
+  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useLocalStorage("aries-auto-save-enabled", true)
 
-  const [actionsPos, setActionsPos] = useLocalStorage("aries-actions-toolbar-pos", { top: 68, right: 16, x: 0, y: 0 });
-  const [zoomPos, setZoomPos] = useLocalStorage("aries-zoom-toolbar-pos", { top: 68, left: '50%', x: '-50%', y: 0 });
-
-  const [draggedToolbar, setDraggedToolbar] = useState<null | 'actions' | 'zoom'>(null);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const handleToolbarMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingToolbar(true)
+    setToolbarDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      top: actionsToolbarPosition.top,
+      right: actionsToolbarPosition.right,
+    })
+  }
 
   // Update grid state helper
   const updateGridState = useCallback((updater: (prev: GridState) => GridState) => {
@@ -489,15 +499,17 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     [dispatch],
   )
 
-  // Auto-save every 30 seconds if there are unsaved changes
+  // Auto-save every 30 seconds if there are unsaved changes and auto-save is enabled
   useEffect(() => {
+    if (!isAutoSaveEnabled) return
+
     const interval = setInterval(() => {
       if (hasUnsavedChanges) {
         saveGridState()
       }
     }, 30000)
     return () => clearInterval(interval)
-  }, [hasUnsavedChanges, saveGridState])
+  }, [hasUnsavedChanges, saveGridState, isAutoSaveEnabled])
 
   // Initialize default profile if none exists
   useEffect(() => {
@@ -957,6 +969,21 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
       const gridSize = gridState.gridSize
 
+      // Handle toolbar dragging
+      if (isDraggingToolbar) {
+        const deltaX = e.clientX - toolbarDragStart.x
+        const deltaY = e.clientY - toolbarDragStart.y
+        
+        const newTop = toolbarDragStart.top + deltaY
+        const newRight = toolbarDragStart.right - deltaX
+
+        setActionsToolbarPosition({
+          top: Math.max(80, Math.min(newTop, window.innerHeight - 80)),
+          right: Math.max(20, Math.min(newRight, window.innerWidth - 300)),
+        })
+        return
+      }
+
       // Handle panning
       if (isPanning) {
         const deltaX = e.clientX - lastPanPoint.x
@@ -1396,9 +1423,10 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
       setIsPanning(false)
       setDragOverNest(null)
+      setIsDraggingToolbar(false)
     }
 
-    if (dragState.isDragging || resizeState.isResizing || isPanning) {
+    if (dragState.isDragging || resizeState.isResizing || isPanning || isDraggingToolbar) {
       document.addEventListener("mousemove", handleMouseMove)
       document.addEventListener("mouseup", handleMouseUp)
     }
@@ -1407,7 +1435,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
     }
-  }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch])
+  }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch, isDraggingToolbar, toolbarDragStart, setActionsToolbarPosition])
 
   // Add wheel event listener
   useEffect(() => {
@@ -1625,157 +1653,120 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     window.dispatchEvent(new CustomEvent("widgetCountUpdate", { detail: { count: totalWidgets } }))
   }, [gridState.mainWidgets.length, gridState.nestedWidgets.length, gridState.mainAriesWidgets.length, gridState.nestedAriesWidgets.length])
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!draggedToolbar) return;
-
-      const dx = e.clientX - dragStart.x;
-      const dy = e.clientY - dragStart.y;
-
-      if (draggedToolbar === 'actions') {
-        setActionsPos(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
-      } else if (draggedToolbar === 'zoom') {
-        setZoomPos(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
-      }
-
-      setDragStart({ x: e.clientX, y: e.clientY });
-    };
-
-    const handleMouseUp = () => {
-      setDraggedToolbar(null);
-    };
-
-    if (draggedToolbar) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [draggedToolbar, dragStart, setActionsPos, setZoomPos]);
-
-  const handleDragStart = (e: React.MouseEvent, toolbar: 'actions' | 'zoom') => {
-    e.preventDefault();
-    setDraggedToolbar(toolbar);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-background to-background/80">
       {/* Floating Action Buttons */}
-      <div 
-        className="absolute z-50 flex flex-col gap-2 p-2 rounded-lg bg-black/30 backdrop-blur-md border border-white/20 shadow-2xl"
-        style={{ 
-          top: actionsPos.top, 
-          right: actionsPos.right,
-          transform: `translate(${actionsPos.x}px, ${actionsPos.y}px)`
+      <div
+        className="absolute z-50"
+        style={{
+          top: actionsToolbarPosition.top,
+          right: actionsToolbarPosition.right,
         }}
       >
-        <div 
-          className="cursor-move self-center text-white/50 hover:text-white transition-colors"
-          onMouseDown={(e) => handleDragStart(e, 'actions')}
-        >
-          <GripHorizontal className="h-4 w-4" />
-        </div>
-        <div className="flex gap-2">
-        <Button
-          onClick={saveGridState}
-          size="sm"
-            variant="ghost"
-            className={`gap-2 text-white/80 hover:text-white hover:bg-white/10 ${hasUnsavedChanges ? "text-orange-400" : ""}`}
-        >
-          <Save className="h-4 w-4" />
-          Save {hasUnsavedChanges && "*"}
-        </Button>
-          <Button onClick={exportGridState} size="sm" variant="ghost" className="gap-2 text-white/80 hover:text-white hover:bg-white/10">
-          <Download className="h-4 w-4" />
-        </Button>
-        <label className="cursor-pointer">
-          <input type="file" accept=".json" onChange={importGridState} className="hidden" />
-            <Button size="sm" variant="ghost" className="gap-2 text-white/80 hover:text-white hover:bg-white/10" asChild>
-            <span>
-              <Upload className="h-4 w-4" />
-            </span>
-          </Button>
-        </label>
-          <Button onClick={addNestContainer} size="sm" variant="ghost" className="gap-2 text-white/80 hover:text-white hover:bg-white/10">
-          <Grid3X3 className="h-4 w-4" />
-        </Button>
-          <Button onClick={addWidget} size="sm" variant="ghost" className="gap-2 text-white/80 hover:text-white hover:bg-white/10">
-          <Plus className="h-4 w-4" />
-        </Button>
-        </div>
+        <Card className="bg-background/90 backdrop-blur-sm border-border/50 shadow-lg">
+          <CardHeader
+            className="py-1 px-2 cursor-grab active:cursor-grabbing text-center"
+            onMouseDown={handleToolbarMouseDown}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
+          </CardHeader>
+          <CardContent className="p-2 flex gap-2">
+            <Button
+              onClick={saveGridState}
+              size="sm"
+              variant="default"
+              className={`gap-2 ${hasUnsavedChanges ? "bg-orange-600 hover:bg-orange-700" : ""}`}
+            >
+              <Save className="h-4 w-4" />
+              Save {hasUnsavedChanges && "*"}
+            </Button>
+            <Button
+              onClick={() => setIsAutoSaveEnabled(!isAutoSaveEnabled)}
+              size="sm"
+              variant={isAutoSaveEnabled ? "default" : "outline"}
+              className="gap-2"
+              title={isAutoSaveEnabled ? "Auto-save enabled (30s)" : "Auto-save disabled"}
+            >
+              <Clock className="h-4 w-4" />
+              Auto
+            </Button>
+            <Button onClick={exportGridState} size="sm" variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            <label className="cursor-pointer">
+              <input type="file" accept=".json" onChange={importGridState} className="hidden" />
+              <Button size="sm" variant="outline" className="gap-2" asChild>
+                <span>
+                  <Upload className="h-4 w-4" />
+                  Import
+                </span>
+              </Button>
+            </label>
+            <Button onClick={addNestContainer} size="sm" variant="outline" className="gap-2">
+              <Grid3X3 className="h-4 w-4" />
+              Add Nest
+            </Button>
+            <Button onClick={addWidget} size="sm" variant="outline" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Widget
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Zoom Toolbar */}
-      <div 
-        className="absolute z-50 flex flex-col gap-2 p-2 rounded-lg bg-black/30 backdrop-blur-md border border-white/20 shadow-2xl"
-        style={{ 
-          top: zoomPos.top, 
-          left: zoomPos.left,
-          transform: `translate(${zoomPos.x}, ${zoomPos.y}px)`
-        }}
+      <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-50 flex gap-1 bg-background/90 backdrop-blur-sm border border-border/50 rounded-md p-1 shadow-lg">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setViewport(prev => ({ ...prev, zoom: Math.max(0.1, prev.zoom * 0.8) }))}
+          title="Zoom Out"
         >
-        <div 
-          className="cursor-move self-center text-white/50 hover:text-white transition-colors"
-          onMouseDown={(e) => handleDragStart(e, 'zoom')}
+          <span className="text-sm">-</span>
+        </Button>
+        <div className="flex items-center px-2 text-xs text-muted-foreground min-w-[50px] justify-center">
+          {Math.round(viewport.zoom * 100)}%
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setViewport(prev => ({ ...prev, zoom: Math.min(3, prev.zoom * 1.25) }))}
+          title="Zoom In"
         >
-          <GripHorizontal className="h-4 w-4" />
-        </div>
-        <div className="flex gap-1 items-center">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10"
-            onClick={() => setViewport(prev => ({ ...prev, zoom: Math.max(0.1, prev.zoom * 0.8) }))}
-            title="Zoom Out"
-          >
-            -
-          </Button>
-          <div className="flex items-center px-2 text-xs text-white/80 min-w-[50px] justify-center">
-            {Math.round(viewport.zoom * 100)}%
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10"
-            onClick={() => setViewport(prev => ({ ...prev, zoom: Math.min(3, prev.zoom * 1.25) }))}
-            title="Zoom In"
-          >
-            +
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10"
-            onClick={() => setViewport({ x: 0, y: 0, zoom: 1 })}
-            title="Reset View"
-          >
-            ⌂
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10"
-            onClick={() => setIsViewportInfoVisible(!isViewportInfoVisible)}
-            title={isViewportInfoVisible ? "Hide Viewport Info" : "Show Viewport Info"}
-          >
-            {isViewportInfoVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </Button>
-        </div>
+          <span className="text-sm">+</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setViewport({ x: 0, y: 0, zoom: 1 })}
+          title="Reset View"
+        >
+          <span className="text-xs">⌂</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => setIsViewportInfoVisible(!isViewportInfoVisible)}
+          title={isViewportInfoVisible ? "Hide Viewport Info" : "Show Viewport Info"}
+        >
+          {isViewportInfoVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </Button>
       </div>
 
       {/* Viewport Info */}
       {isViewportInfoVisible && (
-        <div className="absolute top-16 left-4 z-50 text-xs text-white bg-black/30 px-3 py-2 rounded-lg backdrop-blur-md border border-white/20">
-        <div>Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
-        <div>
-          Position: ({Math.round(viewport.x)}, {Math.round(viewport.y)})
+        <div className="absolute top-16 left-4 z-50 text-xs text-muted-foreground bg-background/90 px-3 py-2 rounded backdrop-blur-sm border border-border/50 shadow-lg">
+          <div>Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
+          <div>
+            Position: ({Math.round(viewport.x)}, {Math.round(viewport.y)})
+          </div>
+          <div className="text-xs opacity-75 mt-1">Ctrl+Wheel: Zoom • Middle Click: Pan • Ctrl+Click: Pan</div>
         </div>
-        <div className="text-xs opacity-75 mt-1">Ctrl+Wheel: Zoom • Middle Click: Pan • Ctrl+Click: Pan</div>
-      </div>
       )}
 
       {/* Infinite Grid Container */}

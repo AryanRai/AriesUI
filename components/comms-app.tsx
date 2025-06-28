@@ -61,20 +61,25 @@ function AppContent() {
   });
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+      {/* Left Sidebar */}
       <AppSidebar />
-      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
+
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top Navigation */}
         <TopNavigation />
-        <div className="flex-1 relative">
+
+        {/* Main Content */}
+        <div className="flex flex-1 overflow-hidden">
           <MainContent gridState={gridState} setGridState={setGridState} />
+          {/* Right Sidebar */}
+          <RightSidebar isOpen={isRightSidebarOpen} gridState={gridState} onToggle={() => dispatch({ type: 'TOGGLE_RIGHT_SIDEBAR' })} />
         </div>
+
+        {/* Status Bar */}
         <StatusBar />
-      </main>
-      <RightSidebar
-        isOpen={isRightSidebarOpen}
-        gridState={gridState}
-        onToggle={() => dispatch({ type: "TOGGLE_RIGHT_SIDEBAR" })}
-      />
+      </div>
     </div>
   )
 }
