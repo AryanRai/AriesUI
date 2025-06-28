@@ -68,6 +68,11 @@ export interface AriesWidget {
   updatedAt: string
 }
 
+// Nested AriesWidget type for widgets inside nest containers
+export interface NestedAriesWidget extends AriesWidget {
+  nestId: string
+}
+
 // Default AriesMod categories for organization
 export const ARIESMODS_CATEGORIES = {
   sensors: {

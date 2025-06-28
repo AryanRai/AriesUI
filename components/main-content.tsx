@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, X, Settings, Hash, GripVertical, Grid3X3, Save, Download, Upload } from "lucide-react"
 import { useComms } from "@/components/comms-context"
+import { AriesModWidget } from "@/components/widgets/ariesmod-widget"
+import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
 
 interface BaseWidget {
   id: string
@@ -46,6 +48,8 @@ interface GridState {
   mainWidgets: MainGridWidget[]
   nestContainers: NestContainer[]
   nestedWidgets: NestedWidget[]
+  mainAriesWidgets: AriesWidget[]
+  nestedAriesWidgets: NestedAriesWidget[]
   viewport: {
     x: number
     y: number
@@ -365,6 +369,8 @@ export function MainContent() {
       },
     ],
     nestedWidgets: [],
+    mainAriesWidgets: [],
+    nestedAriesWidgets: [],
     viewport: { x: 0, y: 0, zoom: 1 },
     gridSize: 20,
     lastSaved: null,
@@ -575,10 +581,16 @@ export function MainContent() {
     let sourceNestId: string | undefined
 
     if (itemType === "widget") {
+      // Check both regular widgets and AriesWidgets
       const nestedWidget = gridState.nestedWidgets.find((w) => w.id === itemId)
+      const nestedAriesWidget = gridState.nestedAriesWidgets.find((w) => w.id === itemId)
+      
       if (nestedWidget) {
         sourceContainer = "nest"
         sourceNestId = nestedWidget.nestId
+      } else if (nestedAriesWidget) {
+        sourceContainer = "nest"
+        sourceNestId = nestedAriesWidget.nestId
       }
     }
 
@@ -637,7 +649,10 @@ export function MainContent() {
 
     let item: any = null
     if (itemType === "widget") {
-      item = gridState.mainWidgets.find((w) => w.id === itemId) || gridState.nestedWidgets.find((w) => w.id === itemId)
+      item = gridState.mainWidgets.find((w) => w.id === itemId) || 
+             gridState.nestedWidgets.find((w) => w.id === itemId) ||
+             gridState.mainAriesWidgets.find((w) => w.id === itemId) ||
+             gridState.nestedAriesWidgets.find((w) => w.id === itemId)
     } else {
       item = gridState.nestContainers.find((n) => n.id === itemId)
     }
@@ -702,41 +717,81 @@ export function MainContent() {
         dropX = Math.round(rawX / gridSize) * gridSize
         dropY = Math.round(rawY / gridSize) * gridSize
 
-        const newWidget: NestedWidget = {
-          id: generateUniqueId("widget"),
-          type: template.type,
-          title: template.title,
-          content: getDefaultContent(template.type),
-          x: dropX,
-          y: dropY,
-          w: template.defaultSize.w,
-          h: template.defaultSize.h,
-          container: "nest",
-          nestId: targetNestId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+        if (template.type === 'ariesmods') {
+          // Create AriesWidget for nest
+          const newAriesWidget: NestedAriesWidget = {
+            id: generateUniqueId("arieswidget"),
+            type: 'ariesmods',
+            ariesModType: template.ariesModType,
+            title: template.title,
+            x: dropX,
+            y: dropY,
+            w: template.defaultSize.w,
+            h: template.defaultSize.h,
+            config: {},
+            nestId: targetNestId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+
+          // Apply push physics to existing AriesWidgets in the nest
+          const existingNestAriesWidgets = gridState.nestedAriesWidgets.filter((w) => w.nestId === targetNestId)
+          const containerBounds = { x: 0, y: 0, w: nest.w, h: nest.h - 40 }
+          const pushedAriesWidgets = applyPushPhysics(newAriesWidget, existingNestAriesWidgets, gridSize, containerBounds)
+
+          updateGridState((prev) => ({
+            ...prev,
+            nestedAriesWidgets: [
+              ...prev.nestedAriesWidgets.map((widget) => {
+                if (widget.nestId !== targetNestId) return widget
+                const pushedWidget = pushedAriesWidgets.find((p) => p.id === widget.id)
+                if (pushedWidget && pushedWidget.pushed) {
+                  return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                }
+                return widget
+              }),
+              newAriesWidget,
+            ],
+          }))
+          dispatch({ type: "ADD_LOG", payload: `AriesWidget ${newAriesWidget.id} dropped into nest ${targetNestId}` })
+        } else {
+          // Create regular widget for nest
+          const newWidget: NestedWidget = {
+            id: generateUniqueId("widget"),
+            type: template.type,
+            title: template.title,
+            content: getDefaultContent(template.type),
+            x: dropX,
+            y: dropY,
+            w: template.defaultSize.w,
+            h: template.defaultSize.h,
+            container: "nest",
+            nestId: targetNestId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+
+          // Apply push physics to existing widgets in the nest
+          const existingNestWidgets = gridState.nestedWidgets.filter((w) => w.nestId === targetNestId)
+          const containerBounds = { x: 0, y: 0, w: nest.w, h: nest.h - 40 }
+          const pushedWidgets = applyPushPhysics(newWidget, existingNestWidgets, gridSize, containerBounds)
+
+          updateGridState((prev) => ({
+            ...prev,
+            nestedWidgets: [
+              ...prev.nestedWidgets.map((widget) => {
+                if (widget.nestId !== targetNestId) return widget
+                const pushedWidget = pushedWidgets.find((p) => p.id === widget.id)
+                if (pushedWidget && pushedWidget.pushed) {
+                  return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                }
+                return widget
+              }),
+              newWidget,
+            ],
+          }))
+          dispatch({ type: "ADD_LOG", payload: `Widget ${newWidget.id} dropped into nest ${targetNestId}` })
         }
-
-        // Apply push physics to existing widgets in the nest
-        const existingNestWidgets = gridState.nestedWidgets.filter((w) => w.nestId === targetNestId)
-        const containerBounds = { x: 0, y: 0, w: nest.w, h: nest.h - 40 }
-        const pushedWidgets = applyPushPhysics(newWidget, existingNestWidgets, gridSize, containerBounds)
-
-        updateGridState((prev) => ({
-          ...prev,
-          nestedWidgets: [
-            ...prev.nestedWidgets.map((widget) => {
-              if (widget.nestId !== targetNestId) return widget
-              const pushedWidget = pushedWidgets.find((p) => p.id === widget.id)
-              if (pushedWidget && pushedWidget.pushed) {
-                return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
-              }
-              return widget
-            }),
-            newWidget,
-          ],
-        }))
-        dispatch({ type: "ADD_LOG", payload: `Widget ${newWidget.id} dropped into nest ${targetNestId}` })
       } else {
         // Dropping into main grid
         const rawX = Math.max(0, worldX - template.defaultSize.w / 2)
@@ -745,47 +800,93 @@ export function MainContent() {
         dropX = Math.round(rawX / gridSize) * gridSize
         dropY = Math.round(rawY / gridSize) * gridSize
 
-        const newWidget: MainGridWidget = {
-          id: generateUniqueId("widget"),
-          type: template.type,
-          title: template.title,
-          content: getDefaultContent(template.type),
-          x: dropX,
-          y: dropY,
-          w: template.defaultSize.w,
-          h: template.defaultSize.h,
-          container: "main",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
+        if (template.type === 'ariesmods') {
+          // Create AriesWidget for main grid
+          const newAriesWidget: AriesWidget = {
+            id: generateUniqueId("arieswidget"),
+            type: 'ariesmods',
+            ariesModType: template.ariesModType,
+            title: template.title,
+            x: dropX,
+            y: dropY,
+            w: template.defaultSize.w,
+            h: template.defaultSize.h,
+            config: {},
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
 
-        // Apply push physics to existing main widgets and nests
-        const existingMainWidgets = gridState.mainWidgets
-        const existingNests = gridState.nestContainers
-        const pushedMainWidgets = applyPushPhysics(newWidget, existingMainWidgets, gridSize)
-        const pushedNests = applyPushPhysics(newWidget, existingNests, gridSize)
+          // Apply push physics to existing main AriesWidgets and nests
+          const existingMainAriesWidgets = gridState.mainAriesWidgets
+          const existingNests = gridState.nestContainers
+          const pushedMainAriesWidgets = applyPushPhysics(newAriesWidget, existingMainAriesWidgets, gridSize)
+          const pushedNests = applyPushPhysics(newAriesWidget, existingNests, gridSize)
 
-        updateGridState((prev) => ({
-          ...prev,
-          mainWidgets: [
-            ...prev.mainWidgets.map((widget) => {
-              const pushedWidget = pushedMainWidgets.find((p) => p.id === widget.id)
-              if (pushedWidget && pushedWidget.pushed) {
-                return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+          updateGridState((prev) => ({
+            ...prev,
+            mainAriesWidgets: [
+              ...prev.mainAriesWidgets.map((widget) => {
+                const pushedWidget = pushedMainAriesWidgets.find((p) => p.id === widget.id)
+                if (pushedWidget && pushedWidget.pushed) {
+                  return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                }
+                return widget
+              }),
+              newAriesWidget,
+            ],
+            nestContainers: prev.nestContainers.map((nest) => {
+              const pushedNest = pushedNests.find((p) => p.id === nest.id)
+              if (pushedNest && pushedNest.pushed) {
+                return { ...nest, x: pushedNest.x, y: pushedNest.y, updatedAt: new Date().toISOString() }
               }
-              return widget
+              return nest
             }),
-            newWidget,
-          ],
-          nestContainers: prev.nestContainers.map((nest) => {
-            const pushedNest = pushedNests.find((p) => p.id === nest.id)
-            if (pushedNest && pushedNest.pushed) {
-              return { ...nest, x: pushedNest.x, y: pushedNest.y, updatedAt: new Date().toISOString() }
-            }
-            return nest
-          }),
-        }))
-        dispatch({ type: "ADD_LOG", payload: `Widget ${newWidget.id} dropped on main grid` })
+          }))
+          dispatch({ type: "ADD_LOG", payload: `AriesWidget ${newAriesWidget.id} dropped on main grid` })
+        } else {
+          // Create regular widget for main grid
+          const newWidget: MainGridWidget = {
+            id: generateUniqueId("widget"),
+            type: template.type,
+            title: template.title,
+            content: getDefaultContent(template.type),
+            x: dropX,
+            y: dropY,
+            w: template.defaultSize.w,
+            h: template.defaultSize.h,
+            container: "main",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+
+          // Apply push physics to existing main widgets and nests
+          const existingMainWidgets = gridState.mainWidgets
+          const existingNests = gridState.nestContainers
+          const pushedMainWidgets = applyPushPhysics(newWidget, existingMainWidgets, gridSize)
+          const pushedNests = applyPushPhysics(newWidget, existingNests, gridSize)
+
+          updateGridState((prev) => ({
+            ...prev,
+            mainWidgets: [
+              ...prev.mainWidgets.map((widget) => {
+                const pushedWidget = pushedMainWidgets.find((p) => p.id === widget.id)
+                if (pushedWidget && pushedWidget.pushed) {
+                  return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                }
+                return widget
+              }),
+              newWidget,
+            ],
+            nestContainers: prev.nestContainers.map((nest) => {
+              const pushedNest = pushedNests.find((p) => p.id === nest.id)
+              if (pushedNest && pushedNest.pushed) {
+                return { ...nest, x: pushedNest.x, y: pushedNest.y, updatedAt: new Date().toISOString() }
+              }
+              return nest
+            }),
+          }))
+          dispatch({ type: "ADD_LOG", payload: `Widget ${newWidget.id} dropped on main grid` })
+        }
       }
     } catch (error) {
       console.error("Failed to parse dropped widget data:", error)
@@ -859,13 +960,18 @@ export function MainContent() {
 
         if (dragState.draggedType === "widget") {
           if (dragState.sourceContainer === "main") {
-            draggedWidget = gridState.mainWidgets.find((w) => w.id === dragState.draggedId)
+            // Check both regular widgets and AriesWidgets
+            draggedWidget = gridState.mainWidgets.find((w) => w.id === dragState.draggedId) ||
+                           gridState.mainAriesWidgets.find((w) => w.id === dragState.draggedId)
+            
             if (draggedWidget) {
               const draggedRect = { ...draggedWidget, x: newX, y: newY }
 
-              // Apply push physics to other main widgets
+              // Apply push physics to other main widgets and AriesWidgets
               const otherMainWidgets = gridState.mainWidgets.filter((w) => w.id !== dragState.draggedId)
+              const otherMainAriesWidgets = gridState.mainAriesWidgets.filter((w) => w.id !== dragState.draggedId)
               const pushedMainWidgets = applyPushPhysics(draggedRect, otherMainWidgets, gridSize)
+              const pushedMainAriesWidgets = applyPushPhysics(draggedRect, otherMainAriesWidgets, gridSize)
 
               // Apply push physics to nest containers
               const pushedNests = applyPushPhysics(draggedRect, gridState.nestContainers, gridSize)
@@ -878,6 +984,16 @@ export function MainContent() {
                     return { ...widget, x: newX, y: newY, updatedAt: new Date().toISOString() }
                   }
                   const pushedWidget = pushedMainWidgets.find((p) => p.id === widget.id)
+                  if (pushedWidget && pushedWidget.pushed) {
+                    return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                  }
+                  return widget
+                }),
+                mainAriesWidgets: prev.mainAriesWidgets.map((widget) => {
+                  if (widget.id === dragState.draggedId) {
+                    return { ...widget, x: newX, y: newY, updatedAt: new Date().toISOString() }
+                  }
+                  const pushedWidget = pushedMainAriesWidgets.find((p) => p.id === widget.id)
                   if (pushedWidget && pushedWidget.pushed) {
                     return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
                   }
@@ -898,7 +1014,10 @@ export function MainContent() {
               const relativeX = Math.max(0, newX - nest.x)
               const relativeY = Math.max(0, newY - nest.y - 40)
 
-              draggedWidget = gridState.nestedWidgets.find((w) => w.id === dragState.draggedId)
+              // Check both regular nested widgets and AriesWidgets
+              draggedWidget = gridState.nestedWidgets.find((w) => w.id === dragState.draggedId) ||
+                             gridState.nestedAriesWidgets.find((w) => w.id === dragState.draggedId)
+              
               if (draggedWidget) {
                 const draggedRect = { ...draggedWidget, x: relativeX, y: relativeY }
 
@@ -906,9 +1025,13 @@ export function MainContent() {
                 const otherNestedWidgets = gridState.nestedWidgets.filter(
                   (w) => w.id !== dragState.draggedId && w.nestId === dragState.sourceNestId,
                 )
+                const otherNestedAriesWidgets = gridState.nestedAriesWidgets.filter(
+                  (w) => w.id !== dragState.draggedId && w.nestId === dragState.sourceNestId,
+                )
 
                 const containerBounds = { x: 0, y: 0, w: nest.w, h: nest.h - 40 }
                 const pushedNestedWidgets = applyPushPhysics(draggedRect, otherNestedWidgets, gridSize, containerBounds)
+                const pushedNestedAriesWidgets = applyPushPhysics(draggedRect, otherNestedAriesWidgets, gridSize, containerBounds)
 
                 updateGridState((prev) => ({
                   ...prev,
@@ -917,6 +1040,16 @@ export function MainContent() {
                       return { ...widget, x: relativeX, y: relativeY, updatedAt: new Date().toISOString() }
                     }
                     const pushedWidget = pushedNestedWidgets.find((p) => p.id === widget.id)
+                    if (pushedWidget && pushedWidget.pushed) {
+                      return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                    }
+                    return widget
+                  }),
+                  nestedAriesWidgets: prev.nestedAriesWidgets.map((widget) => {
+                    if (widget.id === dragState.draggedId) {
+                      return { ...widget, x: relativeX, y: relativeY, updatedAt: new Date().toISOString() }
+                    }
+                    const pushedWidget = pushedNestedAriesWidgets.find((p) => p.id === widget.id)
                     if (pushedWidget && pushedWidget.pushed) {
                       return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
                     }
@@ -1042,11 +1175,28 @@ export function MainContent() {
         }
 
         if (resizeState.resizedType === "widget") {
-          const isNested = gridState.nestedWidgets.some((w) => w.id === resizeState.resizedId)
-          if (isNested) {
+          const isNestedWidget = gridState.nestedWidgets.some((w) => w.id === resizeState.resizedId)
+          const isNestedAriesWidget = gridState.nestedAriesWidgets.some((w) => w.id === resizeState.resizedId)
+          const isMainAriesWidget = gridState.mainAriesWidgets.some((w) => w.id === resizeState.resizedId)
+          
+          if (isNestedWidget) {
             updateGridState((prev) => ({
               ...prev,
               nestedWidgets: prev.nestedWidgets.map((widget) =>
+                widget.id === resizeState.resizedId ? updateItem(widget) : widget,
+              ),
+            }))
+          } else if (isNestedAriesWidget) {
+            updateGridState((prev) => ({
+              ...prev,
+              nestedAriesWidgets: prev.nestedAriesWidgets.map((widget) =>
+                widget.id === resizeState.resizedId ? updateItem(widget) : widget,
+              ),
+            }))
+          } else if (isMainAriesWidget) {
+            updateGridState((prev) => ({
+              ...prev,
+              mainAriesWidgets: prev.mainAriesWidgets.map((widget) =>
                 widget.id === resizeState.resizedId ? updateItem(widget) : widget,
               ),
             }))
@@ -1074,8 +1224,10 @@ export function MainContent() {
       if (dragState.isDragging && dragState.draggedType === "widget") {
         const currentWidget =
           dragState.sourceContainer === "main"
-            ? gridState.mainWidgets.find((w) => w.id === dragState.draggedId)
-            : gridState.nestedWidgets.find((w) => w.id === dragState.draggedId)
+            ? gridState.mainWidgets.find((w) => w.id === dragState.draggedId) ||
+              gridState.mainAriesWidgets.find((w) => w.id === dragState.draggedId)
+            : gridState.nestedWidgets.find((w) => w.id === dragState.draggedId) ||
+              gridState.nestedAriesWidgets.find((w) => w.id === dragState.draggedId)
 
         if (!currentWidget) return
 
@@ -1099,6 +1251,8 @@ export function MainContent() {
         if (dragState.sourceContainer === "main" && targetNest) {
           // Move from main to nest
           const widget = gridState.mainWidgets.find((w) => w.id === dragState.draggedId)
+          const ariesWidget = gridState.mainAriesWidgets.find((w) => w.id === dragState.draggedId)
+          
           if (widget) {
             const relativeX = Math.max(10, widget.x - targetNest.x)
             const relativeY = Math.max(10, widget.y - targetNest.y - 40)
@@ -1118,10 +1272,29 @@ export function MainContent() {
               nestedWidgets: [...prev.nestedWidgets, nestedWidget],
             }))
             dispatch({ type: "ADD_LOG", payload: `Widget ${widget.id} moved to nest ${targetNest.id}` })
+          } else if (ariesWidget) {
+            const relativeX = Math.max(10, ariesWidget.x - targetNest.x)
+            const relativeY = Math.max(10, ariesWidget.y - targetNest.y - 40)
+
+            const nestedAriesWidget: NestedAriesWidget = {
+              ...ariesWidget,
+              x: relativeX,
+              y: relativeY,
+              nestId: targetNest.id,
+              updatedAt: new Date().toISOString(),
+            }
+
+            updateGridState((prev) => ({
+              ...prev,
+              mainAriesWidgets: prev.mainAriesWidgets.filter((w) => w.id !== dragState.draggedId),
+              nestedAriesWidgets: [...prev.nestedAriesWidgets, nestedAriesWidget],
+            }))
+            dispatch({ type: "ADD_LOG", payload: `AriesWidget ${ariesWidget.id} moved to nest ${targetNest.id}` })
           }
         } else if (dragState.sourceContainer === "nest" && !targetNest) {
           // Move from nest to main
           const widget = gridState.nestedWidgets.find((w) => w.id === dragState.draggedId)
+          const ariesWidget = gridState.nestedAriesWidgets.find((w) => w.id === dragState.draggedId)
           const sourceNest = gridState.nestContainers.find((n) => n.id === dragState.sourceNestId)
 
           if (widget && sourceNest) {
@@ -1148,6 +1321,31 @@ export function MainContent() {
               mainWidgets: [...prev.mainWidgets, mainWidget],
             }))
             dispatch({ type: "ADD_LOG", payload: `Widget ${widget.id} moved to main grid` })
+          } else if (ariesWidget && sourceNest) {
+            const absoluteX = sourceNest.x + ariesWidget.x
+            const absoluteY = sourceNest.y + ariesWidget.y + 40
+
+            const mainAriesWidget: AriesWidget = {
+              id: ariesWidget.id,
+              type: ariesWidget.type,
+              ariesModType: ariesWidget.ariesModType,
+              title: ariesWidget.title,
+              x: absoluteX,
+              y: absoluteY,
+              w: ariesWidget.w,
+              h: ariesWidget.h,
+              config: ariesWidget.config,
+              data: ariesWidget.data,
+              createdAt: ariesWidget.createdAt,
+              updatedAt: new Date().toISOString(),
+            }
+
+            updateGridState((prev) => ({
+              ...prev,
+              nestedAriesWidgets: prev.nestedAriesWidgets.filter((w) => w.id !== dragState.draggedId),
+              mainAriesWidgets: [...prev.mainAriesWidgets, mainAriesWidget],
+            }))
+            dispatch({ type: "ADD_LOG", payload: `AriesWidget ${ariesWidget.id} moved to main grid` })
           }
         }
       }
@@ -1203,6 +1401,27 @@ export function MainContent() {
     }))
     dispatch({ type: "REMOVE_WIDGET", payload: id })
     dispatch({ type: "ADD_LOG", payload: `Widget ${id} removed` })
+  }
+
+  const removeAriesWidget = (id: string) => {
+    updateGridState((prev) => ({
+      ...prev,
+      mainAriesWidgets: prev.mainAriesWidgets.filter((w) => w.id !== id),
+      nestedAriesWidgets: prev.nestedAriesWidgets.filter((w) => w.id !== id),
+    }))
+    dispatch({ type: "ADD_LOG", payload: `AriesWidget ${id} removed` })
+  }
+
+  const updateAriesWidget = (id: string, updates: Partial<AriesWidget | NestedAriesWidget>) => {
+    updateGridState((prev) => ({
+      ...prev,
+      mainAriesWidgets: prev.mainAriesWidgets.map((w) => 
+        w.id === id ? { ...w, ...updates, updatedAt: new Date().toISOString() } : w
+      ),
+      nestedAriesWidgets: prev.nestedAriesWidgets.map((w) => 
+        w.id === id ? { ...w, ...updates, updatedAt: new Date().toISOString() } : w
+      ),
+    }))
   }
 
   const removeNestContainer = (id: string) => {
@@ -1375,14 +1594,15 @@ export function MainContent() {
 
   // Update widget count and broadcast to status bar
   useEffect(() => {
-    const totalWidgets = gridState.mainWidgets.length + gridState.nestedWidgets.length
+    const totalWidgets = gridState.mainWidgets.length + gridState.nestedWidgets.length + 
+                        gridState.mainAriesWidgets.length + gridState.nestedAriesWidgets.length
     window.dispatchEvent(new CustomEvent("widgetCountUpdate", { detail: { count: totalWidgets } }))
-  }, [gridState.mainWidgets.length, gridState.nestedWidgets.length])
+  }, [gridState.mainWidgets.length, gridState.nestedWidgets.length, gridState.mainAriesWidgets.length, gridState.nestedAriesWidgets.length])
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-background to-background/80">
-      {/* Floating Action Buttons */}
-      <div className="absolute top-4 right-4 z-30 flex gap-2">
+      {/* Floating Action Buttons - Positioned below top navigation */}
+      <div className="absolute top-16 right-4 z-50 flex gap-2">
         <Button
           onClick={saveGridState}
           size="sm"
@@ -1415,7 +1635,7 @@ export function MainContent() {
       </div>
 
       {/* Viewport Info */}
-      <div className="absolute top-4 left-4 z-30 text-xs text-muted-foreground bg-background/80 px-3 py-2 rounded backdrop-blur border border-border/50">
+      <div className="absolute top-4 left-4 z-50 text-xs text-muted-foreground bg-background/80 px-3 py-2 rounded backdrop-blur border border-border/50">
         <div>Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
         <div>
           Position: ({Math.round(viewport.x)}, {Math.round(viewport.y)})
@@ -1550,6 +1770,48 @@ export function MainContent() {
                     </Card>
                   ))}
 
+                  {/* Nested AriesWidgets */}
+                  {gridState.nestedAriesWidgets.filter((w) => w.nestId === nest.id).map((widget) => (
+                    <div
+                      key={widget.id}
+                      className="absolute group select-none"
+                      style={{
+                        left: widget.x,
+                        top: widget.y,
+                        width: widget.w,
+                        height: widget.h,
+                      }}
+                    >
+                      {/* Resize Handles */}
+                      {getResizeHandles(widget.id, "widget")}
+
+                      {/* Drag Handle */}
+                      <div
+                        className="absolute top-0 left-0 right-0 h-6 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/20 backdrop-blur-sm rounded-t-md flex items-center justify-between px-1"
+                        onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
+                      >
+                        <div className="flex items-center gap-1">
+                          <GripVertical className="h-2 w-2 text-white" />
+                          <span className="text-xs text-white font-medium">{widget.title}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 text-white hover:text-red-400"
+                          onClick={() => removeAriesWidget(widget.id)}
+                        >
+                          <X className="h-2 w-2" />
+                        </Button>
+                      </div>
+
+                      <AriesModWidget
+                        widget={widget}
+                        onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
+                        className="w-full h-full rounded-md overflow-hidden"
+                      />
+                    </div>
+                  ))}
+
                   {/* Empty nest state */}
                   {nestWidgets.length === 0 && (
                     <div className="absolute inset-4 flex items-center justify-center text-center border-2 border-dashed border-muted-foreground/20 rounded">
@@ -1631,6 +1893,51 @@ export function MainContent() {
                 <div className="text-lg font-mono text-center">{widget.content}</div>
               </CardContent>
             </Card>
+          ))}
+
+          {/* Main Grid AriesWidgets */}
+          {gridState.mainAriesWidgets.map((widget) => (
+            <div
+              key={widget.id}
+              className={`absolute group select-none ${
+                dragState.draggedId === widget.id ? "shadow-lg scale-105 z-10" : ""
+              } ${resizeState.resizedId === widget.id ? "shadow-lg z-10" : ""}`}
+              style={{
+                left: widget.x,
+                top: widget.y,
+                width: widget.w,
+                height: widget.h,
+                cursor: dragState.draggedId === widget.id ? "grabbing" : "default",
+              }}
+            >
+              {/* Resize Handles */}
+              {getResizeHandles(widget.id, "widget")}
+
+              {/* Drag Handle */}
+              <div
+                className="absolute top-0 left-0 right-0 h-8 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/20 backdrop-blur-sm rounded-t-md flex items-center justify-between px-2"
+                onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
+              >
+                <div className="flex items-center gap-1">
+                  <GripVertical className="h-3 w-3 text-white" />
+                  <span className="text-xs text-white font-medium">{widget.title}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 text-white hover:text-red-400"
+                  onClick={() => removeAriesWidget(widget.id)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+
+              <AriesModWidget
+                widget={widget}
+                onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
+                className="w-full h-full rounded-md overflow-hidden"
+              />
+            </div>
           ))}
         </div>
       </div>
