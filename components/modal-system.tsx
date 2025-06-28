@@ -13,27 +13,42 @@ export function ModalSystem() {
   const { state, loadProfile, updateProfiles, dispatch } = useComms()
 
   const handleSaveProfile = (name: string) => {
-    // Get current grid state from localStorage or main content
+    // Get current grid state from localStorage
     const gridState = localStorage.getItem("comms-grid-state")
     if (gridState) {
       const profiles = { ...state.profiles, [name]: JSON.parse(gridState) }
       updateProfiles(profiles)
+      dispatch({ type: "ADD_LOG", payload: `Profile "${name}" saved successfully` })
+    } else {
+      dispatch({ type: "ADD_LOG", payload: `Failed to save profile "${name}" - no grid state found` })
     }
   }
 
   const handleLoadProfile = (name: string) => {
     const profile = state.profiles[name]
     if (profile) {
+      // Save the profile data to localStorage
       localStorage.setItem("comms-grid-state", JSON.stringify(profile))
-      // Trigger a page reload to load the new profile
-      window.location.reload()
+      
+      // Set the active profile
+      loadProfile(name)
+      
+      // Dispatch a custom event to trigger grid state reload
+      window.dispatchEvent(new CustomEvent("profileChanged", { detail: { profileName: name } }))
+      
+      dispatch({ type: "ADD_LOG", payload: `Profile "${name}" loaded successfully` })
+      
+      // Close the modal
+      dispatch({ type: "SET_MODAL", payload: null })
+    } else {
+      dispatch({ type: "ADD_LOG", payload: `Failed to load profile "${name}" - profile not found` })
     }
-    loadProfile(name)
   }
 
   const handleDeleteProfile = (name: string) => {
     const { [name]: deleted, ...remainingProfiles } = state.profiles
     updateProfiles(remainingProfiles)
+    dispatch({ type: "ADD_LOG", payload: `Profile "${name}" deleted successfully` })
   }
 
   return (

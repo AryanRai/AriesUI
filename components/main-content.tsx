@@ -397,7 +397,7 @@ export function MainContent() {
     })
   }, [])
 
-  // Save grid state to localStorage
+  // Save grid state to localStorage and current profile
   const saveGridState = useCallback(() => {
     try {
       const stateToSave = {
@@ -406,13 +406,22 @@ export function MainContent() {
         lastSaved: new Date().toISOString(),
       }
       localStorage.setItem("comms-grid-state", JSON.stringify(stateToSave))
+      
+      // Also save to the current active profile if it exists
+      if (state.activeProfile && state.profiles[state.activeProfile]) {
+        const updatedProfiles = { ...state.profiles, [state.activeProfile]: stateToSave }
+        updateProfiles(updatedProfiles)
+        dispatch({ type: "ADD_LOG", payload: `Grid state saved to profile "${state.activeProfile}"` })
+      } else {
+        dispatch({ type: "ADD_LOG", payload: "Grid state saved to localStorage" })
+      }
+      
       setHasUnsavedChanges(false)
-      dispatch({ type: "ADD_LOG", payload: "Grid state saved successfully" })
     } catch (error) {
       console.error("Failed to save grid state:", error)
       dispatch({ type: "ADD_LOG", payload: "Failed to save grid state" })
     }
-  }, [gridState, viewport, dispatch])
+  }, [gridState, viewport, dispatch, state.activeProfile, state.profiles, updateProfiles])
 
   // Load grid state from localStorage
   const loadGridState = useCallback(() => {
@@ -489,6 +498,26 @@ export function MainContent() {
     return () => clearInterval(interval)
   }, [hasUnsavedChanges, saveGridState])
 
+  // Initialize default profile if none exists
+  useEffect(() => {
+    if (Object.keys(state.profiles).length === 0) {
+      // Create a default profile with the current grid state
+      const currentState = {
+        ...gridState,
+        viewport,
+        lastSaved: new Date().toISOString(),
+      }
+      
+      const defaultProfiles = { default: currentState }
+      updateProfiles(defaultProfiles)
+      
+      // Also save to localStorage
+      localStorage.setItem("comms-grid-state", JSON.stringify(currentState))
+      
+      dispatch({ type: "ADD_LOG", payload: "Default profile created" })
+    }
+  }, [state.profiles, gridState, viewport, updateProfiles, dispatch])
+
   // Load grid state from localStorage on component mount
   useEffect(() => {
     loadGridState()
@@ -520,15 +549,47 @@ export function MainContent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Save current grid state before loading a new profile
+  const saveCurrentStateToProfile = useCallback(() => {
+    try {
+      const stateToSave = {
+        ...gridState,
+        viewport,
+        lastSaved: new Date().toISOString(),
+      }
+      localStorage.setItem("comms-grid-state", JSON.stringify(stateToSave))
+      return true
+    } catch (error) {
+      console.error("Failed to save current state:", error)
+      return false
+    }
+  }, [gridState, viewport])
+
   // Listen for profile changes and reload grid state
   useEffect(() => {
-    const handleProfileChange = () => {
-      loadGridState()
+    const handleProfileChange = (event: CustomEvent) => {
+      const { profileName } = event.detail || {}
+      
+      if (profileName) {
+        // Load the new profile's grid state
+        loadGridState()
+        dispatch({ type: "ADD_LOG", payload: `Switched to profile: ${profileName}` })
+      }
     }
     
-    window.addEventListener("profileChanged", handleProfileChange)
-    return () => window.removeEventListener("profileChanged", handleProfileChange)
-  }, [loadGridState])
+    window.addEventListener("profileChanged", handleProfileChange as EventListener)
+    return () => window.removeEventListener("profileChanged", handleProfileChange as EventListener)
+  }, [loadGridState, dispatch])
+
+  // Auto-save current state when switching profiles
+  useEffect(() => {
+    const handleBeforeProfileChange = () => {
+      saveCurrentStateToProfile()
+    }
+    
+    window.addEventListener("beforeProfileChange", handleBeforeProfileChange)
+    return () => window.removeEventListener("beforeProfileChange", handleBeforeProfileChange)
+  }, [saveCurrentStateToProfile])
 
   // Handle mouse down for dragging
   const handleMouseDown = (e: React.MouseEvent, itemId: string, itemType: "widget" | "nest") => {

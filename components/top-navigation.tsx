@@ -13,6 +13,27 @@ export function TopNavigation() {
   const { state, dispatch, loadProfile } = useComms()
   const [marqueeText] = useState("System Status: All systems operational • Data streams active • Connection stable")
 
+  const handleProfileSwitch = (name: string) => {
+    const profile = state.profiles[name]
+    if (profile) {
+      // Dispatch event to save current state before switching
+      window.dispatchEvent(new CustomEvent("beforeProfileChange"))
+      
+      // Save the profile data to localStorage
+      localStorage.setItem("comms-grid-state", JSON.stringify(profile))
+      
+      // Set the active profile
+      loadProfile(name)
+      
+      // Dispatch a custom event to trigger grid state reload
+      window.dispatchEvent(new CustomEvent("profileChanged", { detail: { profileName: name } }))
+      
+      dispatch({ type: "ADD_LOG", payload: `Switched to profile: ${name}` })
+    } else {
+      dispatch({ type: "ADD_LOG", payload: `Failed to switch to profile "${name}" - profile not found` })
+    }
+  }
+
   return (
     <div className="h-[60px] border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 gap-4 relative z-[60]">
       {/* Left side */}
@@ -81,7 +102,7 @@ export function TopNavigation() {
             <DropdownMenuLabel>Switch Profile</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {Object.keys(state.profiles).map((name) => (
-              <DropdownMenuItem key={name} onClick={() => loadProfile(name)}>
+              <DropdownMenuItem key={name} onClick={() => handleProfileSwitch(name)}>
                 {name}
               </DropdownMenuItem>
             ))}
