@@ -1,10 +1,83 @@
 // Message types matching your existing StreamHandler format
-export interface CommsMessage {
-  type: 'negotiation' | 'control' | 'control_response' | 'config_update' | 'config_response'
+export type CommsMessageType = 
+  | 'negotiation' 
+  | 'control' 
+  | 'control_response' 
+  | 'config_update' 
+  | 'config_response'
+  | 'ping'
+  | 'pong'
+  | 'connection_info'
+
+export interface BaseCommsMessage {
+  type: CommsMessageType
   status: 'active' | 'inactive' | 'error' | 'forwarded'
-  data: { [moduleId: string]: any }
   'msg-sent-timestamp': string
 }
+
+export interface NegotiationMessage extends BaseCommsMessage {
+  type: 'negotiation'
+  data: { [moduleId: string]: CommsModule }
+}
+
+export interface ControlMessage extends BaseCommsMessage {
+  type: 'control'
+  data: {
+    module_id: string
+    command: any
+  }
+}
+
+export interface ControlResponseMessage extends BaseCommsMessage {
+  type: 'control_response'
+  data: { error?: string }
+}
+
+export interface ConfigUpdateMessage extends BaseCommsMessage {
+  type: 'config_update'
+  data: {
+    module_id: string
+    config: any
+  }
+}
+
+export interface ConfigResponseMessage extends BaseCommsMessage {
+  type: 'config_response'
+  data: { error?: string }
+}
+
+export interface PingMessage extends BaseCommsMessage {
+  type: 'ping'
+  timestamp: string
+  target: 'sh' | 'en'
+}
+
+export interface PongMessage extends BaseCommsMessage {
+  type: 'pong'
+  timestamp: string
+  target: 'sh' | 'en'
+  server_time: number
+}
+
+export interface ConnectionInfoMessage extends BaseCommsMessage {
+  type: 'connection_info'
+  data: {
+    latency: number
+    status: 'connected' | 'disconnected' | 'reconnecting'
+    last_ping: number
+    last_pong: number
+  }
+}
+
+export type CommsMessage = 
+  | NegotiationMessage 
+  | ControlMessage 
+  | ControlResponseMessage 
+  | ConfigUpdateMessage 
+  | ConfigResponseMessage
+  | PingMessage
+  | PongMessage
+  | ConnectionInfoMessage
 
 // Module structure matching your Engine's format
 export interface CommsModule {
