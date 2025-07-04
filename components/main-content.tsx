@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Settings, Hash, GripVertical, Grid3X3, Save, Download, Upload, Eye, EyeOff, Clock } from "lucide-react"
+import { Plus, X, Settings, Hash, GripVertical, Grid3X3, Save, Download, Upload, Eye, EyeOff, Clock, Terminal } from "lucide-react"
 import { useComms } from "@/components/comms-context"
 import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 import { AriesModWidget } from "@/components/widgets/ariesmod-widget"
@@ -381,9 +381,24 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   const [isViewportInfoVisible, setIsViewportInfoVisible] = useLocalStorage("aries-show-viewport-info", true)
   const [actionsToolbarPosition, setActionsToolbarPosition] = useLocalStorage("aries-actions-toolbar-pos", { top: 80, right: 20 })
+  const [zoomToolbarPosition, setZoomToolbarPosition] = useLocalStorage("aries-zoom-toolbar-pos", { top: 80, left: 200 })
   const [isDraggingToolbar, setIsDraggingToolbar] = useState(false)
+  const [isDraggingZoomToolbar, setIsDraggingZoomToolbar] = useState(false)
   const [toolbarDragStart, setToolbarDragStart] = useState({ x: 0, y: 0, top: 0, right: 0 })
+  const [zoomToolbarDragStart, setZoomToolbarDragStart] = useState({ x: 0, y: 0, top: 0, left: 0 })
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useLocalStorage("aries-auto-save-enabled", true)
+  const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage("aries-auto-save-interval", 30000) // 30 seconds default
+  const [lastAutoSave, setLastAutoSave] = useState<string | null>(null)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [isDebugPanelVisible, setIsDebugPanelVisible] = useLocalStorage("aries-show-debug-panel", true)
+  
+  // Track if grid state has been initialized to avoid triggering unsaved changes on initial load
+  const isGridStateInitialized = useRef(false)
+  
+  // State history for undo/redo functionality
+  const [stateHistory, setStateHistory] = useState<Array<{ gridState: GridState; viewport: { x: number; y: number; zoom: number } }>>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const maxHistorySize = 50
 
   const handleToolbarMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -397,61 +412,106 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     })
   }
 
-  // Update grid state helper
-  const updateGridState = useCallback((updater: (prev: GridState) => GridState) => {
-    setGridState((prev) => {
-      const newState = updater(prev)
-      return newState
+  const handleZoomToolbarMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingZoomToolbar(true)
+    
+    setZoomToolbarDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      top: zoomToolbarPosition.top,
+      left: zoomToolbarPosition.left,
     })
-  }, [])
+  }
 
-  // Track unsaved changes
-  useEffect(() => {
-    setHasUnsavedChanges(true)
-  }, [gridState])
+  // Save state to history for undo/redo
+  const saveStateToHistory = useCallback((gridState: GridState, viewport: { x: number; y: number; zoom: number }) => {
+    setStateHistory(prev => {
+      const newHistory = [...prev.slice(0, historyIndex + 1), { gridState, viewport }]
+      // Keep only the last maxHistorySize items
+      if (newHistory.length > maxHistorySize) {
+        newHistory.shift()
+      }
+      return newHistory
+    })
+    setHistoryIndex(prev => Math.min(prev + 1, maxHistorySize - 1))
+  }, [historyIndex, maxHistorySize])
 
   // Save grid state to localStorage and current profile
-  const saveGridState = useCallback(() => {
+  const saveGridState = useCallback(async (isAutoSave = false) => {
     try {
+      if (isAutoSave) {
+        setAutoSaveStatus('saving')
+        console.log('Starting auto-save...', { gridState, viewport })
+      }
+      
       const stateToSave = {
         ...gridState,
         viewport,
         lastSaved: new Date().toISOString(),
+        autoSaveEnabled: isAutoSaveEnabled,
+        autoSaveInterval: autoSaveInterval,
       }
-      localStorage.setItem("comms-grid-state", JSON.stringify(stateToSave))
+      
+      // Force save to localStorage with validation
+      const stateString = JSON.stringify(stateToSave)
+      
+      // Check localStorage quota before saving
+      try {
+        const testKey = 'comms-grid-state-test'
+        localStorage.setItem(testKey, stateString)
+        localStorage.removeItem(testKey)
+      } catch (quotaError) {
+        console.error('localStorage quota exceeded:', quotaError)
+        throw new Error('Storage quota exceeded. Please clear some browser data.')
+      }
+      
+      localStorage.setItem("comms-grid-state", stateString)
+      
+      // Verify the save was successful
+      const savedState = localStorage.getItem("comms-grid-state")
+      if (!savedState || savedState !== stateString) {
+        throw new Error("Failed to verify localStorage save")
+      }
       
       // Also save to the current active profile if it exists
       if (state.activeProfile && state.profiles[state.activeProfile]) {
         const updatedProfiles = { ...state.profiles, [state.activeProfile]: stateToSave }
         updateProfiles(updatedProfiles)
-        dispatch({ type: "ADD_LOG", payload: `Grid state saved to profile "${state.activeProfile}"` })
+        if (!isAutoSave) {
+          dispatch({ type: "ADD_LOG", payload: `Grid state saved to profile "${state.activeProfile}"` })
+        }
       } else {
-        dispatch({ type: "ADD_LOG", payload: "Grid state saved to localStorage" })
+        if (!isAutoSave) {
+          dispatch({ type: "ADD_LOG", payload: "Grid state saved to localStorage" })
+        }
       }
       
       setHasUnsavedChanges(false)
-    } catch (error) {
-      console.error("Failed to save grid state:", error)
-      dispatch({ type: "ADD_LOG", payload: "Failed to save grid state" })
-    }
-  }, [gridState, viewport, dispatch, state.activeProfile, state.profiles, updateProfiles])
-
-  // Load grid state from localStorage
-  const loadGridState = useCallback(() => {
-    try {
-      const savedState = localStorage.getItem("comms-grid-state")
-      if (savedState) {
-        const parsedState = JSON.parse(savedState)
-        setGridState(parsedState)
-        setViewport(parsedState.viewport || { x: 0, y: 0, zoom: 1 })
-        setHasUnsavedChanges(false)
-        dispatch({ type: "ADD_LOG", payload: "Grid state loaded successfully" })
+      
+      if (isAutoSave) {
+        setAutoSaveStatus('saved')
+        setLastAutoSave(new Date().toLocaleTimeString())
+        console.log('Auto-save completed successfully at', new Date().toLocaleTimeString())
+        // Reset status after 2 seconds
+        setTimeout(() => setAutoSaveStatus('idle'), 2000)
+      } else {
+        console.log('Manual save completed successfully')
       }
     } catch (error) {
-      console.error("Failed to load grid state:", error)
-      dispatch({ type: "ADD_LOG", payload: "Failed to load grid state" })
+      console.error("Failed to save grid state:", error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      
+      if (isAutoSave) {
+        setAutoSaveStatus('error')
+        setTimeout(() => setAutoSaveStatus('idle'), 3000)
+      } else {
+        dispatch({ type: "ADD_LOG", payload: `Failed to save grid state: ${errorMessage}` })
+      }
+      throw error // Re-throw to trigger retry logic
     }
-  }, [dispatch])
+  }, [gridState, viewport, dispatch, state.activeProfile, state.profiles, updateProfiles, isAutoSaveEnabled, autoSaveInterval])
 
   // Export grid state as JSON file
   const exportGridState = useCallback(() => {
@@ -476,6 +536,181 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }, [gridState, viewport, dispatch])
 
+  // Update grid state helper
+  const updateGridState = useCallback((updater: (prev: GridState) => GridState) => {
+    setGridState((prev) => {
+      const newState = updater(prev)
+      return newState
+    })
+  }, [])
+
+  // Undo last action
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1
+      const historyItem = stateHistory[newIndex]
+      if (historyItem) {
+        setGridState(historyItem.gridState)
+        setViewport(historyItem.viewport)
+        setHistoryIndex(newIndex)
+        setHasUnsavedChanges(true)
+        dispatch({ type: "ADD_LOG", payload: "Undo: Reverted to previous state" })
+      }
+    }
+  }, [historyIndex, stateHistory, dispatch])
+
+  // Redo last undone action
+  const redo = useCallback(() => {
+    if (historyIndex < stateHistory.length - 1) {
+      const newIndex = historyIndex + 1
+      const historyItem = stateHistory[newIndex]
+      if (historyItem) {
+        setGridState(historyItem.gridState)
+        setViewport(historyItem.viewport)
+        setHistoryIndex(newIndex)
+        setHasUnsavedChanges(true)
+        dispatch({ type: "ADD_LOG", payload: "Redo: Restored next state" })
+      }
+    }
+  }, [historyIndex, stateHistory, dispatch])
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z for undo
+      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+      }
+      // Ctrl+Y or Ctrl+Shift+Z for redo
+      else if (e.ctrlKey && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        redo()
+      }
+      // Ctrl+S for save
+      else if (e.ctrlKey && e.key === 's') {
+        e.preventDefault()
+        saveGridState(false)
+      }
+      // Ctrl+E for export
+      else if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault()
+        exportGridState()
+      }
+      // Ctrl+I to toggle viewport info
+      else if (e.ctrlKey && e.key === 'i') {
+        e.preventDefault()
+        setIsViewportInfoVisible(prev => !prev)
+      }
+      // Ctrl+D to toggle debug panel
+      else if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault()
+        setIsDebugPanelVisible(prev => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undo, redo, saveGridState, exportGridState, setIsViewportInfoVisible, setIsDebugPanelVisible])
+
+  // Handle toolbar dragging
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingToolbar) {
+        const deltaX = e.clientX - toolbarDragStart.x
+        const deltaY = e.clientY - toolbarDragStart.y
+        
+        setActionsToolbarPosition({
+          top: Math.max(0, Math.min(window.innerHeight - 100, toolbarDragStart.top + deltaY)),
+          right: Math.max(0, Math.min(window.innerWidth - 100, toolbarDragStart.right - deltaX)),
+        })
+      }
+      
+      if (isDraggingZoomToolbar) {
+        const deltaX = e.clientX - zoomToolbarDragStart.x
+        const deltaY = e.clientY - zoomToolbarDragStart.y
+        
+        setZoomToolbarPosition({
+          top: Math.max(0, Math.min(window.innerHeight - 50, zoomToolbarDragStart.top + deltaY)),
+          left: Math.max(0, Math.min(window.innerWidth - 200, zoomToolbarDragStart.left + deltaX)),
+        })
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsDraggingToolbar(false)
+      setIsDraggingZoomToolbar(false)
+    }
+
+    if (isDraggingToolbar || isDraggingZoomToolbar) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDraggingToolbar, isDraggingZoomToolbar, toolbarDragStart, zoomToolbarDragStart, setActionsToolbarPosition, setZoomToolbarPosition])
+
+  // Track unsaved changes
+  useEffect(() => {
+    // Only set unsaved changes if the grid state has been initialized
+    // This prevents triggering unsaved changes on initial load
+    if (isGridStateInitialized.current) {
+      setHasUnsavedChanges(true)
+      console.log('Grid state changed, marking as unsaved')
+    }
+  }, [gridState])
+
+  // Also track viewport changes as unsaved changes
+  useEffect(() => {
+    if (isGridStateInitialized.current) {
+      setHasUnsavedChanges(true)
+      console.log('Viewport changed, marking as unsaved')
+    }
+  }, [viewport])
+
+  // Save state to history when grid state changes (but not on initial load)
+  useEffect(() => {
+    if (isGridStateInitialized.current) {
+      // Debounce the history save to avoid saving too frequently
+      const timeoutId = setTimeout(() => {
+        saveStateToHistory(gridState, viewport)
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [gridState, viewport, saveStateToHistory])
+
+  // Mark grid state as initialized after first load
+  useEffect(() => {
+    isGridStateInitialized.current = true
+  }, [])
+
+  // Load grid state from localStorage
+  const loadGridState = useCallback(() => {
+    try {
+      const savedState = localStorage.getItem("comms-grid-state")
+      if (savedState) {
+        const parsedState = JSON.parse(savedState)
+        setGridState(parsedState)
+        setViewport(parsedState.viewport || { x: 0, y: 0, zoom: 1 })
+        setHasUnsavedChanges(false)
+        
+        // Initialize history with the loaded state
+        const initialHistory = [{ gridState: parsedState, viewport: parsedState.viewport || { x: 0, y: 0, zoom: 1 } }]
+        setStateHistory(initialHistory)
+        setHistoryIndex(0)
+        
+        dispatch({ type: "ADD_LOG", payload: "Grid state loaded successfully" })
+      }
+    } catch (error) {
+      console.error("Failed to load grid state:", error)
+      dispatch({ type: "ADD_LOG", payload: "Failed to load grid state" })
+    }
+  }, [dispatch])
+
   // Import grid state from JSON file
   const importGridState = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -489,6 +724,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           setGridState(importedState)
           setViewport(importedState.viewport || { x: 0, y: 0, zoom: 1 })
           setHasUnsavedChanges(true)
+          
+          // Save imported state to history
+          const importedHistory = [{ gridState: importedState, viewport: importedState.viewport || { x: 0, y: 0, zoom: 1 } }]
+          setStateHistory(importedHistory)
+          setHistoryIndex(0)
+          
           dispatch({ type: "ADD_LOG", payload: "Grid state imported successfully" })
         } catch (error) {
           console.error("Failed to import grid state:", error)
@@ -501,17 +742,63 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     [dispatch],
   )
 
-  // Auto-save every 30 seconds if there are unsaved changes and auto-save is enabled
+  // Auto-save with enhanced reliability and better error handling
   useEffect(() => {
-    if (!isAutoSaveEnabled) return
+    if (!isAutoSaveEnabled) {
+      setAutoSaveStatus('idle')
+      return
+    }
 
-    const interval = setInterval(() => {
-      if (hasUnsavedChanges) {
-        saveGridState()
+    let interval: NodeJS.Timeout | null = null
+    let retryCount = 0
+    const maxRetries = 3
+
+    const performAutoSave = async () => {
+      // Enhanced logging for debugging
+      console.log(`Auto-save check: hasUnsavedChanges=${hasUnsavedChanges}, isAutoSaveEnabled=${isAutoSaveEnabled}`)
+      
+      if (hasUnsavedChanges && isAutoSaveEnabled) {
+        try {
+          console.log('Performing auto-save...', { gridState, viewport })
+          await saveGridState(true)
+          retryCount = 0 // Reset retry count on success
+          console.log('Auto-save completed successfully')
+        } catch (error) {
+          retryCount++
+          console.warn(`Auto-save failed (attempt ${retryCount}/${maxRetries}):`, error)
+          
+          if (retryCount >= maxRetries) {
+            setAutoSaveStatus('error')
+            setIsAutoSaveEnabled(false) // Disable auto-save after max retries
+            dispatch({ type: "ADD_LOG", payload: "Auto-save disabled due to repeated failures" })
+            return
+          }
+          
+          // Retry with exponential backoff
+          setTimeout(() => {
+            if (hasUnsavedChanges && isAutoSaveEnabled) {
+              performAutoSave()
+            }
+          }, Math.pow(2, retryCount) * 1000)
+        }
+      } else {
+        console.log('Auto-save skipped: no unsaved changes or auto-save disabled')
       }
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [hasUnsavedChanges, saveGridState, isAutoSaveEnabled])
+    }
+
+    // Perform initial auto-save after a short delay if there are unsaved changes
+    if (hasUnsavedChanges) {
+      setTimeout(performAutoSave, 1000)
+    }
+
+    interval = setInterval(performAutoSave, autoSaveInterval)
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [hasUnsavedChanges, saveGridState, isAutoSaveEnabled, autoSaveInterval, dispatch, gridState, viewport])
 
   // Initialize default profile if none exists
   useEffect(() => {
@@ -1045,6 +1332,21 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         setActionsToolbarPosition({
           top: Math.max(80, Math.min(newTop, window.innerHeight - 80)),
           right: Math.max(20, Math.min(newRight, window.innerWidth - 300)),
+        })
+        return
+      }
+
+      // Handle zoom toolbar dragging
+      if (isDraggingZoomToolbar) {
+        const deltaX = e.clientX - zoomToolbarDragStart.x
+        const deltaY = e.clientY - zoomToolbarDragStart.y
+        
+        const newTop = zoomToolbarDragStart.top + deltaY
+        const newLeft = zoomToolbarDragStart.left + deltaX
+
+        setZoomToolbarPosition({
+          top: Math.max(16, Math.min(newTop, window.innerHeight - 60)),
+          left: Math.max(20, Math.min(newLeft, window.innerWidth - 300)),
         })
         return
       }
@@ -1586,9 +1888,10 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       setIsPanning(false)
       setDragOverNest(null)
       setIsDraggingToolbar(false)
+      setIsDraggingZoomToolbar(false)
     }
 
-    if (dragState.isDragging || resizeState.isResizing || isPanning || isDraggingToolbar) {
+    if (dragState.isDragging || resizeState.isResizing || isPanning || isDraggingToolbar || isDraggingZoomToolbar) {
       document.addEventListener("mousemove", handleMouseMove)
       document.addEventListener("mouseup", handleMouseUp)
     }
@@ -1597,7 +1900,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
     }
-  }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch, isDraggingToolbar, toolbarDragStart, setActionsToolbarPosition, lastMouseMoveTime, throttleInterval])
+  }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch, isDraggingToolbar, isDraggingZoomToolbar, toolbarDragStart, zoomToolbarDragStart, setActionsToolbarPosition, setZoomToolbarPosition, lastMouseMoveTime, throttleInterval])
 
   // Add wheel event listener
   useEffect(() => {
@@ -1818,6 +2121,43 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-background to-background/80">
+      
+      {/* Debug Info - Top Left Corner (Hideable) */}
+      {isDebugPanelVisible && (
+        <div className="absolute top-4 left-4 z-50 bg-red-500/90 text-white p-2 rounded text-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-semibold">Debug Panel</span>
+            <Button
+              onClick={() => setIsDebugPanelVisible(false)}
+              size="sm"
+              variant="ghost"
+              className="h-4 w-4 p-0 text-white hover:bg-white/20"
+              title="Hide debug panel (Ctrl+D)"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div>Auto-save: {isAutoSaveEnabled ? 'ON' : 'OFF'}</div>
+          <div>Interval: {autoSaveInterval / 1000}s</div>
+          <div>Toolbar: {actionsToolbarPosition.top}px, {actionsToolbarPosition.right}px</div>
+          <div>Unsaved: {hasUnsavedChanges ? 'YES' : 'NO'}</div>
+          <div>History: {historyIndex + 1}/{stateHistory.length}</div>
+        </div>
+      )}
+      
+      {/* Debug Panel Toggle Button (when hidden) */}
+      {!isDebugPanelVisible && (
+        <Button
+          onClick={() => setIsDebugPanelVisible(true)}
+          size="sm"
+          variant="ghost"
+          className="absolute top-4 left-4 z-50 h-6 w-6 p-0 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50"
+          title="Show debug panel (Ctrl+D)"
+        >
+          <Terminal className="h-3 w-3 text-red-400" />
+        </Button>
+      )}
+      
       {/* Floating Action Buttons */}
       <div
         className="absolute z-50"
@@ -1826,16 +2166,16 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           right: actionsToolbarPosition.right,
         }}
       >
-        <Card className="bg-background/90 backdrop-blur-sm border-border/50 shadow-lg">
+        <Card className="bg-background/95 backdrop-blur-sm border-border/50 shadow-xl ring-1 ring-primary/10">
           <CardHeader
-            className="py-1 px-2 cursor-grab active:cursor-grabbing text-center"
+            className="py-1 px-2 cursor-grab active:cursor-grabbing text-center bg-primary/5"
             onMouseDown={handleToolbarMouseDown}
           >
             <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
           </CardHeader>
-          <CardContent className="p-2 flex gap-2">
+          <CardContent className="p-2 flex gap-2 flex-wrap max-w-md">
             <Button
-              onClick={saveGridState}
+              onClick={() => saveGridState(false)}
               size="sm"
               variant="default"
               className={`gap-2 ${hasUnsavedChanges ? "bg-orange-600 hover:bg-orange-700" : ""}`}
@@ -1843,16 +2183,106 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               <Save className="h-4 w-4" />
               Save {hasUnsavedChanges && "*"}
             </Button>
+            
+            {/* Auto-save toggle with status indicator */}
+            <div className="relative">
+              <Button
+                onClick={() => setIsAutoSaveEnabled(!isAutoSaveEnabled)}
+                size="sm"
+                variant={isAutoSaveEnabled ? "default" : "outline"}
+                className={`gap-2 ${
+                  autoSaveStatus === 'saving' ? "bg-blue-600 hover:bg-blue-700" :
+                  autoSaveStatus === 'saved' ? "bg-green-600 hover:bg-green-700" :
+                  autoSaveStatus === 'error' ? "bg-red-600 hover:bg-red-700" : ""
+                }`}
+                title={
+                  isAutoSaveEnabled 
+                    ? `Auto-save enabled (${autoSaveInterval / 1000}s)${lastAutoSave ? ` - Last: ${lastAutoSave}` : ''}` 
+                    : "Auto-save disabled"
+                }
+              >
+                <Clock className={`h-4 w-4 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
+                Auto
+                {autoSaveStatus === 'saved' && <span className="text-xs ml-1">✓</span>}
+                {autoSaveStatus === 'error' && <span className="text-xs ml-1">✗</span>}
+              </Button>
+              
+              {/* Auto-save status indicator */}
+              {isAutoSaveEnabled && autoSaveStatus !== 'idle' && (
+                <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
+                  autoSaveStatus === 'saving' ? 'bg-blue-400 animate-pulse' :
+                  autoSaveStatus === 'saved' ? 'bg-green-400' :
+                  autoSaveStatus === 'error' ? 'bg-red-400' : ''
+                }`} />
+              )}
+            </div>
+            
+            {/* Auto-save interval selector */}
+            {isAutoSaveEnabled && (
+              <select
+                value={autoSaveInterval}
+                onChange={(e) => setAutoSaveInterval(Number(e.target.value))}
+                className="px-2 py-1 text-xs border border-border rounded bg-background text-foreground"
+                title="Auto-save interval"
+              >
+                <option value={5000}>5s</option>
+                <option value={10000}>10s</option>
+                <option value={30000}>30s</option>
+                <option value={60000}>1m</option>
+                <option value={300000}>5m</option>
+                <option value={600000}>10m</option>
+              </select>
+            )}
+            
+            {/* Force Save - Debug Button */}
             <Button
-              onClick={() => setIsAutoSaveEnabled(!isAutoSaveEnabled)}
+              onClick={async () => {
+                console.log('Force save triggered')
+                setHasUnsavedChanges(true)
+                await saveGridState(true)
+                dispatch({ type: "ADD_LOG", payload: "Force save completed" })
+              }}
               size="sm"
-              variant={isAutoSaveEnabled ? "default" : "outline"}
+              variant="destructive"
               className="gap-2"
-              title={isAutoSaveEnabled ? "Auto-save enabled (30s)" : "Auto-save disabled"}
+              title="Force auto-save (Debug)"
             >
-              <Clock className="h-4 w-4" />
-              Auto
+              <Save className="h-4 w-4" />
+              Force
             </Button>
+            
+            {/* Undo/Redo buttons */}
+            <div className="flex gap-1 border-l border-border pl-2">
+              <Button
+                onClick={undo}
+                size="sm"
+                variant="outline"
+                disabled={historyIndex <= 0}
+                className="gap-2"
+                title="Undo (Ctrl+Z)"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 7v6h6"/>
+                  <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
+                </svg>
+                Undo
+              </Button>
+              <Button
+                onClick={redo}
+                size="sm"
+                variant="outline"
+                disabled={historyIndex >= stateHistory.length - 1}
+                className="gap-2"
+                title="Redo (Ctrl+Y)"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 7v6h-6"/>
+                  <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"/>
+                </svg>
+                Redo
+              </Button>
+            </div>
+            
             <Button onClick={exportGridState} size="sm" variant="outline" className="gap-2">
               <Download className="h-4 w-4" />
               Export
@@ -1874,12 +2304,50 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               <Plus className="h-4 w-4" />
               Add Widget
             </Button>
+            
+            {/* Reset toolbar position button */}
+            <Button 
+              onClick={() => setActionsToolbarPosition({ top: 80, right: 20 })}
+              size="sm" 
+              variant="ghost" 
+              className="gap-2"
+              title="Reset toolbar position"
+            >
+              <Settings className="h-4 w-4" />
+              Reset
+            </Button>
+            
+            {/* Toggle debug panel */}
+            <Button 
+              onClick={() => setIsDebugPanelVisible(!isDebugPanelVisible)}
+              size="sm" 
+              variant={isDebugPanelVisible ? "default" : "outline"} 
+              className="gap-2"
+              title={`${isDebugPanelVisible ? 'Hide' : 'Show'} debug panel (Ctrl+D)`}
+            >
+              <Terminal className="h-4 w-4" />
+              Debug
+            </Button>
           </CardContent>
         </Card>
       </div>
 
       {/* Zoom Toolbar */}
-      <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-50 flex gap-1 bg-background/90 backdrop-blur-sm border border-border/50 rounded-md p-1 shadow-lg">
+      <div 
+        className="absolute z-50 flex gap-1 bg-background/90 backdrop-blur-sm border border-border/50 rounded-md p-1 shadow-lg"
+        style={{
+          top: zoomToolbarPosition.top,
+          left: zoomToolbarPosition.left,
+        }}
+      >
+        {/* Drag handle */}
+        <div
+          className="flex items-center justify-center w-4 cursor-grab active:cursor-grabbing hover:bg-muted/50 rounded-sm transition-colors"
+          onMouseDown={handleZoomToolbarMouseDown}
+          title="Drag to move zoom toolbar"
+        >
+          <GripVertical className="h-3 w-3 text-muted-foreground" />
+        </div>
         <Button
           size="sm"
           variant="ghost"

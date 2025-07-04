@@ -356,4 +356,51 @@
       box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
     }
   }
+
+  /* Auto-neural mode message animations */
+  .auto-neural-message {
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+  }
+
+  .auto-neural-message-fadeout {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  .auto-neural-message-fadein {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Smooth auto-hide animation */
+  @keyframes autoHideFadeOut {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
+  .auto-neural-auto-hide {
+    animation: autoHideFadeOut 0.3s ease-out forwards;
+  }
+
+  /* Auto-neural mode message pre-hide pulse */
+  @keyframes preHidePulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(0.98);
+    }
+  }
+
+  .auto-neural-message-pulse {
+    animation: preHidePulse 1s ease-in-out;
+  }
 }

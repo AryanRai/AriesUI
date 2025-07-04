@@ -129,7 +129,47 @@ export function AppSidebar() {
   const { open } = useSidebar()
   const [isPinned, setIsPinned] = useState(false)
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const [showAutoNeuralMsg, setShowAutoNeuralMsg] = useState(true)
   const { animationsEnabled, toggleAnimations } = useAnimationPreferences()
+
+  // Auto-hide the auto-neural mode message after 2.5 seconds (faster)
+  useEffect(() => {
+    if (!isPinned && showAutoNeuralMsg) {
+      // Start pulse warning at 2 seconds
+      const pulseTimer = setTimeout(() => {
+        const messageElement = document.querySelector('.auto-neural-message')
+        if (messageElement) {
+          messageElement.classList.add('auto-neural-message-pulse')
+        }
+      }, 2000) // Pulse at 2 seconds
+      
+      // Start fade-out at 2.5 seconds
+      const fadeTimer = setTimeout(() => {
+        const messageElement = document.querySelector('.auto-neural-message')
+        if (messageElement) {
+          messageElement.classList.add('auto-neural-auto-hide')
+          // Wait for animation to complete before hiding
+          setTimeout(() => {
+            setShowAutoNeuralMsg(false)
+          }, 300) // Match CSS animation duration
+        } else {
+          setShowAutoNeuralMsg(false)
+        }
+      }, 2500) // Start fade-out after 2.5 seconds (faster)
+      
+      return () => {
+        clearTimeout(pulseTimer)
+        clearTimeout(fadeTimer)
+      }
+    }
+  }, [isPinned, showAutoNeuralMsg])
+
+  // Show message again when sidebar opens and is not pinned
+  useEffect(() => {
+    if (open && !isPinned) {
+      setShowAutoNeuralMsg(true)
+    }
+  }, [open, isPinned])
 
   const handleMenuClick = (id: string) => {
     if (id === "dashboard") {
@@ -141,6 +181,10 @@ export function AppSidebar() {
 
   const togglePin = () => {
     setIsPinned(!isPinned)
+    // Reset message visibility when pinning/unpinning
+    if (isPinned) {
+      setShowAutoNeuralMsg(true) // Show message when unpinning
+    }
     // You can add logic here to persist the pinned state
   }
 
@@ -487,35 +531,35 @@ export function AppSidebar() {
                 </SidebarGroup>
               </SidebarContent>
 
-              {/* Auto-hide indicator */}
+              {/* Auto-hide indicator - compact top-right corner */}
               <AnimationPresenceWrapper>
-                {!isPinned && (
+                {!isPinned && showAutoNeuralMsg && (
                   <MotionWrapper 
-                    className="absolute bottom-4 left-4 right-4"
+                    className="absolute top-2 right-2 z-50"
                     {...(animationsEnabled ? {
-                      initial: { opacity: 0, y: 20 },
-                      animate: { opacity: 1, y: 0 },
-                      exit: { opacity: 0, y: 20 },
-                      transition: { delay: 0.5 }
+                      initial: { opacity: 0, scale: 0.8, x: 20 },
+                      animate: { opacity: 1, scale: 1, x: 0 },
+                      exit: { opacity: 0, scale: 0.8, x: 20 },
+                      transition: { delay: 0.3, duration: 0.2 }
                     } : {})}
                   >
                     <MotionWrapper 
-                      className="text-xs text-muted-foreground text-center bg-gradient-to-r from-teal-500/10 to-slate-500/5 border border-teal-500/20 rounded-lg px-3 py-2 backdrop-blur"
+                      className="text-xs text-muted-foreground bg-gradient-to-r from-teal-500/15 to-slate-500/10 border border-teal-500/30 rounded-md px-2 py-1 backdrop-blur-sm auto-neural-message auto-neural-message-fadein shadow-sm"
                       {...(animationsEnabled ? {
                         animate: {
                           boxShadow: [
                             "0 0 0px rgba(20, 184, 166, 0)",
-                            "0 0 8px rgba(20, 184, 166, 0.1)",
+                            "0 0 4px rgba(20, 184, 166, 0.2)",
                             "0 0 0px rgba(20, 184, 166, 0)"
                           ]
                         },
                         transition: {
-                          duration: 4,
+                          duration: 3,
                           repeat: Infinity,
                         }
                       } : {})}
                     >
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <MotionWrapper
                           className="w-1 h-1 bg-teal-400 rounded-full"
                           {...(animationsEnabled ? {
@@ -523,7 +567,7 @@ export function AppSidebar() {
                             transition: { duration: 2, repeat: Infinity }
                           } : {})}
                         />
-                        auto-neural mode • pin to persist
+                        <span className="whitespace-nowrap">auto • pin</span>
                       </div>
                     </MotionWrapper>
                   </MotionWrapper>
@@ -648,13 +692,13 @@ export function AppSidebar() {
                   </SidebarGroup>
                 </SidebarContent>
 
-                {/* Auto-hide indicator */}
-                {!isPinned && (
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="text-xs text-muted-foreground text-center bg-gradient-to-r from-teal-500/10 to-slate-500/5 border border-teal-500/20 rounded-lg px-3 py-2 backdrop-blur">
-                      <div className="flex items-center justify-center gap-2">
+                {/* Auto-hide indicator - compact top-right corner */}
+                {!isPinned && showAutoNeuralMsg && (
+                  <div className="absolute top-2 right-2 z-50">
+                    <div className="text-xs text-muted-foreground bg-gradient-to-r from-teal-500/15 to-slate-500/10 border border-teal-500/30 rounded-md px-2 py-1 backdrop-blur-sm auto-neural-message auto-neural-message-fadein shadow-sm">
+                      <div className="flex items-center gap-1.5">
                         <div className="w-1 h-1 bg-teal-400 rounded-full" />
-                        auto-neural mode • pin to persist
+                        <span className="whitespace-nowrap">auto • pin</span>
                       </div>
                     </div>
                   </div>
