@@ -5,26 +5,61 @@ import { motion } from 'framer-motion'
 import { Heart, Cpu, Database, Server, AppWindow, ChevronRight, ChevronLeft, Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
-import { useCommsSocket } from '@/hooks/use-comms-socket'
+import { usePingMonitor } from '@/hooks/use-ping-monitor'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import ConnectionControls from './connection-controls'
 
 const HeartbeatVisualizer = () => {
-  const { latency: shLatency, connectionStatus: shStatus } = useCommsSocket('sh')  // StreamHandler connection
-  const { latency: enLatency, connectionStatus: enStatus } = useCommsSocket('en')  // Engine connection
+  const { pingData, pingIntervals, isConnected, reconnect } = usePingMonitor()
   const [isReversed, setIsReversed] = useState(false)
+  const [renderLatency, setRenderLatency] = useState(0)
 
   // Calculate UI latency (time between state updates)
   const [uiLatency, setUiLatency] = useState(0)
   useEffect(() => {
+    console.log('🔄 UI latency effect restarting with interval:', pingIntervals.ui + 'ms')
+    
     let lastUpdate = performance.now()
-    const interval = setInterval(() => {
+    
+    const updateLatency = () => {
       const now = performance.now()
       setUiLatency(Math.round(now - lastUpdate))
       lastUpdate = now
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
+    }
+    
+    const interval = setInterval(updateLatency, pingIntervals.ui)
+    
+    // Initial update
+    updateLatency()
+    
+    return () => {
+      console.log('🔄 UI latency effect cleanup')
+      clearInterval(interval)
+    }
+  }, [pingIntervals.ui])
+
+  // Measure actual render performance
+  useEffect(() => {
+    console.log('🎨 Render latency effect restarting with interval:', Math.max(pingIntervals.ui * 2, 100) + 'ms')
+    
+    const measureRender = () => {
+      const start = performance.now()
+      requestAnimationFrame(() => {
+        const end = performance.now()
+        setRenderLatency(Math.round(end - start))
+      })
+    }
+    
+    const interval = setInterval(measureRender, Math.max(pingIntervals.ui * 2, 100)) // Measure every 2x UI update interval, min 100ms
+    
+    // Initial measurement
+    measureRender()
+    
+    return () => {
+      console.log('🎨 Render latency effect cleanup')
+      clearInterval(interval)
+    }
+  }, [pingIntervals.ui])
 
   const stages = [
     { 
@@ -35,15 +70,15 @@ const HeartbeatVisualizer = () => {
     },
     { 
       name: 'EN', 
-      icon: <Database className="h-4 h-4" />, 
-      latency: enLatency,
-      status: enStatus
+      icon: <Database className="h-4 w-4" />, 
+      latency: pingData.en.latency,
+      status: pingData.en.status
     },
     { 
       name: 'SH', 
       icon: <Server className="h-4 w-4" />, 
-      latency: shLatency,
-      status: shStatus
+      latency: pingData.sh.latency,
+      status: pingData.sh.status
     },
     { 
       name: 'AriesUI', 
@@ -54,7 +89,7 @@ const HeartbeatVisualizer = () => {
     { 
       name: 'UI', 
       icon: <AppWindow className="h-4 w-4" />, 
-      latency: Math.round(performance.now() % 10),  // Simulated UI render time
+      latency: renderLatency,  // Use actual render latency measurement
       status: 'connected'
     },
   ]
@@ -74,7 +109,7 @@ const HeartbeatVisualizer = () => {
             transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
             className={cn(
               "transition-colors",
-              stages.every(s => s.status === 'connected' || s.status === 'unknown') 
+              isConnected && stages.every(s => s.status === 'connected' || s.status === 'unknown') 
                 ? "text-teal-500" 
                 : "text-orange-500"
             )}
@@ -82,6 +117,15 @@ const HeartbeatVisualizer = () => {
             <Heart className="h-5 w-5" />
           </motion.div>
           <div className="flex items-center bg-background/50 px-2 py-1 rounded-md border border-border/50">
+            <div className="flex items-center gap-1 pr-2 border-r border-border/50">
+              <div className={cn(
+                "h-2 w-2 rounded-full",
+                isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+              )} />
+              <span className="text-xs">
+                {isConnected ? "Connected" : "Disconnected"}
+              </span>
+            </div>
             {displayedStages.map((stage, index) => (
               <React.Fragment key={stage.name}>
                 <div className="flex flex-col items-center text-center px-2">

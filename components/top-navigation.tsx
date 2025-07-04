@@ -3,12 +3,10 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { ChevronDown, Wifi, WifiOff, Menu, Users, LayoutGrid, Cloud, PanelRightOpen } from "lucide-react"
+import { ChevronDown, Menu, Users, PanelRightOpen } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useComms } from "@/components/comms-context"
 import HeartbeatVisualizer from './heartbeat-visualizer'
-import { MainMenu } from "@/components/main-menu"
 
 export function TopNavigation() {
   const { toggleSidebar } = useSidebar()
@@ -52,47 +50,8 @@ export function TopNavigation() {
 
       {/* Right side */}
       <div className="flex items-center gap-2">
-        {/* Streams dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-              Streams
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            {state.streams.map((stream) => (
-              <DropdownMenuItem key={stream.id} className="flex items-center justify-between">
-                <span className="truncate">{stream.name}</span>
-                <Badge variant={stream.status === "connected" ? "default" : "destructive"} className="ml-2">
-                  {stream.status === "connected" ? (
-                    <Wifi className="h-3 w-3 mr-1" />
-                  ) : (
-                    <WifiOff className="h-3 w-3 mr-1" />
-                  )}
-                  {stream.status}
-                </Badge>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Link status dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              Link
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Connection Status: Active</DropdownMenuItem>
-            <DropdownMenuItem>Reconnect</DropdownMenuItem>
-            <DropdownMenuItem>Disconnect</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
+        {/* Streams functionality moved to Inspector panel */}
+        
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
@@ -117,7 +76,11 @@ export function TopNavigation() {
         <Button variant="ghost" onClick={() => dispatch({ type: "SET_MODAL", payload: "marketplace" })}>
           Marketplace
         </Button>
-        <Button variant="ghost" onClick={() => dispatch({ type: "TOGGLE_RIGHT_SIDEBAR" })} className="gap-2">
+        <Button 
+          variant="outline" 
+          onClick={() => dispatch({ type: "TOGGLE_RIGHT_SIDEBAR" })} 
+          className="gap-2 bg-transparent"
+        >
           <PanelRightOpen className="h-4 w-4" />
           Inspector
         </Button>
