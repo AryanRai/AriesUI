@@ -1,133 +1,168 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CommsMessage, CommsModule, ControlMessage, ConfigUpdateMessage } from '@/types/comms'
 
-export function useCommsSocket(url: string = 'ws://localhost:3000') {
+export function useCommsSocket(target: 'sh' | 'en' = 'sh', url: string = 'ws://localhost:8000') {
   const [socket, setSocket] = useState<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [modules, setModules] = useState<Map<string, CommsModule>>(new Map())
   const [lastMessage, setLastMessage] = useState<CommsMessage | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [latency, setLatency] = useState<number>(0)
+  const [lastPingSent, setLastPingSent] = useState<number>(0)
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected')
 
   // Connect to WebSocket
-  useEffect(() => {
-    let reconnectTimeout: NodeJS.Timeout
-    let reconnectAttempts = 0
-    const maxReconnectAttempts = 5
-    const reconnectDelay = 5000 // 5 seconds
+  const connect = useCallback(() => {
+    try {
+      const ws = new WebSocket(url)
 
-    function connect() {
-      try {
-        const ws = new WebSocket(url)
+      ws.onopen = () => {
+        console.log(`Connected to ${target.toUpperCase()} at ${url}`)
+        setIsConnected(true)
+        setConnectionStatus('connected')
+        setError(null)
+        // Send initial ping
+        sendPing(ws)
+      }
 
-        ws.onopen = () => {
-          console.log('🔗 Connected to StreamHandler')
-          setIsConnected(true)
-          setError(null)
-          reconnectAttempts = 0
-        }
+      ws.onclose = () => {
+        console.log(`Disconnected from ${target.toUpperCase()}`)
+        setIsConnected(false)
+        setConnectionStatus('disconnected')
+        // Attempt reconnection after 5 seconds
+        setTimeout(() => {
+          setConnectionStatus('reconnecting')
+          connect()
+        }, 5000)
+      }
 
-        ws.onclose = () => {
-          console.log('🔌 Disconnected from StreamHandler')
-          setIsConnected(false)
-          setError('Connection lost')
+      ws.onerror = (event) => {
+        console.error(`WebSocket error for ${target.toUpperCase()}:`, event)
+        setError('Connection error')
+      }
 
-          // Attempt reconnection
-          if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++
-            console.log(`Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})...`)
-            reconnectTimeout = setTimeout(connect, reconnectDelay)
-          } else {
-            setError('Failed to reconnect after multiple attempts')
-          }
-        }
+      ws.onmessage = (event) => {
+        try {
+          const message: CommsMessage = JSON.parse(event.data)
+          setLastMessage(message)
 
-        ws.onmessage = (event) => {
-          try {
-            const message: CommsMessage = JSON.parse(event.data)
-            setLastMessage(message)
-
-            // Handle negotiation messages (module updates)
-            if (message.type === 'negotiation' && message.status === 'active') {
-              const newModules = new Map(modules)
+          // Handle different message types
+          switch (message.type) {
+            case 'negotiation':
+              const newModules = new Map<string, CommsModule>()
               Object.entries(message.data).forEach(([moduleId, moduleData]) => {
                 newModules.set(moduleId, moduleData as CommsModule)
               })
               setModules(newModules)
+              break
+
+            case 'pong': {
+              // Only use pong replies that correspond to the last ping we sent.
+              if (message.target === target) {
+                const tsNum = Number(message.timestamp)
+                if (!isNaN(tsNum)) {
+                  const nowPerf = performance.now()
+                  if (tsNum <= nowPerf) {
+                    setLatency(Math.abs(Math.round(nowPerf - tsNum)))
+                  }
+                }
+              }
+              break
             }
 
-            // Handle control responses
-            if (message.type === 'control_response') {
-              if (message.status === 'error') {
-                setError(`Control error: ${message.data.error || 'Unknown error'}`)
+            case 'connection_info':
+              // Update connection info
+              if (message.data) {
+                setLatency(message.data.latency || 0)
+                setConnectionStatus(message.data.status || 'connected')
               }
-            }
-
-            // Handle config responses
-            if (message.type === 'config_response') {
-              if (message.status === 'error') {
-                setError(`Config error: ${message.data.error || 'Unknown error'}`)
-              }
-            }
-          } catch (error) {
-            console.error('Failed to parse message:', error)
-            setError('Failed to parse message from StreamHandler')
+              break
           }
+        } catch (error) {
+          console.error(`Failed to parse message from ${target.toUpperCase()}:`, error)
         }
-
-        ws.onerror = (event) => {
-          console.error('WebSocket error:', event)
-          setError('WebSocket error occurred')
-        }
-
-        setSocket(ws)
-      } catch (error) {
-        console.error('Failed to connect:', error)
-        setError('Failed to connect to StreamHandler')
       }
+
+      setSocket(ws)
+    } catch (error) {
+      console.error(`Failed to connect to ${target.toUpperCase()}:`, error)
+      setError('Failed to connect')
+      setConnectionStatus('disconnected')
     }
+  }, [url, target])
 
+  // Send ping message
+  const sendPing = useCallback((ws: WebSocket) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      const timestampNum = performance.now()
+      const timestamp = timestampNum.toString()
+      ws.send(JSON.stringify({
+        type: 'ping',
+        timestamp,
+        target,
+        status: 'active',
+        'msg-sent-timestamp': new Date().toISOString()
+      }))
+      setLastPingSent(timestampNum)
+    }
+  }, [target])
+
+  // Reconnect function
+  const reconnect = useCallback(() => {
+    if (socket) {
+      socket.close()
+    }
+    setConnectionStatus('reconnecting')
     connect()
+  }, [socket, connect])
 
+  // Send command to backend
+  const sendCommand = useCallback((moduleId: string, command: any) => {
+    if (socket?.readyState === WebSocket.OPEN) {
+      const message = {
+        type: 'control',
+        status: 'active',
+        module_id: moduleId,
+        command,
+        'msg-sent-timestamp': new Date().toISOString()
+      } as unknown as ControlMessage
+      socket.send(JSON.stringify(message))
+    } else {
+      setError('Not connected')
+    }
+  }, [socket])
+
+  // Initial connection
+  useEffect(() => {
+    connect()
     return () => {
       if (socket) {
         socket.close()
       }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout)
-      }
     }
-  }, [url])
+  }, [connect])
 
-  // Send control command
-  const sendCommand = useCallback((moduleId: string, command: ControlMessage['command']) => {
-    if (socket?.readyState === WebSocket.OPEN) {
-      const message: CommsMessage = {
-        type: 'control',
-        status: 'active',
-        data: {
-          module_id: moduleId,
-          command: command
-        },
-        'msg-sent-timestamp': new Date().toISOString()
-      }
-      socket.send(JSON.stringify(message))
-    } else {
-      setError('Cannot send command: Not connected to StreamHandler')
-    }
-  }, [socket])
+  // Send periodic pings
+  useEffect(() => {
+    if (!socket) return
+
+    const pingInterval = setInterval(() => {
+      sendPing(socket)
+    }, 1000) // Send ping every second
+
+    return () => clearInterval(pingInterval)
+  }, [socket, sendPing])
 
   // Update module configuration
   const updateConfig = useCallback((moduleId: string, config: ConfigUpdateMessage['config']) => {
     if (socket?.readyState === WebSocket.OPEN) {
-      const message: CommsMessage = {
+      const message = {
         type: 'config_update',
         status: 'active',
-        data: {
-          module_id: moduleId,
-          config: config
-        },
+        module_id: moduleId,
+        config,
         'msg-sent-timestamp': new Date().toISOString()
-      }
+      } as unknown as ConfigUpdateMessage
       socket.send(JSON.stringify(message))
     } else {
       setError('Cannot update config: Not connected to StreamHandler')
@@ -147,9 +182,12 @@ export function useCommsSocket(url: string = 'ws://localhost:3000') {
 
   return {
     isConnected,
+    connectionStatus,
     modules,
     lastMessage,
     error,
+    latency,
+    reconnect,
     sendCommand,
     updateConfig,
     getModule,
