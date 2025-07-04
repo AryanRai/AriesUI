@@ -12,6 +12,7 @@ import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 import { AriesModWidget } from "@/components/widgets/ariesmod-widget"
 import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
 import { useLocalStorage } from "@/hooks/use-local-storage"
+import { FloatingToolbar } from "@/components/floating-toolbar-merged"
 
 interface BaseWidget {
   id: string
@@ -2017,7 +2018,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   const addNestContainer = () => {
     const gridSize = gridState.gridSize
-    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers]
+    const existingItems = [...gridState.mainWidgets, gridState.nestContainers]
 
     const baseNest = {
       x: Math.round((Math.random() * 200) / gridSize) * gridSize,
@@ -2158,7 +2159,32 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         </Button>
       )}
       
-      {/* Floating Action Buttons */}
+      {/* Unified Floating Toolbar */}
+      <FloatingToolbar
+        gridState={gridState}
+        viewport={viewport}
+        hasUnsavedChanges={hasUnsavedChanges}
+        isAutoSaveEnabled={isAutoSaveEnabled}
+        setIsAutoSaveEnabled={setIsAutoSaveEnabled}
+        autoSaveInterval={autoSaveInterval}
+        setAutoSaveInterval={setAutoSaveInterval}
+        autoSaveStatus={autoSaveStatus}
+        lastAutoSave={lastAutoSave}
+        historyIndex={historyIndex}
+        stateHistory={stateHistory}
+        saveGridState={saveGridState}
+        exportGridState={exportGridState}
+        importGridState={importGridState}
+        undo={undo}
+        redo={redo}
+        addWidget={addWidget}
+        addNestContainer={addNestContainer}
+        setIsDebugPanelVisible={setIsDebugPanelVisible}
+        isDebugPanelVisible={isDebugPanelVisible}
+      />
+      
+      {/* OLD ACTIONS TOOLBAR - REPLACED BY UNIFIED FLOATING TOOLBAR */}
+      {/* 
       <div
         className="absolute z-50"
         style={{
@@ -2174,163 +2200,11 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
           </CardHeader>
           <CardContent className="p-2 flex gap-2 flex-wrap max-w-md">
-            <Button
-              onClick={() => saveGridState(false)}
-              size="sm"
-              variant="default"
-              className={`gap-2 ${hasUnsavedChanges ? "bg-orange-600 hover:bg-orange-700" : ""}`}
-            >
-              <Save className="h-4 w-4" />
-              Save {hasUnsavedChanges && "*"}
-            </Button>
-            
-            {/* Auto-save toggle with status indicator */}
-            <div className="relative">
-              <Button
-                onClick={() => setIsAutoSaveEnabled(!isAutoSaveEnabled)}
-                size="sm"
-                variant={isAutoSaveEnabled ? "default" : "outline"}
-                className={`gap-2 ${
-                  autoSaveStatus === 'saving' ? "bg-blue-600 hover:bg-blue-700" :
-                  autoSaveStatus === 'saved' ? "bg-green-600 hover:bg-green-700" :
-                  autoSaveStatus === 'error' ? "bg-red-600 hover:bg-red-700" : ""
-                }`}
-                title={
-                  isAutoSaveEnabled 
-                    ? `Auto-save enabled (${autoSaveInterval / 1000}s)${lastAutoSave ? ` - Last: ${lastAutoSave}` : ''}` 
-                    : "Auto-save disabled"
-                }
-              >
-                <Clock className={`h-4 w-4 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
-                Auto
-                {autoSaveStatus === 'saved' && <span className="text-xs ml-1">✓</span>}
-                {autoSaveStatus === 'error' && <span className="text-xs ml-1">✗</span>}
-              </Button>
-              
-              {/* Auto-save status indicator */}
-              {isAutoSaveEnabled && autoSaveStatus !== 'idle' && (
-                <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
-                  autoSaveStatus === 'saving' ? 'bg-blue-400 animate-pulse' :
-                  autoSaveStatus === 'saved' ? 'bg-green-400' :
-                  autoSaveStatus === 'error' ? 'bg-red-400' : ''
-                }`} />
-              )}
-            </div>
-            
-            {/* Auto-save interval selector */}
-            {isAutoSaveEnabled && (
-              <select
-                value={autoSaveInterval}
-                onChange={(e) => setAutoSaveInterval(Number(e.target.value))}
-                className="px-2 py-1 text-xs border border-border rounded bg-background text-foreground"
-                title="Auto-save interval"
-              >
-                <option value={5000}>5s</option>
-                <option value={10000}>10s</option>
-                <option value={30000}>30s</option>
-                <option value={60000}>1m</option>
-                <option value={300000}>5m</option>
-                <option value={600000}>10m</option>
-              </select>
-            )}
-            
-            {/* Force Save - Debug Button */}
-            <Button
-              onClick={async () => {
-                console.log('Force save triggered')
-                setHasUnsavedChanges(true)
-                await saveGridState(true)
-                dispatch({ type: "ADD_LOG", payload: "Force save completed" })
-              }}
-              size="sm"
-              variant="destructive"
-              className="gap-2"
-              title="Force auto-save (Debug)"
-            >
-              <Save className="h-4 w-4" />
-              Force
-            </Button>
-            
-            {/* Undo/Redo buttons */}
-            <div className="flex gap-1 border-l border-border pl-2">
-              <Button
-                onClick={undo}
-                size="sm"
-                variant="outline"
-                disabled={historyIndex <= 0}
-                className="gap-2"
-                title="Undo (Ctrl+Z)"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 7v6h6"/>
-                  <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
-                </svg>
-                Undo
-              </Button>
-              <Button
-                onClick={redo}
-                size="sm"
-                variant="outline"
-                disabled={historyIndex >= stateHistory.length - 1}
-                className="gap-2"
-                title="Redo (Ctrl+Y)"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 7v6h-6"/>
-                  <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"/>
-                </svg>
-                Redo
-              </Button>
-            </div>
-            
-            <Button onClick={exportGridState} size="sm" variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-            <label className="cursor-pointer">
-              <input type="file" accept=".json" onChange={importGridState} className="hidden" />
-              <Button size="sm" variant="outline" className="gap-2" asChild>
-                <span>
-                  <Upload className="h-4 w-4" />
-                  Import
-                </span>
-              </Button>
-            </label>
-            <Button onClick={addNestContainer} size="sm" variant="outline" className="gap-2">
-              <Grid3X3 className="h-4 w-4" />
-              Add Nest
-            </Button>
-            <Button onClick={addWidget} size="sm" variant="outline" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Widget
-            </Button>
-            
-            {/* Reset toolbar position button */}
-            <Button 
-              onClick={() => setActionsToolbarPosition({ top: 80, right: 20 })}
-              size="sm" 
-              variant="ghost" 
-              className="gap-2"
-              title="Reset toolbar position"
-            >
-              <Settings className="h-4 w-4" />
-              Reset
-            </Button>
-            
-            {/* Toggle debug panel */}
-            <Button 
-              onClick={() => setIsDebugPanelVisible(!isDebugPanelVisible)}
-              size="sm" 
-              variant={isDebugPanelVisible ? "default" : "outline"} 
-              className="gap-2"
-              title={`${isDebugPanelVisible ? 'Hide' : 'Show'} debug panel (Ctrl+D)`}
-            >
-              <Terminal className="h-4 w-4" />
-              Debug
-            </Button>
+            ... (All toolbar buttons removed and replaced by unified toolbar)
           </CardContent>
         </Card>
       </div>
+      */}
 
       {/* Zoom Toolbar */}
       <div 

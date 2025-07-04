@@ -5,7 +5,6 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { TopNavigation } from "@/components/top-navigation"
 import { MainContent } from "@/components/main-content"
-import { FloatingToolbar } from "@/components/floating-toolbar"
 import { ModalSystem } from "@/components/modal-system"
 import { StatusBar } from "@/components/status-bar"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -146,7 +145,6 @@ export function CommsApp() {
             </div>
 
             <AppContent />
-            <FloatingToolbar />
             <WidgetPalette />
             <ModalSystem />
           </div>

@@ -19,7 +19,7 @@
 - `top-navigation.tsx` - Header with controls and status
 - `main-content.tsx` - Grid-based dashboard with collision detection
 - `status-bar.tsx` - Real-time system status display
-- `floating-toolbar.tsx` - Widget manipulation tools
+- `floating-toolbar-merged.tsx` - Unified floating toolbar with all toolkit functions
 
 **✅ Widget & Modal Systems**:
 - `widget-palette.tsx` - Dynamic AriesMod discovery and drag-to-create
