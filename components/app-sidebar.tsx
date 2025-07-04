@@ -274,7 +274,7 @@ export function AppSidebar() {
                         } : {})}
                       >
                         <div className={cn("w-1 h-1 bg-teal-400 rounded-full", animationsEnabled && "animate-pulse")} />
-                        neural interface
+                        nominal interface
                       </MotionWrapper>
                     </div>
                   </div>
@@ -559,7 +559,7 @@ export function AppSidebar() {
                         </div>
                         <div className="text-xs text-muted-foreground flex items-center gap-1">
                           <div className="w-1 h-1 bg-teal-400 rounded-full" />
-                          neural interface
+                          nominal interface
                         </div>
                       </div>
                     </div>

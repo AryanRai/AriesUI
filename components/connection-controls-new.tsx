@@ -95,7 +95,18 @@ const ConnectionControls = () => {
     setSaveStatus('saving')
     
     // Update ping intervals
-    updatePingInterval({
+    if (shPingInterval !== pingIntervals.sh) {
+      updatePingInterval('sh', shPingInterval)
+    }
+    if (enPingInterval !== pingIntervals.en) {
+      updatePingInterval('en', enPingInterval)
+    }
+    if (uiUpdateInterval !== pingIntervals.ui) {
+      updatePingInterval('ui', uiUpdateInterval)
+    }
+    
+    // Update the pingIntervals object
+    Object.assign(pingIntervals, {
       sh: shPingInterval,
       en: enPingInterval,
       ui: uiUpdateInterval

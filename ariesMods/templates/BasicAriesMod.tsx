@@ -2,7 +2,10 @@ import React from 'react'
 import type { AriesMod, AriesModProps, AriesModData } from '@/types/ariesmods'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Activity } from 'lucide-react'
+import { Activity, Zap, AlertTriangle, CheckCircle, Info } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { useAnimationPreferences } from '@/hooks/use-animation-preferences'
+import { cn } from '@/lib/utils'
 
 // Define your AriesMod's configuration interface
 export interface BasicAriesModConfig {
@@ -31,20 +34,58 @@ const BasicAriesMod: React.FC<AriesModProps> = ({
   onConfigChange,
   onDataRequest 
 }) => {
+  const { animationsEnabled } = useAnimationPreferences()
+  
   // Merge default config with user config
   const modConfig = { ...defaultConfig, ...config } as BasicAriesModConfig
 
-  // Get theme colors
+  // Get theme colors for futuristic design
   const getThemeColors = () => {
     switch (modConfig.theme) {
-      case 'success': return { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' }
-      case 'warning': return { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700' }
-      case 'danger': return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' }
-      default: return { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' }
+      case 'success': return { 
+        bg: 'bg-green-500/5', 
+        border: 'border-green-500/20', 
+        text: 'text-green-400',
+        glow: 'shadow-green-500/20',
+        accent: 'bg-green-500/10'
+      }
+      case 'warning': return { 
+        bg: 'bg-orange-500/5', 
+        border: 'border-orange-500/20', 
+        text: 'text-orange-400',
+        glow: 'shadow-orange-500/20',
+        accent: 'bg-orange-500/10'
+      }
+      case 'danger': return { 
+        bg: 'bg-red-500/5', 
+        border: 'border-red-500/20', 
+        text: 'text-red-400',
+        glow: 'shadow-red-500/20',
+        accent: 'bg-red-500/10'
+      }
+      default: return { 
+        bg: 'bg-teal-500/5', 
+        border: 'border-teal-500/20', 
+        text: 'text-teal-400',
+        glow: 'shadow-teal-500/20',
+        accent: 'bg-teal-500/10'
+      }
+    }
+  }
+
+  // Get theme icon
+  const getThemeIcon = () => {
+    switch (modConfig.theme) {
+      case 'success': return <CheckCircle className="h-4 w-4" />
+      case 'warning': return <AlertTriangle className="h-4 w-4" />
+      case 'danger': return <Zap className="h-4 w-4" />
+      default: return <Info className="h-4 w-4" />
     }
   }
 
   const colors = getThemeColors()
+  const ThemeIcon = getThemeIcon()
+  const MotionWrapper = animationsEnabled ? motion.div : 'div'
 
   // Handle data requests (for real-time data)
   React.useEffect(() => {
@@ -58,40 +99,127 @@ const BasicAriesMod: React.FC<AriesModProps> = ({
   }, [onDataRequest, modConfig.updateInterval])
 
   return (
-    <Card className={`h-full ${colors.bg} ${colors.border} border-2`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            {modConfig.showIcon && <Activity className={`h-4 w-4 ${colors.text}`} />}
-            <span className={colors.text}>{title}</span>
-          </div>
-          <Badge variant="outline" className="text-xs">
-            v1.0
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <div className="text-center">
-          <div className={`text-lg font-semibold ${colors.text}`}>
-            {modConfig.displayValue}
-          </div>
-          
-          {data && (
-            <div className="mt-2">
-              <div className="text-xs text-muted-foreground">
-                Last updated: {new Date(data.timestamp).toLocaleTimeString()}
-              </div>
-              {data.value && (
-                <div className={`text-sm ${colors.text}`}>
-                  Value: {data.value}
-                </div>
+    <MotionWrapper
+      className="h-full"
+      {...(animationsEnabled ? {
+        initial: { opacity: 0, scale: 0.95 },
+        animate: { opacity: 1, scale: 1 },
+        whileHover: { scale: 1.02 },
+        transition: { duration: 0.2 }
+      } : {})}
+    >
+      <Card className={cn(
+        "h-full relative overflow-hidden",
+        colors.bg,
+        colors.border,
+        colors.glow,
+        "border-2 backdrop-blur shadow-lg"
+      )}>
+        {/* Futuristic corner accents */}
+        <div className={cn("absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2", colors.border)} />
+        <div className={cn("absolute top-0 right-0 w-4 h-4 border-r-2 border-t-2", colors.border)} />
+        <div className={cn("absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2", colors.border)} />
+        <div className={cn("absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2", colors.border)} />
+        
+        {/* Animated scan line */}
+        {animationsEnabled && (
+          <motion.div
+            className={cn("absolute top-0 left-0 w-full h-0.5", colors.accent)}
+            animate={{
+              x: ["-100%", "100%"],
+              opacity: [0, 1, 0]
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+        )}
+        
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between text-sm">
+            <MotionWrapper 
+              className="flex items-center gap-2"
+              {...(animationsEnabled ? {
+                initial: { x: -10, opacity: 0 },
+                animate: { x: 0, opacity: 1 },
+                transition: { delay: 0.1 }
+              } : {})}
+            >
+              {modConfig.showIcon && (
+                <motion.div
+                  className={colors.text}
+                  {...(animationsEnabled ? {
+                    animate: { rotate: [0, 5, 0, -5, 0] },
+                    transition: { duration: 2, repeat: Infinity }
+                  } : {})}
+                >
+                  {ThemeIcon}
+                </motion.div>
               )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              <span className={cn("text-slate-300", colors.text)}>{title}</span>
+            </MotionWrapper>
+            <MotionWrapper
+              {...(animationsEnabled ? {
+                initial: { x: 10, opacity: 0 },
+                animate: { x: 0, opacity: 1 },
+                transition: { delay: 0.2 }
+              } : {})}
+            >
+              <Badge variant="outline" className={cn(
+                "text-xs border-current",
+                colors.text,
+                colors.border
+              )}>
+                v1.0
+              </Badge>
+            </MotionWrapper>
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="pt-0">
+          <MotionWrapper
+            className="text-center"
+            {...(animationsEnabled ? {
+              initial: { y: 10, opacity: 0 },
+              animate: { y: 0, opacity: 1 },
+              transition: { delay: 0.3 }
+            } : {})}
+          >
+            <motion.div 
+              className={cn("text-lg font-semibold font-mono", colors.text)}
+              {...(animationsEnabled ? {
+                animate: { scale: [1, 1.05, 1] },
+                transition: { duration: 2, repeat: Infinity }
+              } : {})}
+            >
+              {modConfig.displayValue}
+            </motion.div>
+            
+            {data && (
+              <MotionWrapper
+                className="mt-2 space-y-1"
+                {...(animationsEnabled ? {
+                  initial: { opacity: 0 },
+                  animate: { opacity: 1 },
+                  transition: { delay: 0.4 }
+                } : {})}
+              >
+                <div className="text-xs text-slate-400 font-mono">
+                  Last updated: {new Date(data.timestamp).toLocaleTimeString()}
+                </div>
+                {data.value && (
+                  <div className={cn("text-sm font-mono", colors.text)}>
+                    Value: {data.value}
+                  </div>
+                )}
+              </MotionWrapper>
+            )}
+          </MotionWrapper>
+        </CardContent>
+      </Card>
+    </MotionWrapper>
   )
 }
 

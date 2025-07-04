@@ -73,7 +73,7 @@ export function FloatingToolbar() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isMinimized, setIsMinimized] = useState(false)
   const toolbarRef = useRef<HTMLDivElement>(null)
-  const animationFrameRef = useRef<number | undefined>(undefined)
+  const animationFrameRef = useRef<number>()
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -144,10 +144,6 @@ export function FloatingToolbar() {
       y: Math.floor(Math.random() * 300),
       w: 200,
       h: 150,
-      config: {},
-      position: { x: Math.floor(Math.random() * 400), y: Math.floor(Math.random() * 300), w: 200, h: 150 },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     }
     dispatch({ type: "ADD_WIDGET", payload: newWidget })
     dispatch({ type: "ADD_LOG", payload: `New widget created: ${newWidget.id}` })

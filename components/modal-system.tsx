@@ -1,6 +1,8 @@
 "use client"
 
+import { motion, AnimatePresence } from "framer-motion"
 import { useComms } from "@/components/comms-context"
+import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 import { ConfigModal } from "@/components/modals/config-modal"
 import { LogsModal } from "@/components/modals/logs-modal"
 import { TerminalModal } from "@/components/modals/terminal-modal"
@@ -12,6 +14,7 @@ import { MarketplaceModal } from "@/components/modals/marketplace-modal"
 
 export function ModalSystem() {
   const { state, loadProfile, updateProfiles, dispatch } = useComms()
+  const { animationsEnabled } = useAnimationPreferences()
 
   const handleSaveProfile = (name: string) => {
     // Get current grid state from localStorage
@@ -54,27 +57,121 @@ export function ModalSystem() {
 
   const handleClose = () => dispatch({ type: "SET_MODAL", payload: null })
 
+  const MotionWrapper = animationsEnabled ? motion.div : 'div'
+
   return (
-    <>
-      {state.activeModal === "config" && <ConfigModal />}
-      {state.activeModal === "logs" && <LogsModal />}
-      {state.activeModal === "terminal" && <TerminalModal />}
-      {state.activeModal === "performance" && <PerformanceModal />}
-      {state.activeModal === "ariesmods" && <AriesModsModal />}
-      {state.activeModal === "widget-config" && <WidgetConfigModal />}
+    <AnimatePresence mode="wait">
+      {state.activeModal === "config" && (
+        <MotionWrapper
+          key="config-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <ConfigModal />
+        </MotionWrapper>
+      )}
+      {state.activeModal === "logs" && (
+        <MotionWrapper
+          key="logs-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <LogsModal />
+        </MotionWrapper>
+      )}
+      {state.activeModal === "terminal" && (
+        <MotionWrapper
+          key="terminal-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <TerminalModal />
+        </MotionWrapper>
+      )}
+      {state.activeModal === "performance" && (
+        <MotionWrapper
+          key="performance-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <PerformanceModal />
+        </MotionWrapper>
+      )}
+      {state.activeModal === "ariesmods" && (
+        <MotionWrapper
+          key="ariesmods-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <AriesModsModal />
+        </MotionWrapper>
+      )}
+      {state.activeModal === "widget-config" && (
+        <MotionWrapper
+          key="widget-config-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <WidgetConfigModal />
+        </MotionWrapper>
+      )}
       {state.activeModal === "profiles" && (
-        <ProfilesModal
-          profiles={state.profiles}
-          activeProfile={state.activeProfile}
-          onLoadProfile={handleLoadProfile}
-          onSaveProfile={handleSaveProfile}
-          onDeleteProfile={handleDeleteProfile}
-          onClose={handleClose}
-        />
+        <MotionWrapper
+          key="profiles-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <ProfilesModal
+            profiles={state.profiles}
+            activeProfile={state.activeProfile}
+            onLoadProfile={handleLoadProfile}
+            onSaveProfile={handleSaveProfile}
+            onDeleteProfile={handleDeleteProfile}
+            onClose={handleClose}
+          />
+        </MotionWrapper>
       )}
       {state.activeModal === "marketplace" && (
-        <MarketplaceModal isOpen={true} onClose={handleClose} />
+        <MotionWrapper
+          key="marketplace-modal"
+          {...(animationsEnabled ? {
+            initial: { opacity: 0, scale: 0.9 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.9 },
+            transition: { duration: 0.2 }
+          } : {})}
+        >
+          <MarketplaceModal />
+        </MotionWrapper>
       )}
-    </>
+    </AnimatePresence>
   )
 }

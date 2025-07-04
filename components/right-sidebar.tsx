@@ -1,12 +1,50 @@
 "use client"
 
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PanelRightClose, Settings, Trash2, Grid, Cpu } from "lucide-react"
+import { PanelRightClose, Settings, Trash2, Grid, Cpu, Zap } from "lucide-react"
 import { HardwareInspector } from "@/components/hardware/hardware-inspector"
+import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
+import { cn } from "@/lib/utils"
 import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
+
+// Futuristic background for right sidebar
+const RightSidebarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }) => {
+  if (!animationsEnabled) {
+    return (
+      <div className="absolute inset-0 bg-gradient-to-l from-background/95 to-background/85" />
+    )
+  }
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-l from-background/95 to-background/85" />
+      
+      {/* Animated scan line */}
+      <motion.div
+        className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-teal-400/50 to-transparent"
+        animate={{
+          y: [-100, window.innerHeight + 100],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      />
+      
+      {/* Subtle grid pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.02)_1px,transparent_1px)] bg-[size:30px_30px]" />
+      
+      {/* Corner accents */}
+      <div className="absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 border-teal-400/30" />
+      <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-teal-400/30" />
+    </div>
+  )
+}
 
 interface BaseWidget {
   id: string
@@ -70,6 +108,8 @@ type GroupedItem = (MainGridWidget | NestedWidget | NestContainer | AriesWidget 
 }
 
 const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
+  const { animationsEnabled } = useAnimationPreferences()
+  
   const allItems: GroupedItem[] = [
     ...gridState.mainAriesWidgets.map((w: AriesWidget) => ({ ...w, group: 'AriesMods (Main)' })),
     ...gridState.mainWidgets.map((w: MainGridWidget) => ({ ...w, group: 'Widgets (Main)' })),
@@ -87,72 +127,191 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
     return acc;
   }, {});
 
+  const MotionWrapper = animationsEnabled ? motion.div : 'div'
+
   return (
-    <div className={`
-      h-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 
-      flex flex-col
-      transition-all duration-300 ease-in-out
-      overflow-hidden
-      ${isOpen ? 'w-80 border-l border-border/40' : 'w-0 border-none'}
-    `}>
-      <div className="flex items-center justify-between p-2 border-b border-border/40 min-w-max">
-        <h2 className="text-lg font-semibold">Inspector</h2>
-        <Button variant="ghost" size="icon" onClick={onToggle}>
-          <PanelRightClose className="h-4 w-4" />
-        </Button>
-      </div>
+    <AnimatePresence>
+      {isOpen && (
+        <MotionWrapper
+          {...(animationsEnabled ? {
+            initial: { width: 0, opacity: 0 },
+            animate: { width: 320, opacity: 1 },
+            exit: { width: 0, opacity: 0 },
+            transition: { type: "spring", stiffness: 400, damping: 30 }
+          } : {})}
+          className="h-full relative overflow-hidden"
+        >
+          {/* Futuristic Background */}
+          <RightSidebarBackground animationsEnabled={animationsEnabled} />
+          
+          {/* Content */}
+          <div className="relative z-10 h-full flex flex-col border-l border-teal-500/20">
+            {/* Header */}
+            <MotionWrapper 
+              className="flex items-center justify-between p-2 border-b border-teal-500/20"
+              {...(animationsEnabled ? {
+                initial: { opacity: 0, y: -10 },
+                animate: { opacity: 1, y: 0 },
+                transition: { delay: 0.1 }
+              } : {})}
+            >
+              <div className="flex items-center gap-2">
+                <motion.div
+                  className="w-2 h-2 bg-teal-400 rounded-full"
+                  {...(animationsEnabled ? {
+                    animate: { opacity: [0.5, 1, 0.5] },
+                    transition: { duration: 2, repeat: Infinity }
+                  } : {})}
+                />
+                <h2 className="text-lg font-semibold bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent">
+                  Inspector
+                </h2>
+              </div>
+              <MotionWrapper
+                {...(animationsEnabled ? {
+                  whileHover: { scale: 1.1, rotate: 90 },
+                  whileTap: { scale: 0.9 }
+                } : {})}
+              >
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onToggle}
+                  className="hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
+              </MotionWrapper>
+            </MotionWrapper>
 
-      <Tabs defaultValue="grid" className="flex-1 flex flex-col">
-        <div className="border-b border-border/40 px-2">
-          <TabsList className="w-full">
-            <TabsTrigger value="grid" className="flex-1">
-              <Grid className="h-4 w-4 mr-2" />
-              Grid
-            </TabsTrigger>
-            <TabsTrigger value="hardware" className="flex-1">
-              <Cpu className="h-4 w-4 mr-2" />
-              Hardware
-            </TabsTrigger>
-          </TabsList>
-        </div>
+            <Tabs defaultValue="grid" className="flex-1 flex flex-col">
+              <MotionWrapper 
+                className="border-b border-teal-500/20 px-2"
+                {...(animationsEnabled ? {
+                  initial: { opacity: 0, y: -5 },
+                  animate: { opacity: 1, y: 0 },
+                  transition: { delay: 0.2 }
+                } : {})}
+              >
+                <TabsList className="w-full bg-background/50 border border-teal-500/20">
+                  <TabsTrigger 
+                    value="grid" 
+                    className="flex-1 data-[state=active]:bg-teal-500/10 data-[state=active]:text-teal-300 data-[state=active]:border-teal-500/30"
+                  >
+                    <Grid className="h-4 w-4 mr-2" />
+                    Grid
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="hardware" 
+                    className="flex-1 data-[state=active]:bg-teal-500/10 data-[state=active]:text-teal-300 data-[state=active]:border-teal-500/30"
+                  >
+                    <Cpu className="h-4 w-4 mr-2" />
+                    Hardware
+                  </TabsTrigger>
+                </TabsList>
+              </MotionWrapper>
 
-        <TabsContent value="grid" className="flex-1 p-0">
-          <ScrollArea className="h-full">
-            <Accordion type="multiple" className="w-full p-2" defaultValue={Object.keys(groupedItems)}>
-              {Object.entries(groupedItems).map(([groupName, items]) => (
-                <AccordionItem value={groupName} key={groupName}>
-                  <AccordionTrigger>{groupName} ({items.length})</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-2">
-                      {items.map(item => (
-                        <div key={item.id} className="p-2 border rounded-md text-sm">
-                          <div className="font-semibold">{item.title || item.type}</div>
-                          <div className="text-xs text-muted-foreground truncate">ID: {item.id}</div>
-                          <div className="flex justify-end space-x-1 mt-1">
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <Settings className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive">
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
+              <TabsContent value="grid" className="flex-1 p-0">
+                <ScrollArea className="h-full">
+                  <MotionWrapper 
+                    {...(animationsEnabled ? {
+                      initial: { opacity: 0 },
+                      animate: { opacity: 1 },
+                      transition: { delay: 0.3, staggerChildren: 0.1 }
+                    } : {})}
+                  >
+                    <Accordion type="multiple" className="w-full p-2" defaultValue={Object.keys(groupedItems)}>
+                      {Object.entries(groupedItems).map(([groupName, items], groupIndex) => (
+                        <MotionWrapper
+                          key={groupName}
+                          {...(animationsEnabled ? {
+                            initial: { opacity: 0, x: -20 },
+                            animate: { opacity: 1, x: 0 },
+                            transition: { delay: 0.4 + groupIndex * 0.1 }
+                          } : {})}
+                        >
+                          <AccordionItem value={groupName} className="border-teal-500/20">
+                            <AccordionTrigger className="hover:bg-teal-500/10 hover:text-teal-300 transition-all rounded px-2">
+                              <div className="flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-teal-400" />
+                                {groupName} ({items.length})
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-2 pl-2">
+                                {items.map((item, itemIndex) => (
+                                  <MotionWrapper
+                                    key={item.id}
+                                    className="p-2 border border-teal-500/20 rounded-md text-sm bg-background/30 hover:bg-teal-500/5 transition-all"
+                                    {...(animationsEnabled ? {
+                                      initial: { opacity: 0, scale: 0.95 },
+                                      animate: { opacity: 1, scale: 1 },
+                                      whileHover: { scale: 1.02, x: 4 },
+                                      transition: { delay: 0.5 + itemIndex * 0.05 }
+                                    } : {})}
+                                  >
+                                    <div className="font-semibold text-slate-200">{item.title || item.type}</div>
+                                    <div className="text-xs text-teal-400 truncate">ID: {item.id}</div>
+                                    <div className="flex justify-end space-x-1 mt-1">
+                                      <MotionWrapper
+                                        {...(animationsEnabled ? {
+                                          whileHover: { scale: 1.1, rotate: 45 },
+                                          whileTap: { scale: 0.9 }
+                                        } : {})}
+                                      >
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-6 w-6 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                                        >
+                                          <Settings className="h-3 w-3" />
+                                        </Button>
+                                      </MotionWrapper>
+                                      <MotionWrapper
+                                        {...(animationsEnabled ? {
+                                          whileHover: { scale: 1.1, rotate: 10 },
+                                          whileTap: { scale: 0.9 }
+                                        } : {})}
+                                      >
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-6 w-6 text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </MotionWrapper>
+                                    </div>
+                                  </MotionWrapper>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </MotionWrapper>
                       ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </ScrollArea>
-        </TabsContent>
+                    </Accordion>
+                  </MotionWrapper>
+                </ScrollArea>
+              </TabsContent>
 
-        <TabsContent value="hardware" className="flex-1 p-0">
-          <ScrollArea className="h-full">
-            <HardwareInspector />
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
-    </div>
+              <TabsContent value="hardware" className="flex-1 p-0">
+                <ScrollArea className="h-full">
+                  <MotionWrapper
+                    {...(animationsEnabled ? {
+                      initial: { opacity: 0, y: 20 },
+                      animate: { opacity: 1, y: 0 },
+                      transition: { delay: 0.3 }
+                    } : {})}
+                  >
+                    <HardwareInspector />
+                  </MotionWrapper>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </MotionWrapper>
+      )}
+    </AnimatePresence>
   )
 }
 

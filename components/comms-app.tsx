@@ -28,7 +28,7 @@ interface BaseWidget {
 }
 interface MainGridWidget extends BaseWidget { container: "main"; content: string; }
 interface NestedWidget extends BaseWidget { container: "nest"; nestId: string; content: string; }
-interface NestContainer { id: string; title: string; x: number; y: number; w: number; h: number; createdAt: string; updatedAt: string; }
+interface NestContainer { id: string; type: string; title: string; x: number; y: number; w: number; h: number; createdAt: string; updatedAt: string; }
 interface AriesWidget { id: string; type: 'ariesmods'; ariesModType: string; title: string; x: number; y: number; w: number; h: number; config: any; data?: any; createdAt: string; updatedAt: string; }
 interface NestedAriesWidget extends AriesWidget { nestId: string; }
 

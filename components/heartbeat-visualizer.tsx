@@ -1,16 +1,18 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, Cpu, Database, Server, AppWindow, ChevronRight, ChevronLeft, Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { usePingMonitor } from '@/hooks/use-ping-monitor'
+import { useAnimationPreferences } from '@/hooks/use-animation-preferences'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import ConnectionControls from './connection-controls'
 
 const HeartbeatVisualizer = () => {
   const { pingData, pingIntervals, isConnected, reconnect } = usePingMonitor()
+  const { animationsEnabled } = useAnimationPreferences()
   const [isReversed, setIsReversed] = useState(false)
   const [renderLatency, setRenderLatency] = useState(0)
 
@@ -99,91 +101,175 @@ const HeartbeatVisualizer = () => {
     .filter(stage => stage.latency !== null)
     .reduce((a, stage) => a + (stage.latency || 0), 0)
   const ArrowIcon = isReversed ? ChevronLeft : ChevronRight
+  const MotionWrapper = animationsEnabled ? motion.div : 'div'
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-accent/50 px-2 py-1 rounded-md transition-colors">
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+        <MotionWrapper 
+          className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-teal-500/10 px-2 py-1 rounded-md transition-colors border border-transparent hover:border-teal-500/20"
+          {...(animationsEnabled ? {
+            whileHover: { scale: 1.02 },
+            whileTap: { scale: 0.98 }
+          } : {})}
+        >
+          <MotionWrapper
+            {...(animationsEnabled ? {
+              animate: { scale: [1, 1.2, 1] },
+              transition: { duration: 1, repeat: Infinity, ease: "easeInOut" }
+            } : {})}
             className={cn(
               "transition-colors",
               isConnected && stages.every(s => s.status === 'connected' || s.status === 'unknown') 
-                ? "text-teal-500" 
-                : "text-orange-500"
+                ? "text-green-400" 
+                : stages.some(s => s.status === 'disconnected')
+                ? "text-red-400"
+                : "text-orange-400"
             )}
           >
             <Heart className="h-5 w-5" />
-          </motion.div>
-          <div className="flex items-center bg-background/50 px-2 py-1 rounded-md border border-border/50">
-            <div className="flex items-center gap-1 pr-2 border-r border-border/50">
-              <div className={cn(
-                "h-2 w-2 rounded-full",
-                isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
-              )} />
-              <span className="text-xs">
-                {isConnected ? "Connected" : "Disconnected"}
+          </MotionWrapper>
+          <div className="flex items-center bg-background/50 px-2 py-1 rounded-md border border-teal-500/20 backdrop-blur">
+            <div className="flex items-center gap-1 pr-2 border-r border-teal-500/20">
+              <motion.div 
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  isConnected 
+                    ? stages.every(s => s.status === 'connected' || s.status === 'unknown') 
+                      ? "bg-green-400" 
+                      : "bg-orange-400"
+                    : "bg-red-500"
+                )} 
+                {...(animationsEnabled ? {
+                  animate: isConnected ? { 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.7, 1, 0.7] 
+                  } : {
+                    scale: [1, 1.1, 1],
+                    opacity: [0.5, 0.8, 0.5]
+                  },
+                  transition: { duration: 1.5, repeat: Infinity }
+                } : {})}
+              />
+              <span className="text-xs text-teal-300">
+                {isConnected 
+                  ? stages.every(s => s.status === 'connected' || s.status === 'unknown')
+                    ? "Nominal Link"
+                    : "Degraded Link"
+                  : "Disconnected"}
               </span>
             </div>
             {displayedStages.map((stage, index) => (
               <React.Fragment key={stage.name}>
-                <div className="flex flex-col items-center text-center px-2">
+                <MotionWrapper 
+                  className="flex flex-col items-center text-center px-2"
+                  {...(animationsEnabled ? {
+                    initial: { opacity: 0, y: 5 },
+                    animate: { opacity: 1, y: 0 },
+                    transition: { delay: index * 0.1 }
+                  } : {})}
+                >
                   <div className="flex items-center gap-1">
-                    {stage.icon}
-                    <span>{stage.name}</span>
+                    <motion.div
+                      {...(animationsEnabled ? {
+                        animate: stage.status === 'connected' ? {
+                          rotate: [0, 5, 0, -5, 0]
+                        } : {},
+                        transition: { duration: 2, repeat: Infinity, delay: index * 0.3 }
+                      } : {})}
+                    >
+                      {stage.icon}
+                    </motion.div>
+                    <span className="text-slate-300">{stage.name}</span>
                   </div>
                   <div className="flex flex-col items-center">
                     <span className={cn(
-                      "text-xs",
+                      "text-xs font-mono",
                       stage.status === 'connected' ? (
-                        stage.latency && stage.latency > 30 ? 'text-orange-400' : 'text-green-400'
-                      ) : stage.status === 'unknown' ? 'text-muted-foreground' : 'text-red-400'
+                        !stage.latency || stage.latency <= 10 ? 'text-green-400' :
+                        stage.latency <= 30 ? 'text-teal-400' :
+                        stage.latency <= 100 ? 'text-orange-400' : 'text-red-400'
+                      ) : stage.status === 'unknown' ? 'text-slate-500' : 'text-red-400'
                     )}>
                       {stage.latency !== null ? `${stage.latency}ms` : '-'}
                     </span>
                     {stage.status !== 'unknown' && (
                       <span className={cn(
                         "text-[10px]",
-                        stage.status === 'connected' ? 'text-green-400' : 'text-red-400'
+                        stage.status === 'connected' ? 
+                          (!stage.latency || stage.latency <= 30 ? 'text-green-400' : 
+                           stage.latency <= 100 ? 'text-orange-400' : 'text-red-400') : 
+                          'text-red-400'
                       )}>
                         {stage.status}
                       </span>
                     )}
                   </div>
-                </div>
+                </MotionWrapper>
                 {index < displayedStages.length - 1 && (
-                  <motion.div
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear', delay: index * 0.2 }}
+                  <MotionWrapper
+                    {...(animationsEnabled ? {
+                      animate: { 
+                        opacity: [0.3, 1, 0.3],
+                        x: [0, 2, 0] 
+                      },
+                      transition: { duration: 1.5, repeat: Infinity, ease: 'linear', delay: index * 0.2 }
+                    } : {})}
                   >
-                    <ArrowIcon className="h-4 w-4" />
-                  </motion.div>
+                    <ArrowIcon className="h-4 w-4 text-teal-400" />
+                  </MotionWrapper>
                 )}
               </React.Fragment>
             ))}
           </div>
-          <div className="flex flex-col items-center pl-2">
-            <span>Total</span>
-            <span className={cn(
-              totalLatency > 100 ? 'text-red-500' : 'text-green-400',
-              stages.some(s => s.status === 'disconnected') && 'text-red-500'
-            )}>
-              {totalLatency}ms
-            </span>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6"
-            onMouseEnter={() => setIsReversed(true)}
-            onMouseLeave={() => setIsReversed(false)}
+          <MotionWrapper 
+            className="flex flex-col items-center pl-2"
+            {...(animationsEnabled ? {
+              initial: { opacity: 0, scale: 0.9 },
+              animate: { opacity: 1, scale: 1 },
+              transition: { delay: 0.5 }
+            } : {})}
           >
-            <Repeat className="h-4 w-4" />
-          </Button>
-        </div>
+            <span className="text-slate-300">Total</span>
+            <motion.span 
+              className={cn(
+                "font-mono",
+                stages.some(s => s.status === 'disconnected') ? 'text-red-400' :
+                totalLatency <= 50 ? 'text-green-400' :
+                totalLatency <= 100 ? 'text-teal-400' :
+                totalLatency <= 200 ? 'text-orange-400' : 'text-red-400'
+              )}
+              {...(animationsEnabled ? {
+                animate: totalLatency > 100 ? {
+                  color: ["rgb(251, 146, 60)", "rgb(239, 68, 68)", "rgb(251, 146, 60)"]
+                } : totalLatency > 50 ? {
+                  color: ["rgb(20, 184, 166)", "rgb(251, 146, 60)", "rgb(20, 184, 166)"]
+                } : {},
+                transition: { duration: 2, repeat: Infinity }
+              } : {})}
+            >
+              {totalLatency}ms
+            </motion.span>
+          </MotionWrapper>
+          <MotionWrapper
+            {...(animationsEnabled ? {
+              whileHover: { scale: 1.1, rotate: 180 },
+              whileTap: { scale: 0.9 }
+            } : {})}
+          >
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+              onMouseEnter={() => setIsReversed(true)}
+              onMouseLeave={() => setIsReversed(false)}
+            >
+              <Repeat className="h-4 w-4" />
+            </Button>
+          </MotionWrapper>
+        </MotionWrapper>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="end">
+      <PopoverContent className="w-[400px] p-0 border-teal-500/20 bg-background/95 backdrop-blur" align="end">
         <ConnectionControls />
       </PopoverContent>
     </Popover>
