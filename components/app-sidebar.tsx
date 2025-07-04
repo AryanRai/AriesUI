@@ -17,6 +17,7 @@ import { useSidebar } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { PreloaderIcon } from "@/components/preloader-icon"
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
@@ -270,34 +271,11 @@ export function AppSidebar() {
                   } : {})}
                 >
                   <div className="flex items-center gap-3">
-                    <MotionWrapper 
-                      className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-teal-600 to-slate-700 flex items-center justify-center shadow-lg border border-teal-500/20"
-                      {...(animationsEnabled ? {
-                        whileHover: { 
-                          scale: 1.05,
-                          boxShadow: "0 0 20px rgba(20, 184, 166, 0.3)"
-                        },
-                        transition: { duration: 0.3 }
-                      } : {})}
-                    >
-                      <Zap className="h-5 w-5 text-teal-100" />
-                      {animationsEnabled && (
-                        <motion.div
-                          className="absolute inset-0 rounded-xl bg-gradient-to-br from-teal-600 to-slate-700"
-                          animate={{
-                            boxShadow: [
-                              "0 0 0px rgba(20, 184, 166, 0)",
-                              "0 0 15px rgba(20, 184, 166, 0.2)",
-                              "0 0 0px rgba(20, 184, 166, 0)"
-                            ]
-                          }}
-                          transition={{
-                            duration: 3,
-                            repeat: Infinity,
-                          }}
-                        />
-                      )}
-                    </MotionWrapper>
+                    <PreloaderIcon 
+                      size={40} 
+                      animationsEnabled={animationsEnabled}
+                      className="flex-shrink-0"
+                    />
                     <div>
                       <MotionWrapper 
                         className="font-bold text-xl bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent"

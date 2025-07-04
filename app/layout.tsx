@@ -1,10 +1,16 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { AppWithPreloader } from '@/components/app-with-preloader'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'Comms',
+  description: 'Advanced Communication Interface',
+  generator: 'Next.js',
+  icons: {
+    icon: '/branding/Comms.ico',
+    shortcut: '/branding/Comms.ico',
+    apple: '/branding/Comms.png',
+  },
 }
 
 export default function RootLayout({
@@ -14,7 +20,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppWithPreloader>
+          {children}
+        </AppWithPreloader>
+      </body>
     </html>
   )
 }

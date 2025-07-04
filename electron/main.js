@@ -23,7 +23,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 700,
     show: false, // Don't show until ready
-    icon: path.join(__dirname, '../public/placeholder-logo.png'), // Use your logo
+    icon: path.join(__dirname, '../public/branding/Comms.ico'), // Use Comms logo
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
