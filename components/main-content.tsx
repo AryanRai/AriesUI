@@ -403,10 +403,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const updateGridState = useCallback((updater: (prev: GridState) => GridState) => {
     setGridState((prev) => {
       const newState = updater(prev)
-      setHasUnsavedChanges(true)
       return newState
     })
   }, [])
+
+  // Track unsaved changes
+  useEffect(() => {
+    setHasUnsavedChanges(true)
+  }, [gridState])
 
   // Save grid state to localStorage and current profile
   const saveGridState = useCallback(() => {
