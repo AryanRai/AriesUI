@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -217,14 +216,14 @@ const applyPushPhysics = (
     newX = Math.round(newX / gridSize) * gridSize
     newY = Math.round(newY / gridSize) * gridSize
 
-    // Ensure within bounds
+    // Remove all artificial boundaries - allow free movement anywhere including negative coordinates
+    // Only enforce container bounds if explicitly provided for nests
     if (containerBounds) {
-      newX = Math.max(containerBounds.x, Math.min(newX, containerBounds.x + containerBounds.w - collidingWidget.w))
-      newY = Math.max(containerBounds.y, Math.min(newY, containerBounds.y + containerBounds.h - collidingWidget.h))
-    } else {
-      newX = Math.max(0, newX)
-      newY = Math.max(0, newY)
+      // For nests, allow overflow but provide soft bounds
+      newX = Math.max(containerBounds.x - containerBounds.w, Math.min(newX, containerBounds.x + containerBounds.w * 2))
+      newY = Math.max(containerBounds.y - containerBounds.h, Math.min(newY, containerBounds.y + containerBounds.h * 2))
     }
+    // For main grid: no constraints, complete freedom
 
     // Update the widget position
     const widgetIndex = result.findIndex((w) => w.id === collidingWidget.id)
@@ -258,20 +257,13 @@ const applyPushPhysics = (
       secondaryX = Math.round(secondaryX / gridSize) * gridSize
       secondaryY = Math.round(secondaryY / gridSize) * gridSize
 
-      // Ensure within bounds
+      // Remove artificial boundaries for complete freedom
       if (containerBounds) {
-        secondaryX = Math.max(
-          containerBounds.x,
-          Math.min(secondaryX, containerBounds.x + containerBounds.w - secondaryWidget.w),
-        )
-        secondaryY = Math.max(
-          containerBounds.y,
-          Math.min(secondaryY, containerBounds.y + containerBounds.h - secondaryWidget.h),
-        )
-      } else {
-        secondaryX = Math.max(0, secondaryX)
-        secondaryY = Math.max(0, secondaryY)
+        // For nests, allow overflow
+        secondaryX = Math.max(containerBounds.x - containerBounds.w, Math.min(secondaryX, containerBounds.x + containerBounds.w * 2))
+        secondaryY = Math.max(containerBounds.y - containerBounds.h, Math.min(secondaryY, containerBounds.y + containerBounds.h * 2))
       }
+      // For main grid: no constraints
 
       const secondaryIndex = result.findIndex((w) => w.id === secondaryWidget.id)
       if (secondaryIndex !== -1) {
@@ -382,6 +374,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   const [dragOverNest, setDragOverNest] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [pushedWidgets, setPushedWidgets] = useState<Set<string>>(new Set())
+  const [isHoveringOverNest, setIsHoveringOverNest] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -621,6 +615,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     e.stopPropagation()
 
     const rect = e.currentTarget.getBoundingClientRect()
+    const containerRect = containerRef.current?.getBoundingClientRect()
+    if (!containerRect) return
 
     // Determine source container
     let sourceContainer: "main" | "nest" = "main"
@@ -640,6 +636,23 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       }
     }
 
+    // Calculate offset in world coordinates to fix zoom positioning issues
+    const worldMouseX = (e.clientX - containerRect.left) / viewport.zoom - viewport.x
+    const worldMouseY = (e.clientY - containerRect.top) / viewport.zoom - viewport.y
+    
+    // Get the item's current position to calculate proper offset
+    let item: any = null
+    if (itemType === "widget") {
+      item = gridState.mainWidgets.find((w) => w.id === itemId) || 
+             gridState.nestedWidgets.find((w) => w.id === itemId) ||
+             gridState.mainAriesWidgets.find((w) => w.id === itemId) ||
+             gridState.nestedAriesWidgets.find((w) => w.id === itemId)
+    } else {
+      item = gridState.nestContainers.find((n) => n.id === itemId)
+    }
+
+    if (!item) return
+
     setDragState({
       isDragging: true,
       draggedId: itemId,
@@ -647,8 +660,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       sourceContainer,
       sourceNestId,
       offset: {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: worldMouseX - item.x,
+        y: worldMouseY - item.y,
       },
     })
   }
@@ -666,6 +679,11 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   // Handle wheel zoom with improved trackpad support
   const handleWheel = useCallback((e: WheelEvent) => {
+    // If hovering over a nest, do not handle wheel events on main grid
+    if (isHoveringOverNest) {
+      return
+    }
+
     if (e.ctrlKey) {
       e.preventDefault()
       
@@ -691,7 +709,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         y: prev.y - e.deltaY,
       }))
     }
-  }, [])
+  }, [isHoveringOverNest])
 
   // Handle resize mouse down
   const handleResizeMouseDown = (
@@ -715,12 +733,32 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
     if (!item) return
 
+    // Set proper cursor based on handle to prevent cursor bugs
+    const cursorMap: Record<ResizeHandle, string> = {
+      'nw': 'nw-resize',
+      'n': 'n-resize',
+      'ne': 'ne-resize',
+      'e': 'e-resize',
+      'se': 'se-resize',
+      's': 's-resize',
+      'sw': 'sw-resize',
+      'w': 'w-resize'
+    }
+    document.body.style.cursor = cursorMap[handle]
+
+    // Convert to world coordinates for consistent positioning at all zoom levels
+    const containerRect = containerRef.current?.getBoundingClientRect()
+    if (!containerRect) return
+
+    const worldMouseX = (e.clientX - containerRect.left) / viewport.zoom - viewport.x
+    const worldMouseY = (e.clientY - containerRect.top) / viewport.zoom - viewport.y
+
     setResizeState({
       isResizing: true,
       resizedId: itemId,
       resizedType: itemType,
       handle,
-      startPos: { x: e.clientX, y: e.clientY },
+      startPos: { x: worldMouseX, y: worldMouseY },
       startSize: { w: item.w, h: item.h },
       startPosition: { x: item.x, y: item.y },
     })
@@ -978,9 +1016,19 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }
 
-  // Mouse move and mouse up handlers
+  // Mouse move and mouse up handlers with throttling for performance
+  const [lastMouseMoveTime, setLastMouseMoveTime] = useState(0)
+  const throttleInterval = 4 // 4ms throttle for ultra-responsive dragging (240fps)
+  
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now()
+      // Skip throttling for nest dragging - instant response
+      if (dragState.draggedType !== "nest" && now - lastMouseMoveTime < throttleInterval) {
+        return // Skip this frame to maintain performance for widgets only
+      }
+      setLastMouseMoveTime(now)
+      
       const containerRect = containerRef.current?.getBoundingClientRect()
       if (!containerRect) return
 
@@ -1020,27 +1068,29 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
       // Handle dragging with push physics
       if (dragState.isDragging && dragState.draggedId) {
-        // Remove artificial boundaries - allow negative coordinates for flexible grid
-        const rawX = worldX - dragState.offset.x / viewport.zoom
-        const rawY = worldY - dragState.offset.y / viewport.zoom
-        const newX = Math.round(rawX / gridSize) * gridSize
-        const newY = Math.round(rawY / gridSize) * gridSize
+        // SMOOTH DRAGGING: Use raw coordinates during drag - NO GRID SNAPPING
+        const rawX = worldX - dragState.offset.x
+        const rawY = worldY - dragState.offset.y
+        // Store both raw (smooth) and snapped positions
+        const smoothX = rawX  // No grid snapping during drag
+        const smoothY = rawY  // No grid snapping during drag
+        const snapX = Math.round(rawX / gridSize) * gridSize  // For drop positioning
+        const snapY = Math.round(rawY / gridSize) * gridSize  // For drop positioning
 
-        // Optimize nest movement - direct update without excessive push physics
+        // Optimize nest movement - direct update without push physics for instant response
         if (dragState.draggedType === "nest") {
-          const draggedNest = gridState.nestContainers.find((n) => n.id === dragState.draggedId)
-          if (draggedNest) {
-            // Simple direct update for nest position - more performance
-            updateGridState((prev) => ({
-              ...prev,
-              nestContainers: prev.nestContainers.map((nest) => 
-                nest.id === dragState.draggedId 
-                  ? { ...nest, x: newX, y: newY, updatedAt: new Date().toISOString() }
-                  : nest
-              ),
-            }))
-          }
-          return // Early return to avoid other processing
+          // Direct state update for nest position - maximum performance, no push physics
+          // NO THROTTLING for nest movement - instant response
+          // Use smooth coordinates for fluid movement
+          updateGridState((prev) => ({
+            ...prev,
+            nestContainers: prev.nestContainers.map((nest) => 
+              nest.id === dragState.draggedId 
+                ? { ...nest, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                : nest
+            ),
+          }))
+          return // Early return to avoid any other processing
         }
 
         // Get the dragged widget for push physics
@@ -1053,7 +1103,44 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                            gridState.mainAriesWidgets.find((w) => w.id === dragState.draggedId)
             
             if (draggedWidget) {
-              const draggedRect = { ...draggedWidget, x: newX, y: newY }
+              // Check if dragging over a nest FIRST to disable push physics
+              let hoverNest: string | null = null
+              const widgetCenterX = smoothX + 100
+              const widgetCenterY = smoothY + 75
+
+              for (const nest of gridState.nestContainers) {
+                if (
+                  widgetCenterX >= nest.x &&
+                  widgetCenterX <= nest.x + nest.w &&
+                  widgetCenterY >= nest.y &&
+                  widgetCenterY <= nest.y + nest.h
+                ) {
+                  hoverNest = nest.id
+                  break
+                }
+              }
+              setDragOverNest(hoverNest)
+              
+              // If hovering over a nest, disable push physics and use smooth movement
+              if (hoverNest) {
+                updateGridState((prev) => ({
+                  ...prev,
+                  mainWidgets: prev.mainWidgets.map((widget) =>
+                    widget.id === dragState.draggedId
+                      ? { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                      : widget
+                  ),
+                  mainAriesWidgets: prev.mainAriesWidgets.map((widget) =>
+                    widget.id === dragState.draggedId
+                      ? { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                      : widget
+                  ),
+                }))
+                return // Skip push physics entirely when hovering over a nest
+              }
+
+              // Use smooth coordinates for fluid dragging - create smooth drag rect
+              const draggedRect = { ...draggedWidget, x: smoothX, y: smoothY }
 
               // Apply push physics to other main widgets and AriesWidgets
               const otherMainWidgets = gridState.mainWidgets.filter((w) => w.id !== dragState.draggedId)
@@ -1064,12 +1151,22 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               // Apply push physics to nest containers
               const pushedNests = applyPushPhysics(draggedRect, gridState.nestContainers, gridSize)
 
-              // Update state with pushed widgets
+              // Track pushed widgets for animations
+              const newPushedWidgets = new Set<string>()
+              pushedMainWidgets.forEach(w => w.pushed && newPushedWidgets.add(w.id))
+              pushedMainAriesWidgets.forEach(w => w.pushed && newPushedWidgets.add(w.id))
+              pushedNests.forEach(n => n.pushed && newPushedWidgets.add(n.id))
+              setPushedWidgets(newPushedWidgets)
+
+              // Clear pushed widgets after animation
+              setTimeout(() => setPushedWidgets(new Set()), 200)
+
+              // Update state with smooth coordinates for dragged widget and pushed widgets
               updateGridState((prev) => ({
                 ...prev,
                 mainWidgets: prev.mainWidgets.map((widget) => {
                   if (widget.id === dragState.draggedId) {
-                    return { ...widget, x: newX, y: newY, updatedAt: new Date().toISOString() }
+                    return { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
                   }
                   const pushedWidget = pushedMainWidgets.find((p) => p.id === widget.id)
                   if (pushedWidget && pushedWidget.pushed) {
@@ -1079,7 +1176,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 }),
                 mainAriesWidgets: prev.mainAriesWidgets.map((widget) => {
                   if (widget.id === dragState.draggedId) {
-                    return { ...widget, x: newX, y: newY, updatedAt: new Date().toISOString() }
+                    return { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
                   }
                   const pushedWidget = pushedMainAriesWidgets.find((p) => p.id === widget.id)
                   if (pushedWidget && pushedWidget.pushed) {
@@ -1099,9 +1196,9 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           } else if (dragState.sourceContainer === "nest" && dragState.sourceNestId) {
             const nest = gridState.nestContainers.find((n) => n.id === dragState.sourceNestId)
             if (nest) {
-              // Allow negative positioning for overflow - widgets can be placed anywhere
-              const relativeX = newX - nest.x
-              const relativeY = newY - nest.y - 40
+              // Use smooth coordinates for fluid dragging within nests
+              const relativeX = smoothX - nest.x
+              const relativeY = smoothY - nest.y - 40
 
               // Check both regular nested widgets and AriesWidgets
               draggedWidget = gridState.nestedWidgets.find((w) => w.id === dragState.draggedId) ||
@@ -1121,6 +1218,15 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 // Remove container bounds to allow overflow and scrolling
                 const pushedNestedWidgets = applyPushPhysics(draggedRect, otherNestedWidgets, gridSize)
                 const pushedNestedAriesWidgets = applyPushPhysics(draggedRect, otherNestedAriesWidgets, gridSize)
+
+                // Track pushed widgets for animations
+                const newPushedWidgets = new Set<string>()
+                pushedNestedWidgets.forEach(w => w.pushed && newPushedWidgets.add(w.id))
+                pushedNestedAriesWidgets.forEach(w => w.pushed && newPushedWidgets.add(w.id))
+                setPushedWidgets(newPushedWidgets)
+
+                // Clear pushed widgets after animation
+                setTimeout(() => setPushedWidgets(new Set()), 200)
 
                 updateGridState((prev) => ({
                   ...prev,
@@ -1149,32 +1255,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             }
           }
         }
-
-        // Check if dragging over a nest (for visual feedback)
-        if (dragState.draggedType === "widget" && dragState.sourceContainer === "main") {
-          let hoverNest: string | null = null
-          const widgetCenterX = newX + 100
-          const widgetCenterY = newY + 75
-
-          for (const nest of gridState.nestContainers) {
-            if (
-              widgetCenterX >= nest.x &&
-              widgetCenterX <= nest.x + nest.w &&
-              widgetCenterY >= nest.y &&
-              widgetCenterY <= nest.y + nest.h
-            ) {
-              hoverNest = nest.id
-              break
-            }
-          }
-          setDragOverNest(hoverNest)
-        }
       }
 
-      // Handle resizing
+      // Handle resizing with throttling
       if (resizeState.isResizing && resizeState.resizedId) {
-        const deltaX = (e.clientX - resizeState.startPos.x) / viewport.zoom
-        const deltaY = (e.clientY - resizeState.startPos.y) / viewport.zoom
+        const deltaX = worldX - resizeState.startPos.x
+        const deltaY = worldY - resizeState.startPos.y
         const minWidth = resizeState.resizedType === "nest" ? 200 : 120
         const minHeight = resizeState.resizedType === "nest" ? 150 : 80
 
@@ -1223,8 +1309,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
           return {
             ...item,
-            x: Math.max(0, newX),
-            y: Math.max(0, newY),
+            x: newX, // Remove Math.max(0, newX) to allow negative coordinates
+            y: newY, // Remove Math.max(0, newY) to allow negative coordinates  
             w: newW,
             h: newH,
             updatedAt: new Date().toISOString(),
@@ -1277,6 +1363,76 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
 
     const handleMouseUp = () => {
+      // Reset cursor to default to fix resize cursor bug
+      document.body.style.cursor = 'default'
+      
+      // AUTO-SNAP: Snap widgets to nearest grid on release for clean positioning
+      if (dragState.isDragging && dragState.draggedId) {
+        const gridSize = gridState.gridSize
+        
+        // Get current widget position (smooth coordinates)
+        let currentWidget: any = null
+        if (dragState.draggedType === "widget") {
+          if (dragState.sourceContainer === "main") {
+            currentWidget = gridState.mainWidgets.find((w) => w.id === dragState.draggedId) ||
+                           gridState.mainAriesWidgets.find((w) => w.id === dragState.draggedId)
+          } else {
+            currentWidget = gridState.nestedWidgets.find((w) => w.id === dragState.draggedId) ||
+                           gridState.nestedAriesWidgets.find((w) => w.id === dragState.draggedId)
+          }
+        } else if (dragState.draggedType === "nest") {
+          currentWidget = gridState.nestContainers.find((n) => n.id === dragState.draggedId)
+        }
+
+        if (currentWidget) {
+          // Snap to nearest grid position
+          const snappedX = Math.round(currentWidget.x / gridSize) * gridSize
+          const snappedY = Math.round(currentWidget.y / gridSize) * gridSize
+
+          // Apply snap to grid for clean final positioning
+          if (dragState.draggedType === "nest") {
+            updateGridState((prev) => ({
+              ...prev,
+              nestContainers: prev.nestContainers.map((nest) => 
+                nest.id === dragState.draggedId 
+                  ? { ...nest, x: snappedX, y: snappedY, updatedAt: new Date().toISOString() }
+                  : nest
+              ),
+            }))
+          } else if (dragState.draggedType === "widget") {
+            if (dragState.sourceContainer === "main") {
+              updateGridState((prev) => ({
+                ...prev,
+                mainWidgets: prev.mainWidgets.map((widget) =>
+                  widget.id === dragState.draggedId
+                    ? { ...widget, x: snappedX, y: snappedY, updatedAt: new Date().toISOString() }
+                    : widget
+                ),
+                mainAriesWidgets: prev.mainAriesWidgets.map((widget) =>
+                  widget.id === dragState.draggedId
+                    ? { ...widget, x: snappedX, y: snappedY, updatedAt: new Date().toISOString() }
+                    : widget
+                ),
+              }))
+            } else if (dragState.sourceContainer === "nest") {
+              updateGridState((prev) => ({
+                ...prev,
+                nestedWidgets: prev.nestedWidgets.map((widget) =>
+                  widget.id === dragState.draggedId
+                    ? { ...widget, x: snappedX, y: snappedY, updatedAt: new Date().toISOString() }
+                    : widget
+                ),
+                nestedAriesWidgets: prev.nestedAriesWidgets.map((widget) =>
+                  widget.id === dragState.draggedId
+                    ? { ...widget, x: snappedX, y: snappedY, updatedAt: new Date().toISOString() }
+                    : widget
+                ),
+              }))
+            }
+          }
+        }
+      }
+      
       // Handle widget transfer between containers
       if (dragState.isDragging && dragState.draggedType === "widget") {
         const currentWidget =
@@ -1441,7 +1597,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
     }
-  }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch, isDraggingToolbar, toolbarDragStart, setActionsToolbarPosition])
+  }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch, isDraggingToolbar, toolbarDragStart, setActionsToolbarPosition, lastMouseMoveTime, throttleInterval])
 
   // Add wheel event listener
   useEffect(() => {
@@ -1772,6 +1928,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           <div>
             Position: ({Math.round(viewport.x)}, {Math.round(viewport.y)})
           </div>
+          {dragState.isDragging && (
+            <div className="text-xs text-cyan-400 mt-1 flex items-center gap-1">
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+              Smooth Drag: {dragState.draggedType === "nest" ? "Nest" : "Widget"}
+            </div>
+          )}
           <div className="text-xs opacity-75 mt-1">Ctrl+Wheel: Zoom • Middle Click: Pan • Ctrl+Click: Pan</div>
         </div>
       )}
@@ -1781,6 +1943,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         ref={containerRef}
         className={`absolute inset-0 cursor-${isPanning ? "grabbing" : "grab"} ${
           dropState.isDragOver && !dropState.targetNestId ? "border-primary/50 bg-primary/5 border-2 border-dashed" : ""
+        } ${
+          dragState.isDragging ? "aries-grid-smooth-drag" : ""
         }`}
         style={{
           backgroundImage: `
@@ -1796,6 +1960,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         onDrop={(e) => handleDrop(e)}
       >
         <div
+          className={dragState.isDragging || resizeState.isResizing ? "aries-grid-faded" : ""}
           style={{
             transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
             transformOrigin: "0 0",
@@ -1814,7 +1979,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               <Card
                 key={nest.id}
                 className={`absolute group bg-muted/20 backdrop-blur border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 transition-all duration-200 select-none ${
-                  dragState.draggedId === nest.id ? "shadow-lg scale-105 z-10" : ""
+                  dragState.draggedId === nest.id ? "shadow-lg scale-105 z-10 aries-widget-smooth-drag" : ""
                 } ${resizeState.resizedId === nest.id ? "shadow-lg z-10" : ""} ${
                   dropState.isDragOver && dropState.targetNestId === nest.id ? "border-primary/50 bg-primary/10" : ""
                 } ${dragOverNest === nest.id ? "border-green-500/50 bg-green-500/10 scale-102" : ""}`}
@@ -1825,6 +1990,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                   height: nest.h,
                   cursor: dragState.draggedId === nest.id ? "grabbing" : "default",
                 }}
+                onMouseEnter={() => setIsHoveringOverNest(true)}
+                onMouseLeave={() => setIsHoveringOverNest(false)}
                 onDragOver={(e) => handleDragOver(e, nest.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, nest.id)}
@@ -1865,10 +2032,37 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                   </div>
                 </CardHeader>
 
-                <CardContent className="p-0 overflow-auto relative" style={{ 
-                  scrollBehavior: 'smooth',
-                  height: 'calc(100% - 68px)' // Account for header height with padding
-                }}>
+                <CardContent 
+                  className="p-0 overflow-auto relative" 
+                  style={{ 
+                    scrollBehavior: 'smooth',
+                    height: 'calc(100% - 68px)' // Account for header height with padding
+                  }}
+                  onWheel={(e) => {
+                    // Always prevent page scrolling when hovering inside nest
+                    e.stopPropagation()
+                    
+                    const target = e.currentTarget
+                    const { scrollTop, scrollHeight, clientHeight } = target
+                    
+                    // Check if the nest content is scrollable
+                    const isScrollable = scrollHeight > clientHeight
+                    
+                    if (isScrollable) {
+                      // Check if we're at the top/bottom of the scroll container
+                      const atTop = scrollTop === 0
+                      const atBottom = scrollTop >= scrollHeight - clientHeight
+                      
+                      // If scrolling would go beyond boundaries, prevent it entirely
+                      if ((atTop && e.deltaY < 0) || (atBottom && e.deltaY > 0)) {
+                        e.preventDefault()
+                      }
+                    } else {
+                      // If nest is not scrollable, prevent page scrolling entirely
+                      e.preventDefault()
+                    }
+                  }}
+                >
                   {/* Scroll indicators for overflow content */}
                   {totalWidgets > 0 && (
                     <>
@@ -1877,113 +2071,99 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                     </>
                   )}
                   <div className="p-2 relative" style={{ minHeight: '100%' }}>
-                    {/* Nested Widgets with improved animations */}
-                    <AnimatePresence>
-                      {nestWidgets.map((widget) => {
-                        const MotionCard = animationsEnabled ? motion(Card) : Card
-                        return (
-                          <MotionCard
-                            key={widget.id}
-                            className="absolute group bg-card/80 backdrop-blur border-border/50 hover:border-border transition-all duration-200 select-none"
-                            style={{
-                              left: widget.x,
-                              top: widget.y,
-                              width: widget.w,
-                              height: widget.h,
-                            }}
-                            {...(animationsEnabled ? {
-                              initial: { opacity: 0, scale: 0.8 },
-                              animate: { opacity: 1, scale: 1 },
-                              exit: { opacity: 0, scale: 0.8 },
-                              whileHover: { scale: 1.02, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" },
-                              whileDrag: { scale: 1.05, rotate: 2 },
-                              transition: { type: "spring", stiffness: 300, damping: 30 }
-                            } : {})}
-                          >
-                            {/* Resize Handles */}
-                            {getResizeHandles(widget.id, "widget")}
+                    {/* Nested Widgets with hardware-accelerated CSS animations */}
+                    {nestWidgets.map((widget) => (
+                      <Card
+                        key={widget.id}              className={`absolute group bg-card/80 backdrop-blur border-border/50 hover:border-border transition-all duration-200 select-none aries-widget-card ${
+                dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
+              } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
+                pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
+              }`}
+                        style={{
+                          left: widget.x,
+                          top: widget.y,
+                          width: widget.w,
+                          height: widget.h,
+                          willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
+                        }}
+                      >
+                        {/* Resize Handles */}
+                        {getResizeHandles(widget.id, "widget")}
 
-                            <CardHeader
-                              className="pb-1 cursor-grab active:cursor-grabbing"
-                              onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1">
-                                  <GripVertical className="h-2 w-2 text-muted-foreground" />
-                                  <CardTitle className="text-xs font-medium">{widget.title}</CardTitle>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Badge variant="secondary" className="text-xs font-mono opacity-0 group-hover:opacity-100">
-                                    {widget.id.split("-").pop()}
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-4 w-4 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
-                                    onClick={() => removeWidget(widget.id)}
-                                  >
-                                    <X className="h-2 w-2" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="pt-0 text-xs text-center">{widget.content}</CardContent>
-                          </MotionCard>
-                        )
-                      })}
-                    </AnimatePresence>
-
-                    {/* Nested AriesWidgets with animations */}
-                    <AnimatePresence>
-                      {gridState.nestedAriesWidgets.filter((w) => w.nestId === nest.id).map((widget) => (
-                        <motion.div
-                          key={widget.id}
-                          className="absolute group select-none"
-                          style={{
-                            left: widget.x,
-                            top: widget.y,
-                            width: widget.w,
-                            height: widget.h,
-                          }}
-                          {...(animationsEnabled ? {
-                            initial: { opacity: 0, scale: 0.8 },
-                            animate: { opacity: 1, scale: 1 },
-                            exit: { opacity: 0, scale: 0.8 },
-                            whileHover: { scale: 1.02, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" },
-                            whileDrag: { scale: 1.05, rotate: 2 },
-                            transition: { type: "spring", stiffness: 300, damping: 30 }
-                          } : {})}
+                        <CardHeader
+                          className="pb-1 cursor-grab active:cursor-grabbing"
+                          onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
                         >
-                          {/* Resize Handles */}
-                          {getResizeHandles(widget.id, "widget")}
-
-                          {/* Drag Handle */}
-                          <div
-                            className="absolute top-0 left-0 right-0 h-6 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/20 backdrop-blur-sm rounded-t-md flex items-center justify-between px-1"
-                            onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
-                          >
+                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1">
-                              <GripVertical className="h-2 w-2 text-white" />
-                              <span className="text-xs text-white font-medium">{widget.title}</span>
+                              <GripVertical className="h-2 w-2 text-muted-foreground" />
+                              <CardTitle className="text-xs font-medium">{widget.title}</CardTitle>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4 text-white hover:text-red-400"
-                              onClick={() => removeAriesWidget(widget.id)}
-                            >
-                              <X className="h-2 w-2" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Badge variant="secondary" className="text-xs font-mono opacity-0 group-hover:opacity-100">
+                                {widget.id.split("-").pop()}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
+                                onClick={() => removeWidget(widget.id)}
+                              >
+                                <X className="h-2 w-2" />
+                              </Button>
+                            </div>
                           </div>
+                        </CardHeader>
+                        <CardContent className="pt-0 text-xs text-center">{widget.content}</CardContent>
+                      </Card>
+                    ))}
 
-                          <AriesModWidget
-                            widget={widget}
-                            onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
-                            className="w-full h-full rounded-md overflow-hidden"
-                          />
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                    {/* Nested AriesWidgets with hardware-accelerated CSS animations */}
+                    {gridState.nestedAriesWidgets.filter((w) => w.nestId === nest.id).map((widget) => (
+                      <div
+                        key={widget.id}
+                        className={`absolute group select-none aries-widget-card ${
+                          dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
+                        } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
+                          pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
+                        }`}
+                        style={{
+                          left: widget.x,
+                          top: widget.y,
+                          width: widget.w,
+                          height: widget.h,
+                          willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
+                        }}
+                      >
+                        {/* Resize Handles */}
+                        {getResizeHandles(widget.id, "widget")}
+
+                        {/* Drag Handle */}
+                        <div
+                          className="absolute top-0 left-0 right-0 h-6 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/20 backdrop-blur-sm rounded-t-md flex items-center justify-between px-1"
+                          onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
+                        >
+                          <div className="flex items-center gap-1">
+                            <GripVertical className="h-2 w-2 text-white" />
+                            <span className="text-xs text-white font-medium">{widget.title}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 text-white hover:text-red-400"
+                            onClick={() => removeAriesWidget(widget.id)}
+                          >
+                            <X className="h-2 w-2" />
+                          </Button>
+                        </div>
+
+                        <AriesModWidget
+                          widget={widget}
+                          onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
+                          className="w-full h-full rounded-md overflow-hidden"
+                        />
+                      </div>
+                    ))}
 
                     {/* Empty nest state */}
                     {totalWidgets === 0 && (
@@ -1998,19 +2178,22 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             )
           })}
 
-          {/* Main Grid Widgets */}
+          {/* Main Grid Widgets with hardware-accelerated animations */}
           {gridState.mainWidgets.map((widget) => (
             <Card
               key={widget.id}
-              className={`absolute group bg-card/80 backdrop-blur border-border/50 hover:border-border transition-all duration-200 select-none ${
-                dragState.draggedId === widget.id ? "shadow-lg scale-105 z-10" : ""
-              } ${resizeState.resizedId === widget.id ? "shadow-lg z-10" : ""}`}
+              className={`absolute group bg-card/80 backdrop-blur border-border/50 hover:border-border transition-all duration-200 select-none aries-widget-card ${
+                dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
+              } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
+                pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
+              }`}
               style={{
                 left: widget.x,
                 top: widget.y,
                 width: widget.w,
                 height: widget.h,
                 cursor: dragState.draggedId === widget.id ? "grabbing" : "default",
+                willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
               }}
             >
               {/* Resize Handles */}
@@ -2070,19 +2253,22 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             </Card>
           ))}
 
-          {/* Main Grid AriesWidgets */}
+          {/* Main Grid AriesWidgets with hardware-accelerated animations */}
           {gridState.mainAriesWidgets.map((widget) => (
             <div
               key={widget.id}
-              className={`absolute group select-none ${
-                dragState.draggedId === widget.id ? "shadow-lg scale-105 z-10" : ""
-              } ${resizeState.resizedId === widget.id ? "shadow-lg z-10" : ""}`}
+              className={`absolute group select-none aries-widget-card ${
+                dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
+              } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
+                pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
+              }`}
               style={{
                 left: widget.x,
                 top: widget.y,
                 width: widget.w,
                 height: widget.h,
                 cursor: dragState.draggedId === widget.id ? "grabbing" : "default",
+                willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
               }}
             >
               {/* Resize Handles */}
@@ -2096,7 +2282,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 <div className="flex items-center gap-1">
                   <GripVertical className="h-3 w-3 text-white" />
                   <span className="text-xs text-white font-medium">{widget.title}</span>
-        </div>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
