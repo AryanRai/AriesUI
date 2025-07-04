@@ -137,11 +137,13 @@ export function CommsApp() {
       <CommsProvider>
         <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <div className="min-h-screen bg-background text-foreground">
-            {/* Hover trigger zone */}
+            {/* Futuristic hover trigger zone */}
             <div
-              className="fixed left-0 top-0 w-2 h-full z-50 bg-transparent"
+              className="fixed left-0 top-0 w-2 h-full z-50 bg-gradient-to-r from-teal-500/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"
               onMouseEnter={() => setSidebarOpen(true)}
-            />
+            >
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-20 bg-gradient-to-b from-transparent via-teal-400 to-transparent animate-pulse" />
+            </div>
 
             <AppContent />
             <FloatingToolbar />
