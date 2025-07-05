@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Grid3X3, X } from "lucide-react"
 import { GridWidget } from "./GridWidget"
+import { HardwareAcceleratedWidget } from "../widgets/hardware-accelerated-widget"
+import { AriesModWidget } from "../widgets/ariesmod-widget"
 import type { 
   NestContainer as NestContainerType, 
   NestedWidget, 
@@ -236,7 +238,7 @@ NestHeader.displayName = "NestHeader"
 const WidgetContainer = memo<{
   nestedWidgets: NestedWidget[]
   nestedAriesWidgets: NestedAriesWidget[]
-  nestedNestContainers?: NestContainerType[]
+  nestedNestContainers: NestContainerType[]
   nestId: string
   scrollBounds: { minX: number; minY: number; maxX: number; maxY: number }
   pushedWidgets: Set<string>
@@ -358,19 +360,28 @@ const WidgetContainer = memo<{
         />
       ))}
 
-      {/* AriesWidget nested widgets */}
+      {/* AriesWidget nested widgets - Fixed to use proper AriesModWidget rendering */}
       {nestAriesWidgets.map((widget) => (
-        <GridWidget
+        <HardwareAcceleratedWidget
           key={widget.id}
-          widget={widget}
+          id={widget.id}
+          x={widget.x}
+          y={widget.y}
+          width={widget.w}
+          height={widget.h}
           isDragging={dragState.draggedId === widget.id}
           isResizing={resizeState.resizedId === widget.id}
           isPushed={pushedWidgets.has(widget.id)}
-          onMouseDown={onWidgetMouseDown}
-          onRemove={onWidgetRemove}
-          onUpdate={onAriesWidgetUpdate}
+          onMouseDown={(e) => onWidgetMouseDown(e, widget.id, "widget")}
+          onRemove={onAriesWidgetUpdate ? () => onAriesWidgetUpdate(widget.id, { deleted: true }) : onWidgetRemove}
           getResizeHandles={getResizeHandles}
-        />
+        >
+          <AriesModWidget
+            widget={widget}
+            onUpdate={(updates) => onAriesWidgetUpdate(widget.id, updates)}
+            className="w-full h-full"
+          />
+        </HardwareAcceleratedWidget>
       ))}
     </div>
   )

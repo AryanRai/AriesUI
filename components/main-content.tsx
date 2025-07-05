@@ -717,6 +717,75 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       return
     }
 
+    // Enhanced interactive element detection for AriesMods widgets
+    const isInteractiveElement = (element: HTMLElement): boolean => {
+      // Check for buttons, inputs, and other interactive elements
+      if (element.tagName === 'BUTTON' || element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA') {
+        return true
+      }
+      
+      // Check for elements with click handlers or interactive roles
+      if (element.onclick || element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') {
+        return true
+      }
+      
+      // Check for specific classes that indicate interactive elements
+      if (element.classList.contains('settings-button') || 
+          element.closest('.settings-button') ||
+          element.getAttribute('data-settings-button') === 'true') {
+        return true
+      }
+      
+      // Check for SVG icons inside buttons (like Settings, TestTube icons)
+      if (element.tagName === 'svg' && element.closest('button')) {
+        return true
+      }
+      
+      // Check for dialog elements
+      if (element.closest('[role="dialog"]') || element.closest('.dialog-content')) {
+        return true
+      }
+      
+      // Check for form elements
+      if (element.closest('form') || element.closest('.form-control')) {
+        return true
+      }
+      
+      // Check for elements with pointer cursor (indicating clickable)
+      const computedStyle = window.getComputedStyle(element)
+      if (computedStyle.cursor === 'pointer') {
+        return true
+      }
+      
+      return false
+    }
+
+    // For AriesMods widgets, only allow dragging from the drag handle
+    if (itemType === "widget") {
+      const isAriesWidget = gridState.mainAriesWidgets.some(w => w.id === itemId) || 
+                           gridState.nestedAriesWidgets.some(w => w.id === itemId)
+      
+      if (isAriesWidget) {
+        // Check if clicking on the drag handle
+        const isDragHandle = target.closest('.drag-handle') || 
+                           target.classList.contains('drag-handle') ||
+                           target.getAttribute('data-drag-handle') === 'true'
+        
+        if (!isDragHandle) {
+          console.log("AriesMod widget: Not clicking on drag handle, preventing drag")
+          return
+        }
+        
+        console.log("AriesMod widget: Drag handle clicked, allowing drag")
+      } else {
+        // For regular widgets, check for interactive elements
+        if (isInteractiveElement(target)) {
+          console.log("Clicked on interactive element, preventing drag:", target)
+          return
+        }
+      }
+    }
+
     e.preventDefault()
     e.stopPropagation()
 
@@ -757,6 +826,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
 
     if (!item) return
+
+    console.log("Starting drag for:", itemType, itemId, "from container:", sourceContainer)
 
     setDragState({
       isDragging: true,
@@ -2259,52 +2330,17 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
             {/* Hardware-Accelerated Main Grid Widgets */}
             {virtualGrid.visibleMainWidgets.map((widget) => (
-              widget.type === "enhanced-sensor" ? (
-                <HardwareAcceleratedWidget
-                        key={widget.id}
-                  id={widget.id}
-                  x={widget.x}
-                  y={widget.y}
-                  width={widget.w}
-                  height={widget.h}
-                  isDragging={dragState.draggedId === widget.id}
-                  isResizing={resizeState.resizedId === widget.id}
-                  isPushed={pushedWidgets.has(widget.id)}
-                  onMouseDown={handleMouseDown}
-                  onRemove={removeWidget}
-                  getResizeHandles={getResizeHandles}
-                >
-                  <EnhancedSensorWidget
-                    widgetId={widget.id}
-                    title={widget.title}
-                    sensorType="generic"
-                    streamMappings={widget.streamMappings || []}
-                    onStreamMappingsChange={(mappings) => {
-                      updateGridState((prev) => ({
-                        ...prev,
-                        mainWidgets: prev.mainWidgets.map((w) =>
-                          w.id === widget.id ? { ...w, streamMappings: mappings, updatedAt: new Date().toISOString() } as any : w
-                        ),
-                      }))
-                    }}
-                    className="w-full h-full"
-                    showTrend={true}
-                    precision={2}
-                  />
-                </HardwareAcceleratedWidget>
-              ) : (
-                <GridWidget
-                  key={widget.id}
-                          widget={widget}
-                  isDragging={dragState.draggedId === widget.id}
-                  isResizing={resizeState.resizedId === widget.id}
-                  isPushed={pushedWidgets.has(widget.id)}
-                  onMouseDown={handleMouseDown}
-                  onRemove={removeWidget}
-                  onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
-                  getResizeHandles={getResizeHandles}
-                />
-              )
+              <GridWidget
+                key={widget.id}
+                widget={widget}
+                isDragging={dragState.draggedId === widget.id}
+                isResizing={resizeState.resizedId === widget.id}
+                isPushed={pushedWidgets.has(widget.id)}
+                onMouseDown={handleMouseDown}
+                onRemove={removeWidget}
+                onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
+                getResizeHandles={getResizeHandles}
+              />
             ))}
 
             {/* Hardware-Accelerated Main Grid AriesWidgets */}

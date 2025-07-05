@@ -124,8 +124,28 @@ export const HardwareAcceleratedWidget = memo<HardwareAcceleratedWidgetProps>(fu
     // Don't handle mouse down if we're clicking on interactive elements
     const target = e.target as HTMLElement
     
-    // Check for resize handles
+    // Check for resize handles first
     if (target.closest('.resize-handle')) {
+      return
+    }
+    
+    // Check for drag handle - allow drag handle to work
+    const isDragHandle = target.closest('.drag-handle') || 
+                        target.classList.contains('drag-handle') ||
+                        target.getAttribute('data-drag-handle') === 'true'
+    
+    if (isDragHandle) {
+      console.log('Hardware widget: Drag handle clicked, allowing drag')
+      if (onMouseDown) {
+        // Apply immediate hardware acceleration
+        const element = elementRef.current
+        if (element) {
+          element.style.willChange = 'transform'
+          element.style.zIndex = '1000'
+        }
+        
+        onMouseDown(e, id, "widget")
+      }
       return
     }
     
@@ -137,6 +157,7 @@ export const HardwareAcceleratedWidget = memo<HardwareAcceleratedWidgetProps>(fu
         target.closest('[data-settings-button]') ||
         target.closest('[role="dialog"]') || 
         target.closest('.dialog-content')) {
+      console.log('Hardware widget: Interactive element clicked, preventing drag')
       e.preventDefault()
       e.stopPropagation()
       return
@@ -158,16 +179,9 @@ export const HardwareAcceleratedWidget = memo<HardwareAcceleratedWidgetProps>(fu
       return
     }
     
-    if (onMouseDown) {
-      // Apply immediate hardware acceleration
-      const element = elementRef.current
-      if (element) {
-        element.style.willChange = 'transform'
-        element.style.zIndex = '1000'
-      }
-      
-      onMouseDown(e, id, "widget")
-    }
+    // For AriesMods widgets, we should not allow general dragging - only via drag handle
+    console.log('Hardware widget: General click, not on drag handle - preventing drag for AriesMods')
+    return
   }, [onMouseDown, id])
 
   // Cleanup on unmount
@@ -241,7 +255,7 @@ export const HardwareAcceleratedWidget = memo<HardwareAcceleratedWidgetProps>(fu
       
       {/* Hardware-accelerated content container */}
       <div 
-        className="w-full h-full relative z-0"
+        className="w-full h-full relative z-30"
         style={{
           transform: 'translateZ(0)', // Force hardware layer
           willChange: 'auto',

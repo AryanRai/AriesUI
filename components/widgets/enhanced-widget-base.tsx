@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Settings, Zap, ZapOff, AlertCircle, TestTube } from 'lucide-react'
+import { Settings, Zap, ZapOff, AlertCircle, TestTube, GripVertical } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { StreamConfigurator } from './stream-configurator'
@@ -192,6 +192,21 @@ export function EnhancedWidgetBase({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-sm">{title}</h3>
+            
+            {/* Drag Handle */}
+            <div 
+              className="drag-handle cursor-grab active:cursor-grabbing p-1 hover:bg-muted/50 rounded transition-colors border border-muted-foreground/20"
+              data-drag-handle="true"
+              title="Drag to move widget"
+              onMouseEnter={() => console.log('Drag handle hover')}
+              onMouseDown={(e) => {
+                console.log('Drag handle mousedown event')
+                // Allow event to bubble to parent for drag handling
+              }}
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            
             {hasActiveStreams && (
               <Badge 
                 variant={isConnected ? "default" : "secondary"}

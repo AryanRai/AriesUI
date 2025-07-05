@@ -53,7 +53,7 @@ const ResizeHandleComponent = memo<{
 
   return (
     <div
-      className={`resize-handle absolute w-3 h-3 bg-primary border border-primary-foreground rounded-sm opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity z-[100] ${className}`}
+      className={`resize-handle absolute w-3 h-3 bg-primary border border-primary-foreground rounded-sm opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity z-[20] ${className}`}
       style={{ cursor }}
       onMouseDown={handleMouseDown}
       data-handle={handle}
