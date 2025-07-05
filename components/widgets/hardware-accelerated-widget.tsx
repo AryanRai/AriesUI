@@ -23,7 +23,7 @@ interface HardwareAcceleratedWidgetProps {
 }
 
 // Memoized component to prevent unnecessary re-renders
-export const HardwareAcceleratedWidget = memo(function HardwareAcceleratedWidget({
+export const HardwareAcceleratedWidget = memo<HardwareAcceleratedWidgetProps>(function HardwareAcceleratedWidget({
   id,
   x,
   y,
@@ -41,58 +41,123 @@ export const HardwareAcceleratedWidget = memo(function HardwareAcceleratedWidget
 }: HardwareAcceleratedWidgetProps) {
   const elementRef = useRef<HTMLDivElement>(null)
   const transformRef = useRef<string>('')
-  const rafRef = useRef<number>()
+  const rafRef = useRef<number | undefined>()
 
-  // Hardware-accelerated position updates
-  const updatePosition = useCallback((newX: number, newY: number, immediate = false) => {
+  // Hardware-accelerated position and size updates with consistent coordinate system
+  const updateTransform = useCallback((newX: number, newY: number, newW: number, newH: number, immediate = false) => {
     const element = elementRef.current
     if (!element) return
 
     const transform = `translate3d(${newX}px, ${newY}px, 0)`
     
-    if (immediate) {
+    const updateProps = () => {
+      // Use consistent positioning system - always use transform for position
       element.style.transform = transform
+      element.style.width = `${newW}px`
+      element.style.height = `${newH}px`
       transformRef.current = transform
+      
+      // During resize, ensure handles stay aligned by forcing immediate layout
+      if (isResizing) {
+        element.style.left = '0px'
+        element.style.top = '0px'
+        // Force layout recalculation to prevent handle detachment
+        void element.offsetHeight
+      }
+    }
+    
+    if (immediate || isResizing) {
+      // Immediate updates during resize to prevent detachment
+      updateProps()
     } else {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current)
       }
       
-      rafRef.current = requestAnimationFrame(() => {
-        element.style.transform = transform
-        transformRef.current = transform
-      })
+      rafRef.current = requestAnimationFrame(updateProps)
     }
-  }, [])
+  }, [isResizing])
 
-  // Update position when props change
+  // Update position and size when props change with enhanced resize handling
   useEffect(() => {
-    updatePosition(x, y, !isDragging)
-  }, [x, y, isDragging, updatePosition])
+    updateTransform(x, y, width, height, isResizing)
+  }, [x, y, width, height, isDragging, isResizing, updateTransform])
 
   // Apply hardware acceleration and performance optimizations
   useEffect(() => {
     const element = elementRef.current
     if (!element) return
 
-    // Enable hardware acceleration
+    // Enable hardware acceleration with proper will-change
     element.style.willChange = isDragging || isResizing ? 'transform, width, height' : 'auto'
-    element.style.transform = `translate3d(${x}px, ${y}px, 0)`
     element.style.backfaceVisibility = 'hidden'
     element.style.perspective = '1000px'
     
     // Force GPU layer creation
     element.style.transformStyle = 'preserve-3d'
     
+    // Enhanced resize handling to prevent handle detachment
+    if (isResizing) {
+      element.style.zIndex = '1001' // Higher than dragging
+      element.style.pointerEvents = 'auto' // Ensure resize handles remain interactive
+      element.style.contain = 'none' // Disable containment during resize
+      element.style.isolation = 'isolate' // Create proper stacking context
+      
+      // Force consistent positioning during resize
+      element.style.position = 'absolute'
+      element.style.left = '0px'
+      element.style.top = '0px'
+    } else {
+      // Reset containment after resize
+      element.style.contain = 'layout style paint'
+    }
+    
     return () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current)
       }
     }
-  }, [isDragging, isResizing, x, y])
+  }, [isDragging, isResizing])
 
   // Handle mouse down with hardware acceleration
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Don't handle mouse down if we're clicking on interactive elements
+    const target = e.target as HTMLElement
+    
+    // Check for resize handles
+    if (target.closest('.resize-handle')) {
+      return
+    }
+    
+    // Enhanced button detection - check for button elements, their children, and specific classes
+    if (target.closest('button') || 
+        target.tagName === 'BUTTON' ||
+        target.closest('[role="button"]') ||
+        target.closest('.settings-button') ||
+        target.closest('[data-settings-button]') ||
+        target.closest('[role="dialog"]') || 
+        target.closest('.dialog-content')) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    
+    // Check for any interactive elements that should not trigger drag
+    if (target.closest('input') || 
+        target.closest('select') || 
+        target.closest('textarea') ||
+        target.closest('[contenteditable]') ||
+        target.closest('a[href]')) {
+      return
+    }
+    
+    // Check if the click is on a settings icon or similar interactive element
+    if (target.closest('[data-lucide]') && target.closest('button')) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    
     if (onMouseDown) {
       // Apply immediate hardware acceleration
       const element = elementRef.current
@@ -122,15 +187,19 @@ export const HardwareAcceleratedWidget = memo(function HardwareAcceleratedWidget
         isDragging ? 'cursor-grabbing opacity-90' : 'cursor-grab'
       } ${
         isPushed ? 'transition-all duration-200 ease-out' : ''
+      } ${
+        isResizing ? 'resize-active' : ''
       }`}
       style={{
         left: 0, // Position handled by transform
         top: 0,  // Position handled by transform
         width: `${width}px`,
         height: `${height}px`,
-        zIndex: isDragging ? 1000 : zIndex,
-        contain: 'layout style paint', // CSS containment for performance
+        zIndex: isResizing ? 1001 : isDragging ? 1000 : zIndex,
+        contain: isResizing ? 'none' : 'layout style paint', // Disable containment during resize
         isolation: 'isolate', // Create stacking context
+        transform: `translate3d(${x}px, ${y}px, 0)`, // Initial transform
+        position: 'absolute', // Ensure consistent positioning
       }}
       onMouseDown={handleMouseDown}
     >
@@ -155,12 +224,24 @@ export const HardwareAcceleratedWidget = memo(function HardwareAcceleratedWidget
         </Badge>
       </div>
 
-      {/* Resize Handles */}
-      {getResizeHandles && getResizeHandles(id, "widget")}
+      {/* Resize Handles - Enhanced positioning to prevent detachment */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div 
+          className="relative w-full h-full pointer-events-auto"
+          style={{
+            // Ensure handles stay aligned during resize
+            transform: 'translateZ(0)',
+            position: 'relative',
+            zIndex: isResizing ? 10 : 1,
+          }}
+        >
+          {getResizeHandles && getResizeHandles(id, "widget")}
+        </div>
+      </div>
       
       {/* Hardware-accelerated content container */}
       <div 
-        className="w-full h-full"
+        className="w-full h-full relative z-0"
         style={{
           transform: 'translateZ(0)', // Force hardware layer
           willChange: 'auto',

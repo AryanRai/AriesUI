@@ -186,7 +186,7 @@ export function EnhancedSensorWidget({
         className=""
         refreshRate={100}
       >
-        {() => (
+        {(widgetData, isConnected, isDummyMode) => (
           <div className="space-y-3 pt-4">
             {error && (
               <div className="text-center py-2">
@@ -196,86 +196,104 @@ export function EnhancedSensorWidget({
               </div>
             )}
             
-            {displayData.length === 0 ? (
-              <div className="text-center py-8">
-                {getSensorIcon()}
-                <p className="text-muted-foreground mt-2">
-                  {streamMappings.length === 0 ? 'Configure streams' : 'No active streams'}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Click settings to add hardware streams
-                </p>
+            {/* Use widgetData from EnhancedWidgetBase instead of displayData when available */}
+            {widgetData.length > 0 ? (
+              <div className="space-y-2">
+                {widgetData.map((item, index) => {
+                  const numericValue = typeof item.value === 'number' ? item.value : 0
+                  const status = typeof item.value === 'number' ? getValueStatus(numericValue) : 'normal'
+                  const previousValue = previousValues[index] || 0
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getSensorIcon()}
+                        <span className="text-sm font-medium">
+                          {streamMappings[index]?.streamName || `Stream ${index + 1}`}
+                        </span>
+                        {isDummyMode && (
+                          <Badge variant="outline" className="text-xs">Dummy</Badge>
+                        )}
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className={`text-lg font-bold ${
+                          status === 'critical' ? 'text-red-500' : 
+                          status === 'warning' ? 'text-yellow-500' : 
+                          'text-foreground'
+                        }`}>
+                          {formatValue(item.value)}
+                          {item.unit && <span className="text-sm text-muted-foreground ml-1">{item.unit}</span>}
+                        </div>
+                        
+                        {showTrend && typeof item.value === 'number' && previousValue !== 0 && (
+                          <div className={`flex items-center justify-end gap-1 text-xs ${getTrendColor(numericValue, previousValue)}`}>
+                            {getTrendIcon(numericValue, previousValue)}
+                            <span>
+                              {((numericValue - previousValue) / Math.abs(previousValue) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : displayData.length > 0 ? (
+              // Fallback to displayData for hardware streams not managed by EnhancedWidgetBase
+              <div className="space-y-2">
+                {displayData.map((item, index) => {
+                  const numericValue = typeof item.value === 'number' ? item.value : 0
+                  const status = typeof item.value === 'number' ? getValueStatus(numericValue) : 'normal'
+                  const previousValue = previousValues[index] || 0
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getSensorIcon()}
+                        <span className="text-sm font-medium">{item.streamName}</span>
+                        <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                          {item.status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className={`text-lg font-bold ${
+                          status === 'critical' ? 'text-red-500' : 
+                          status === 'warning' ? 'text-yellow-500' : 
+                          'text-foreground'
+                        }`}>
+                          {formatValue(item.value)}
+                          {item.unit && <span className="text-sm text-muted-foreground ml-1">{item.unit}</span>}
+                        </div>
+                        
+                        {showTrend && typeof item.value === 'number' && previousValue !== 0 && (
+                          <div className={`flex items-center justify-end gap-1 text-xs ${getTrendColor(numericValue, previousValue)}`}>
+                            {getTrendIcon(numericValue, previousValue)}
+                            <span>
+                              {((numericValue - previousValue) / Math.abs(previousValue) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
-              displayData.map((item, index) => {
-              const numericValue = typeof item.value === 'number' ? item.value : 0
-              const status = typeof item.value === 'number' ? getValueStatus(numericValue) : 'normal'
-              const previousValue = previousValues[index]
-
-              return (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {getSensorIcon()}
-                      <span className="text-sm font-medium">
-                        Stream {index + 1}
-                      </span>
-                      {status !== 'normal' && (
-                        <Badge 
-                          variant={status === 'critical' ? 'destructive' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {status}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {showTrend && typeof previousValue === 'number' && typeof item.value === 'number' && (
-                      <div className={`flex items-center gap-1 ${getTrendColor(numericValue, previousValue)}`}>
-                        {getTrendIcon(numericValue, previousValue)}
-                        <span className="text-xs">
-                          {((numericValue - previousValue) / previousValue * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className={`text-2xl font-bold ${
-                      status === 'critical' ? 'text-red-500' : 
-                      status === 'warning' ? 'text-yellow-500' : 
-                      'text-foreground'
-                    }`}>
-                      {formatValue(item.value)}
-                      {item.unit && (
-                        <span className="text-sm font-normal text-muted-foreground ml-1">
-                          {item.unit}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {item.timestamp && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(item.timestamp).toLocaleTimeString()}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Status indicator */}
-                  <div className="flex justify-center">
-                    <div className={`w-2 h-2 rounded-full ${
-                      item.status === 'active' ? 'bg-green-500' :
-                      item.status === 'error' ? 'bg-red-500' :
-                      'bg-gray-400'
-                    }`} />
-                  </div>
+              <div className="text-center py-8">
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  {getSensorIcon()}
+                  <span className="text-sm">No sensor data available</span>
                 </div>
-              )
-            })
-          )}
-        </div>
-      )}
-    </EnhancedWidgetBase>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Configure hardware streams to display live data
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </EnhancedWidgetBase>
     </div>
   )
 } 

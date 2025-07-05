@@ -42,9 +42,21 @@ const LineChartComponent: React.FC<AriesModProps> = ({
 
     const interval = setInterval(() => {
       const now = Date.now()
+      
+      // Use stream data if available, otherwise generate dummy data
+      let newValue: number
+      const hasStreamData = data && typeof data.value === 'number'
+      
+      if (hasStreamData) {
+        newValue = data.value as number
+      } else {
+        // Fallback to dummy data generation
+        newValue = Math.round((20 + Math.random() * 10) * 10) / 10
+      }
+
       const newPoint: DataPoint = {
         time: new Date(now).toLocaleTimeString().slice(0, 5),
-        value: Math.round((data.value || 20 + Math.random() * 10) * 10) / 10,
+        value: newValue,
         timestamp: now
       }
 
@@ -56,7 +68,7 @@ const LineChartComponent: React.FC<AriesModProps> = ({
     }, config.updateInterval || 3000)
 
     return () => clearInterval(interval)
-  }, [isLive, data.value, config])
+  }, [isLive, data, config])
 
   const getCurrentValue = () => {
     return chartData.length > 0 ? chartData[chartData.length - 1].value : 0
@@ -83,6 +95,10 @@ const LineChartComponent: React.FC<AriesModProps> = ({
   const trend = getTrend()
   const currentValue = getCurrentValue()
 
+  // Check if we have stream data
+  const hasStreamData = data && typeof data.value === 'number'
+  const streamUnit = data?.metadata?.unit || config.unit || ''
+
   return (
     <Card className="w-full h-full">
       <CardHeader className="pb-2">
@@ -95,6 +111,11 @@ const LineChartComponent: React.FC<AriesModProps> = ({
             <Badge variant={isLive ? 'default' : 'secondary'}>
               {isLive ? 'Live' : 'Paused'}
             </Badge>
+            {hasStreamData && (
+              <Badge variant="outline" className="text-xs">
+                Stream
+              </Badge>
+            )}
             <div className={`flex items-center gap-1 ${getTrendColor(trend)}`}>
               <TrendingUp className="h-3 w-3" />
               <span className="text-xs">{trend}</span>
@@ -105,10 +126,10 @@ const LineChartComponent: React.FC<AriesModProps> = ({
       <CardContent className="space-y-2">
         <div className="text-center">
           <div className="text-2xl font-bold">
-            {currentValue}{config.unit || ''}
+            {currentValue}{streamUnit}
           </div>
           <div className="text-xs text-muted-foreground">
-            Current Value
+            Current Value {hasStreamData ? '(Live Stream)' : '(Demo Data)'}
           </div>
         </div>
 
@@ -150,7 +171,10 @@ const LineChartComponent: React.FC<AriesModProps> = ({
         <div className="text-xs text-muted-foreground space-y-1">
           <div>Points: {chartData.length}/{config.maxDataPoints || 20}</div>
           <div>Update: {config.updateInterval || 3000}ms</div>
-          <div>Source: {config.dataSource || 'Sensor'}</div>
+          <div>Source: {hasStreamData ? data.metadata?.streamId || 'Hardware Stream' : 'Demo Data'}</div>
+          {hasStreamData && data.timestamp && (
+            <div>Last Update: {new Date(data.timestamp).toLocaleTimeString()}</div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -1208,6 +1208,30 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
         // Hardware-accelerated nest movement - direct update with RAF
         if (dragState.draggedType === "nest") {
+          // Check if nest is hovering over another nest for visual feedback
+          const currentNest = gridState.nestContainers.find((n) => n.id === dragState.draggedId)
+          if (currentNest) {
+            let hoverNest: string | null = null
+            const nestCenterX = smoothX + currentNest.w / 2
+            const nestCenterY = smoothY + currentNest.h / 2
+
+            for (const nest of gridState.nestContainers) {
+              // Skip self and already nested nests
+              if (nest.id === dragState.draggedId || nest.parentNestId) continue
+              
+              if (
+                nestCenterX >= nest.x &&
+                nestCenterX <= nest.x + nest.w &&
+                nestCenterY >= nest.y &&
+                nestCenterY <= nest.y + nest.h
+              ) {
+                hoverNest = nest.id
+                break
+              }
+            }
+            setDragOverNest(hoverNest)
+          }
+          
           // Cancel previous RAF to prevent stacking
           if (rafRef.current) {
             cancelAnimationFrame(rafRef.current)
@@ -1563,6 +1587,105 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 ),
               }))
             }
+          }
+        }
+      }
+      
+      // Handle nest transfer between containers (main to nest)
+      if (dragState.isDragging && dragState.draggedType === "nest") {
+        const currentNest = gridState.nestContainers.find((n) => n.id === dragState.draggedId)
+        if (!currentNest) return
+
+        // Check if nest is over another nest based on nest's current position
+        let targetNest: NestContainerType | null = null
+        const nestCenterX = currentNest.x + currentNest.w / 2
+        const nestCenterY = currentNest.y + currentNest.h / 2
+
+        for (const nest of gridState.nestContainers) {
+          // Skip self and already nested nests
+          if (nest.id === dragState.draggedId || nest.parentNestId) continue
+          
+          if (
+            nestCenterX >= nest.x &&
+            nestCenterX <= nest.x + nest.w &&
+            nestCenterY >= nest.y &&
+            nestCenterY <= nest.y + nest.h
+          ) {
+            targetNest = nest
+            break
+          }
+        }
+
+        if (!currentNest.parentNestId && targetNest) {
+          // Move from main to nest - convert to nested nest
+          const relativeX = currentNest.x - targetNest.x
+          const relativeY = currentNest.y - targetNest.y - 40
+
+          const nestedNest: NestContainerType = {
+            ...currentNest,
+            x: relativeX,
+            y: relativeY,
+            parentNestId: targetNest.id,
+            updatedAt: new Date().toISOString(),
+          }
+
+          updateGridState((prev) => ({
+            ...prev,
+            nestContainers: prev.nestContainers.map((nest) =>
+              nest.id === dragState.draggedId ? nestedNest : nest
+            ),
+          }))
+          dispatch({ type: "ADD_LOG", payload: `Nest ${currentNest.id} moved to nest ${targetNest.id}` })
+        } else if (currentNest.parentNestId && !targetNest) {
+          // Move from nest to main - convert to main nest
+          const parentNest = gridState.nestContainers.find((n) => n.id === currentNest.parentNestId)
+          if (parentNest) {
+            const absoluteX = parentNest.x + currentNest.x
+            const absoluteY = parentNest.y + currentNest.y + 40
+
+            const mainNest: NestContainerType = {
+              ...currentNest,
+              x: absoluteX,
+              y: absoluteY,
+              parentNestId: null,
+              updatedAt: new Date().toISOString(),
+            }
+
+            updateGridState((prev) => ({
+              ...prev,
+              nestContainers: prev.nestContainers.map((nest) =>
+                nest.id === dragState.draggedId ? mainNest : nest
+              ),
+            }))
+            dispatch({ type: "ADD_LOG", payload: `Nest ${currentNest.id} moved to main grid` })
+          }
+        } else if (currentNest.parentNestId && targetNest && targetNest.id !== currentNest.parentNestId) {
+          // Move from one nest to another nest
+          const sourceNest = gridState.nestContainers.find((n) => n.id === currentNest.parentNestId)
+          if (sourceNest) {
+            // Convert to absolute coordinates first
+            const absoluteX = sourceNest.x + currentNest.x
+            const absoluteY = sourceNest.y + currentNest.y + 40
+            
+            // Then convert to relative coordinates for target nest
+            const relativeX = absoluteX - targetNest.x
+            const relativeY = absoluteY - targetNest.y - 40
+
+            const reNestedNest: NestContainerType = {
+              ...currentNest,
+              x: relativeX,
+              y: relativeY,
+              parentNestId: targetNest.id,
+              updatedAt: new Date().toISOString(),
+            }
+
+            updateGridState((prev) => ({
+              ...prev,
+              nestContainers: prev.nestContainers.map((nest) =>
+                nest.id === dragState.draggedId ? reNestedNest : nest
+              ),
+            }))
+            dispatch({ type: "ADD_LOG", payload: `Nest ${currentNest.id} moved from nest ${sourceNest.id} to nest ${targetNest.id}` })
           }
         }
       }
@@ -1939,6 +2062,15 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     window.dispatchEvent(new CustomEvent("widgetCountUpdate", { detail: { count: totalWidgets } }))
   }, [gridState.mainWidgets.length, gridState.nestedWidgets.length, gridState.mainAriesWidgets.length, gridState.nestedAriesWidgets.length])
 
+  const updateNestContainer = (id: string, updates: Partial<NestContainerType>) => {
+    updateGridState((prev) => ({
+      ...prev,
+      nestContainers: prev.nestContainers.map((nest) =>
+        nest.id === id ? { ...nest, ...updates } : nest
+      ),
+    }))
+  }
+
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-background to-background/80">
       
@@ -2094,13 +2226,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               willChange: 'transform',
             }}
           >
-            {/* Use virtual grid results for performance */}
-            {virtualGrid.visibleNestContainers.map((nest) => (
+            {/* Use virtual grid results for performance - only render top-level nests */}
+            {virtualGrid.visibleNestContainers.filter(nest => !nest.parentNestId).map((nest) => (
               <NestContainer
                 key={nest.id}
                 nest={nest}
                 nestedWidgets={virtualGrid.visibleNestedWidgets}
                 nestedAriesWidgets={virtualGrid.visibleNestedAriesWidgets}
+                nestedNestContainers={virtualGrid.visibleNestContainers.filter(n => n.parentNestId === nest.id)}
                 isDragging={dragState.draggedId === nest.id}
                 isResizing={resizeState.resizedId === nest.id}
                 dragOverNest={dragOverNest}
@@ -2115,6 +2248,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, nest.id)}
                 onRemove={() => removeNestContainer(nest.id)}
+                onUpdate={updateNestContainer}
                 onWidgetMouseDown={handleMouseDown}
                 onWidgetRemove={removeWidget}
                 onAriesWidgetUpdate={updateAriesWidget}
@@ -2189,19 +2323,10 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 onRemove={removeAriesWidget}
                 getResizeHandles={getResizeHandles}
               >
-                <EnhancedSensorWidget
-                  widgetId={widget.id}
-                  title={widget.title}
-                  sensorType="temperature"
-                  streamMappings={widget.streamMappings || []}
-                  onStreamMappingsChange={(mappings) => updateAriesWidget(widget.id, { streamMappings: mappings })}
+                <AriesModWidget
+                  widget={widget}
+                  onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
                   className="w-full h-full"
-                  showTrend={true}
-                  precision={1}
-                  thresholds={{
-                    warning: { min: 0, max: 50 },
-                    critical: { min: -10, max: 70 }
-                  }}
                 />
               </HardwareAcceleratedWidget>
           ))}

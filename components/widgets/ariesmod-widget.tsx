@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider'
 import { Settings, Zap, RefreshCw, AlertTriangle, X } from 'lucide-react'
 import { AriesModSelector } from './ariesmod-selector'
+import { EnhancedWidgetBase } from './enhanced-widget-base'
 import { getAriesMod, generateDummyDataForMod } from '@/lib/ariesmods-registry'
 import type { AriesWidget, AriesModData } from '@/types/ariesmods'
 
@@ -28,20 +29,24 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
   const [isConfigMode, setIsConfigMode] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Generate initial dummy data if none exists
+  // Generate initial dummy data if none exists and no streams are configured
   useEffect(() => {
-    if (widget.ariesModType && !currentData) {
+    if (widget.ariesModType && !currentData && (!widget.streamMappings || widget.streamMappings.length === 0)) {
       const dummyData = generateDummyDataForMod(widget.ariesModType)
       if (dummyData) {
         setCurrentData(dummyData)
         onUpdate({ data: dummyData })
       }
     }
-  }, [widget.ariesModType, currentData, onUpdate])
+  }, [widget.ariesModType, currentData, onUpdate, widget.streamMappings])
 
-  // Periodically generate new dummy data
+  // Periodically generate new dummy data ONLY if no streams are configured
   useEffect(() => {
     if (!widget.ariesModType || !currentData) return
+    
+    // Don't generate dummy data if streams are configured
+    const hasActiveStreams = widget.streamMappings && widget.streamMappings.some(m => m.enabled)
+    if (hasActiveStreams) return
 
     const interval = setInterval(() => {
       const newData = generateDummyDataForMod(widget.ariesModType)
@@ -52,7 +57,7 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
     }, 5000) // Update every 5 seconds
 
     return () => clearInterval(interval)
-  }, [widget.ariesModType, onUpdate])
+  }, [widget.ariesModType, onUpdate, widget.streamMappings])
 
   const handleModSelect = (modId: string) => {
     const mod = getAriesMod(modId)
@@ -75,6 +80,7 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
       h: Math.max(widget.h, mod.metadata.defaultHeight || 200),
       config: defaultConfig,
       data: dummyData || undefined,
+      streamMappings: widget.streamMappings || [],
       updatedAt: new Date().toISOString()
     })
 
@@ -86,6 +92,13 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
   const handleConfigChange = (newConfig: Record<string, any>) => {
     onUpdate({
       config: { ...widget.config, ...newConfig },
+      updatedAt: new Date().toISOString()
+    })
+  }
+
+  const handleStreamMappingsChange = (mappings: any[]) => {
+    onUpdate({
+      streamMappings: mappings,
       updatedAt: new Date().toISOString()
     })
   }
@@ -189,180 +202,52 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
     )
   }
 
-  // Render the selected AriesMod component
-  const ModComponent = selectedMod.component
-  
-  if (!currentData) {
-    return (
-      <Card className={`w-full h-full ${className}`}>
-        <CardContent className="flex items-center justify-center h-full">
-          <div className="text-center space-y-2">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-            <div className="text-xs text-muted-foreground">Loading data...</div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // If in config mode, show configuration interface
-  if (isConfigMode) {
-    return (
-      <Card className={`w-full h-full ${className}`}>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between text-sm">
-            <span>{selectedMod.metadata.displayName} Configuration</span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsConfigMode(false)}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 overflow-y-auto max-h-[calc(100%-80px)]">
-          {selectedMod.metadata.configSchema && Object.entries(selectedMod.metadata.configSchema).map(([key, field]) => (
-            <div key={key} className="space-y-2">
-              <Label htmlFor={key} className="text-xs font-medium">
-                {field.label}
-              </Label>
-              {field.type === 'text' && (
-                <Input
-                  id={key}
-                  value={widget.config?.[key] || field.default || ''}
-                  placeholder={field.placeholder}
-                  onChange={(e) => handleConfigChange({ [key]: e.target.value })}
-                  className="h-8 text-xs"
-                />
-              )}
-              {field.type === 'number' && (
-                <Input
-                  id={key}
-                  type="number"
-                  value={widget.config?.[key] || field.default || 0}
-                  min={field.min}
-                  max={field.max}
-                  step={field.step}
-                  onChange={(e) => handleConfigChange({ [key]: parseFloat(e.target.value) || 0 })}
-                  className="h-8 text-xs"
-                />
-              )}
-              {field.type === 'boolean' && (
-                <Switch
-                  checked={widget.config?.[key] ?? field.default ?? false}
-                  onCheckedChange={(checked) => handleConfigChange({ [key]: checked })}
-                />
-              )}
-              {field.type === 'select' && (
-                <Select
-                  value={widget.config?.[key] || field.default}
-                  onValueChange={(value) => handleConfigChange({ [key]: value })}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options?.map((option: { value: string; label: string }) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {field.type === 'range' && (
-                <div className="space-y-2">
-                  <Slider
-                    value={[widget.config?.[key] || field.default || 50]}
-                    onValueChange={([value]) => handleConfigChange({ [key]: value })}
-                    min={field.min || 0}
-                    max={field.max || 100}
-                    step={field.step || 1}
-                    className="w-full"
-                  />
-                  <div className="text-xs text-center text-muted-foreground">
-                    {widget.config?.[key] || field.default || 50}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-          <div className="flex gap-2 pt-4">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setIsConfigMode(false)}
-              className="flex-1"
-            >
-              Done
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={refreshData}
-              className="flex-1"
-            >
-              Apply & Refresh
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
+  // Render the AriesMod with stream integration
   return (
-    <div className={`w-full h-full relative group ${className}`}>
-      {/* AriesMod Controls Overlay */}
-      <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm border border-border/50"
-            onClick={refreshData}
-            title="Refresh Data"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm border border-border/50"
-            onClick={() => setIsSelecting(true)}
-            title="Change AriesMod"
-          >
-            <Zap className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm border border-border/50"
-            onClick={() => setIsConfigMode(!isConfigMode)}
-            title="Configure"
-          >
-            <Settings className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
+    <EnhancedWidgetBase
+      widgetId={widget.id}
+      title={widget.title || selectedMod.metadata.displayName}
+      className={className}
+      streamMappings={widget.streamMappings || []}
+      onStreamMappingsChange={handleStreamMappingsChange}
+      refreshRate={100}
+    >
+      {(streamData, isConnected, isDummyMode) => {
+        // Convert stream data to AriesModData format, or use dummy data based on mode
+        const ariesModData: AriesModData = isDummyMode || streamData.length === 0 ? 
+          currentData || {
+            value: Math.random() * 100, // Generate dummy data
+            timestamp: new Date().toISOString(),
+            metadata: { isDummy: true }
+          } : {
+            value: streamData[0].value,
+            timestamp: streamData[0].timestamp || new Date().toISOString(),
+            metadata: {
+              unit: streamData[0].unit || '',
+              status: streamData[0].status || 'active',
+              streamCount: streamData.length,
+              isDummy: false
+            }
+          }
 
-      {/* AriesMod Badge */}
-      <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Badge variant="secondary" className="text-xs bg-background/80 backdrop-blur-sm border border-border/50">
-          {selectedMod.metadata.icon} {selectedMod.metadata.displayName}
-        </Badge>
-      </div>
-
-      {/* Render the actual AriesMod component */}
-      <ModComponent
-        id={widget.id}
-        title={widget.title}
-        width={widget.w}
-        height={widget.h}
-        data={currentData}
-        config={widget.config || {}}
-        onConfigChange={handleConfigChange}
-        onDataRequest={handleDataRequest}
-      />
-    </div>
+        // Render the AriesMod component with stream data
+        const ModComponent = selectedMod.component
+        
+        return (
+          <div className="w-full h-full">
+            <ModComponent
+              id={widget.id}
+              title={widget.title || selectedMod.metadata.displayName}
+              width={widget.w}
+              height={widget.h}
+              data={ariesModData}
+              config={widget.config || {}}
+              onConfigChange={handleConfigChange}
+              onDataRequest={handleDataRequest}
+            />
+          </div>
+        )
+      }}
+    </EnhancedWidgetBase>
   )
 } 

@@ -69,7 +69,7 @@ export interface NestedWidget extends BaseWidget {
 }
 
 /**
- * Container that can hold nested widgets
+ * Container that can hold nested widgets and other nests
  */
 export interface NestContainer {
   /** Unique identifier for the nest */
@@ -90,6 +90,8 @@ export interface NestContainer {
   createdAt: string
   /** Timestamp when nest was last updated */
   updatedAt: string
+  /** ID of parent nest container (null for top-level nests) */
+  parentNestId?: string | null
 }
 
 // =============================================================================

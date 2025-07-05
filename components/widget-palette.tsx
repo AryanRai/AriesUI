@@ -1,28 +1,28 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef, useEffect, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Input } from "@/components/ui/input"
-import {
-  ChevronDown,
-  Package,
-  GripVertical,
-  Minimize2,
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { 
+  Package, 
+  Search, 
+  GripVertical, 
+  ChevronDown, 
+  Minimize2, 
   Maximize2,
-  Search,
-  Plus,
-} from "lucide-react"
-import { useComms } from "@/components/comms-context"
-import { ariesModsRegistry, getAllAriesMods } from "@/lib/ariesmods-registry"
-import type { AriesMod, AriesModMetadata } from "@/types/ariesmods"
+  Plus 
+} from 'lucide-react'
+import { useComms } from '@/components/comms-context'
+import { useAnimationPreferences } from '@/hooks/use-animation-preferences'
+import { useLocalStorage } from '@/hooks/use-local-storage'
+import { cn } from '@/lib/utils'
+import { ariesModsRegistry, getAllAriesMods } from '@/lib/ariesmods-registry'
+import type { AriesMod, AriesModMetadata } from '@/types/ariesmods'
 import { ARIESMODS_CATEGORIES } from "@/types/ariesmods"
-import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 
 interface AriesModTemplate {
   id: string
@@ -40,38 +40,61 @@ interface ModCategory {
 
 // Futuristic background for widget palette
 const PaletteBackground = ({ animationsEnabled }: { animationsEnabled: boolean }) => {
-  if (!animationsEnabled) {
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-br from-[rgba(var(--theme-primary),0.1)] via-transparent to-[rgba(var(--theme-primary),0.1)]"
+        animate={animationsEnabled ? {
+          background: [
+            "linear-gradient(135deg, rgba(var(--theme-primary), 0.1) 0%, transparent 50%, rgba(var(--theme-primary), 0.1) 100%)",
+            "linear-gradient(225deg, rgba(var(--theme-primary), 0.1) 0%, transparent 50%, rgba(var(--theme-primary), 0.1) 100%)",
+            "linear-gradient(315deg, rgba(var(--theme-primary), 0.1) 0%, transparent 50%, rgba(var(--theme-primary), 0.1) 100%)",
+            "linear-gradient(45deg, rgba(var(--theme-primary), 0.1) 0%, transparent 50%, rgba(var(--theme-primary), 0.1) 100%)",
+            "linear-gradient(135deg, rgba(var(--theme-primary), 0.1) 0%, transparent 50%, rgba(var(--theme-primary), 0.1) 100%)"
+          ]
+        } : {}}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      />
+      <motion.div
+        className="absolute inset-0 opacity-30"
+        style={{
+          background: `radial-gradient(circle at 50% 50%, rgba(var(--theme-primary), 0.2) 0%, transparent 70%)`
+        }}
+        animate={animationsEnabled ? {
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.1, 0.3]
+        } : {}}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  )
+}
+
+// Efficient conditional motion wrapper
+const ConditionalMotion = ({ 
+  children, 
+  animationsEnabled, 
+  motionProps = {},
+  className = "",
+  ...props 
+}: {
+  children: React.ReactNode
+  animationsEnabled: boolean
+  motionProps?: any
+  className?: string
+  [key: string]: any
+}) => {
+  if (animationsEnabled) {
     return (
-      <div className="absolute inset-0 bg-gradient-to-br from-background/95 to-background/85 backdrop-blur-sm rounded-lg" />
+      <motion.div className={className} {...motionProps} {...props}>
+        {children}
+      </motion.div>
     )
   }
-
+  
   return (
-    <div className="absolute inset-0 overflow-hidden rounded-lg">
-      <div className="absolute inset-0 bg-gradient-to-br from-background/95 to-background/85 backdrop-blur-sm" />
-      
-      {/* Animated scan line */}
-      <motion.div
-        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary),0.5)] to-transparent"
-        animate={{
-          y: [0, 400, 0],
-          opacity: [0, 1, 0]
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "linear"
-        }}
-      />
-      
-      {/* Subtle grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--theme-primary),0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--theme-primary),0.03)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg" />
-      
-      {/* Corner accents */}
-      <div className="absolute top-0 left-0 w-6 h-6 border-l-2 border-t-2 border-[rgba(var(--theme-primary),0.3)] rounded-tl-lg" />
-      <div className="absolute top-0 right-0 w-6 h-6 border-r-2 border-t-2 border-[rgba(var(--theme-primary),0.3)] rounded-tr-lg" />
-      <div className="absolute bottom-0 left-0 w-6 h-6 border-l-2 border-b-2 border-[rgba(var(--theme-primary),0.3)] rounded-bl-lg" />
-      <div className="absolute bottom-0 right-0 w-6 h-6 border-r-2 border-b-2 border-[rgba(var(--theme-primary),0.3)] rounded-br-lg" />
+    <div className={className} {...props}>
+      {children}
     </div>
   )
 }
@@ -250,319 +273,247 @@ export function WidgetPalette() {
 
   const modCategories = getModCategories()
 
-  const MotionWrapper = animationsEnabled ? motion.div : 'div'
-
   if (isCollapsed) {
     return (
-      <MotionWrapper
-        {...(animationsEnabled ? {
-          initial: { scale: 0.9, opacity: 0 },
-          animate: { scale: 1, opacity: 1 },
-          exit: { scale: 0.9, opacity: 0 },
-          transition: { duration: 0.2, ease: "easeOut" }
-        } : {})}
+      <motion.div
+        initial={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
+        animate={animationsEnabled ? { scale: 1, opacity: 1 } : {}}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="fixed z-40 select-none"
+        style={{ left: position.x, top: position.y }}
       >
-        <div
-          ref={paletteRef}
-          className="fixed z-40 select-none will-change-transform overflow-hidden"
-          style={{
-            left: position.x,
-            top: position.y,
-            transform: "translate3d(0, 0, 0)",
-          }}
+        <motion.div
+          whileHover={animationsEnabled ? { scale: 1.05 } : {}}
+          whileTap={animationsEnabled ? { scale: 0.95 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >
-          <Card className="bg-card/95 backdrop-blur theme-outline-primary shadow-lg">
-            {/* Futuristic Background */}
-            <PaletteBackground animationsEnabled={animationsEnabled} />
-            
-            <div className="flex items-center gap-2 p-3 relative z-10">
-              <div
-                className="cursor-grab active:cursor-grabbing p-1 hover:bg-[rgba(var(--theme-primary),0.1)] rounded touch-none transition-colors"
-                onMouseDown={handleMouseDown}
-              >
-                <motion.div
-                  className="text-[rgb(var(--theme-primary))]"
-                  {...(animationsEnabled ? {
-                    animate: { x: [0, 2, 0] },
-                    transition: { duration: 2, repeat: Infinity }
-                  } : {})}
-                >
-                  <GripVertical className="h-4 w-4" />
-                </motion.div>
-              </div>
-              <Package className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
-              <span className="text-sm font-medium bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
-                AriesMods
-              </span>
-              <motion.div
-                className="w-2 h-2 bg-[rgb(var(--theme-primary))] rounded-full"
-                {...(animationsEnabled ? {
-                  animate: { opacity: [0.5, 1, 0.5] },
-                  transition: { duration: 2, repeat: Infinity }
-                } : {})}
-              />
-              <MotionWrapper
-                {...(animationsEnabled ? {
-                  whileHover: { scale: 1.1, rotate: 90 },
-                  whileTap: { scale: 0.9 }
-                } : {})}
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] ml-2 theme-outline-primary transition-all"
-                  onClick={() => setIsCollapsed(false)}
-                  title="Expand AriesMods Palette"
-                >
-                  <Maximize2 className="h-3 w-3" />
-                </Button>
-              </MotionWrapper>
-            </div>
-          </Card>
-        </div>
-      </MotionWrapper>
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-10 h-10 rounded-full bg-card/95 backdrop-blur theme-outline-primary shadow-lg hover:shadow-xl transition-all"
+            onClick={() => setIsCollapsed(false)}
+            title="Expand AriesMods Palette"
+          >
+            <Package className="h-5 w-5 text-[rgb(var(--theme-primary))]" />
+          </Button>
+        </motion.div>
+      </motion.div>
     )
   }
 
   return (
     <AnimatePresence>
-      <MotionWrapper
-        {...(animationsEnabled ? {
-          initial: { scale: 0.95, opacity: 0, y: 10 },
-          animate: { scale: 1, opacity: 1, y: 0 },
-          exit: { scale: 0.95, opacity: 0, y: 10 },
-          transition: { duration: 0.2, ease: "easeOut" }
-        } : {})}
+      <motion.div
+        initial={animationsEnabled ? { scale: 0.95, opacity: 0, y: 10 } : {}}
+        animate={animationsEnabled ? { scale: 1, opacity: 1, y: 0 } : {}}
+        exit={animationsEnabled ? { scale: 0.95, opacity: 0, y: 10 } : {}}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        ref={paletteRef}
+        className="fixed z-40 w-72 select-none will-change-transform overflow-hidden"
+        style={{
+          left: position.x,
+          top: position.y,
+          transform: "translate3d(0, 0, 0)",
+        }}
       >
-        <div
-          ref={paletteRef}
-          className="fixed z-40 w-72 select-none will-change-transform overflow-hidden"
-          style={{
-            left: position.x,
-            top: position.y,
-            transform: "translate3d(0, 0, 0)",
-          }}
-        >
-          <Card className="bg-card/95 backdrop-blur theme-outline-primary shadow-lg max-h-[calc(100vh-100px)] overflow-hidden">
-            {/* Futuristic Background */}
-            <PaletteBackground animationsEnabled={animationsEnabled} />
-            
-            <CardHeader className="pb-3 cursor-grab active:cursor-grabbing touch-none relative z-10" onMouseDown={handleMouseDown}>
-              <MotionWrapper
-                className="flex items-center justify-between"
-                {...(animationsEnabled ? {
-                  initial: { opacity: 0, x: -10 },
-                  animate: { opacity: 1, x: 0 },
-                  transition: { delay: 0.1 }
-                } : {})}
-              >
-                <div className="flex items-center gap-2">
-                  <motion.div
-                    className="text-[rgb(var(--theme-primary))]"
-                    {...(animationsEnabled ? {
-                      animate: { x: [0, 2, 0] },
-                      transition: { duration: 2, repeat: Infinity }
-                    } : {})}
-                  >
-                    <GripVertical className="h-4 w-4" />
-                  </motion.div>
-                  <Package className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
-                  <CardTitle className="text-sm bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
-                    AriesMods Palette
-                  </CardTitle>
-                  <motion.div
-                    className="w-2 h-2 bg-[rgb(var(--theme-primary))] rounded-full"
-                    {...(animationsEnabled ? {
-                      animate: { opacity: [0.5, 1, 0.5] },
-                      transition: { duration: 2, repeat: Infinity }
-                    } : {})}
-                  />
-                </div>
-                <MotionWrapper
-                  {...(animationsEnabled ? {
-                    whileHover: { scale: 1.1, rotate: 90 },
-                    whileTap: { scale: 0.9 }
-                  } : {})}
+        <Card className="bg-card/95 backdrop-blur theme-outline-primary shadow-lg max-h-[calc(100vh-100px)] overflow-hidden">
+          {/* Futuristic Background */}
+          <PaletteBackground animationsEnabled={animationsEnabled} />
+          
+          <CardHeader className="pb-3 cursor-grab active:cursor-grabbing touch-none relative z-10" onMouseDown={handleMouseDown}>
+            <motion.div
+              className="flex items-center justify-between"
+              initial={animationsEnabled ? { opacity: 0, x: -10 } : {}}
+              animate={animationsEnabled ? { opacity: 1, x: 0 } : {}}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="flex items-center gap-2">
+                <motion.div
+                  className="text-[rgb(var(--theme-primary))]"
+                  animate={animationsEnabled ? { x: [0, 2, 0] } : {}}
+                  transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
-                    onClick={() => setIsCollapsed(true)}
-                    title="Collapse AriesMods Palette"
-                  >
-                    <Minimize2 className="h-3 w-3" />
-                  </Button>
-                </MotionWrapper>
-              </MotionWrapper>
-              
-              {/* Search */}
-              <MotionWrapper
-                className="relative"
-                {...(animationsEnabled ? {
-                  initial: { opacity: 0, y: 10 },
-                  animate: { opacity: 1, y: 0 },
-                  transition: { delay: 0.2 }
-                } : {})}
-              >
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-[rgba(var(--theme-primary),0.7)]" />
-                <Input
-                  placeholder="Search AriesMods..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-7 h-7 text-xs bg-background/50 theme-outline-primary focus:border-[rgba(var(--theme-primary),0.5)] transition-all"
+                  <GripVertical className="h-4 w-4" />
+                </motion.div>
+                <Package className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
+                <CardTitle className="text-sm bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
+                  AriesMods Palette
+                </CardTitle>
+                <motion.div
+                  className="w-2 h-2 bg-[rgb(var(--theme-primary))] rounded-full"
+                  animate={animationsEnabled ? { opacity: [0.5, 1, 0.5] } : {}}
+                  transition={{ duration: 2, repeat: Infinity }}
                 />
-              </MotionWrapper>
-            </CardHeader>
-
-            <CardContent className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] relative z-10">
-              {modCategories.length === 0 ? (
-                <MotionWrapper
-                  className="text-center text-muted-foreground text-sm py-8"
-                  {...(animationsEnabled ? {
-                    initial: { opacity: 0, y: 20 },
-                    animate: { opacity: 1, y: 0 },
-                    transition: { delay: 0.3 }
-                  } : {})}
+              </div>
+              <motion.div
+                whileHover={animationsEnabled ? { scale: 1.1, rotate: 90 } : {}}
+                whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
+                  onClick={() => setIsCollapsed(true)}
+                  title="Collapse AriesMods Palette"
                 >
-                  {searchQuery ? "No AriesMods match your search" : "No AriesMods available"}
-                </MotionWrapper>
-              ) : (
-                modCategories.map((category, categoryIndex) => {
-                  const isExpanded = expandedCategories.includes(category.name)
+                  <Minimize2 className="h-3 w-3" />
+                </Button>
+              </motion.div>
+            </motion.div>
+            
+            {/* Search */}
+            <motion.div
+              className="relative"
+              initial={animationsEnabled ? { opacity: 0, y: 10 } : {}}
+              animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.2 }}
+            >
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-[rgba(var(--theme-primary),0.7)]" />
+              <Input
+                placeholder="Search AriesMods..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-7 h-7 text-xs bg-background/50 theme-outline-primary focus:border-[rgba(var(--theme-primary),0.5)] transition-all"
+              />
+            </motion.div>
+          </CardHeader>
 
-                  return (
-                    <MotionWrapper
-                      key={category.name}
-                      {...(animationsEnabled ? {
-                        initial: { opacity: 0, y: 20 },
-                        animate: { opacity: 1, y: 0 },
-                        transition: { delay: 0.3 + categoryIndex * 0.1 }
-                      } : {})}
-                    >
-                      <Card className="theme-outline-primary bg-background/30 backdrop-blur-sm">
-                        <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.name)}>
-                          <CollapsibleTrigger asChild>
-                            <MotionWrapper
-                              {...(animationsEnabled ? {
-                                whileHover: { scale: 1.01, x: 2 },
-                                whileTap: { scale: 0.99 }
-                              } : {})}
-                            >
-                              <CardHeader className="pb-2 cursor-pointer hover:bg-[rgba(var(--theme-primary),0.05)] transition-all theme-outline-primary rounded-lg">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm">{category.icon}</span>
-                                    <div>
-                                      <div className="text-sm font-medium bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
-                                        {category.name}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">{category.description}</div>
+          <CardContent className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] relative z-10">
+            {modCategories.length === 0 ? (
+              <motion.div
+                className="text-center text-muted-foreground text-sm py-8"
+                initial={animationsEnabled ? { opacity: 0, y: 20 } : {}}
+                animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.3 }}
+              >
+                {searchQuery ? "No AriesMods match your search" : "No AriesMods available"}
+              </motion.div>
+            ) : (
+              modCategories.map((category, categoryIndex) => {
+                const isExpanded = expandedCategories.includes(category.name)
+
+                return (
+                  <motion.div
+                    key={category.name}
+                    initial={animationsEnabled ? { opacity: 0, y: 20 } : {}}
+                    animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
+                    transition={{ delay: 0.3 + categoryIndex * 0.1 }}
+                  >
+                    <Card className="theme-outline-primary bg-background/30 backdrop-blur-sm">
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.name)}>
+                        <CollapsibleTrigger asChild>
+                          <motion.div
+                            whileHover={animationsEnabled ? { scale: 1.01, x: 2 } : {}}
+                            whileTap={animationsEnabled ? { scale: 0.99 } : {}}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                          >
+                            <CardHeader className="pb-2 cursor-pointer hover:bg-[rgba(var(--theme-primary),0.05)] transition-all theme-outline-primary rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">{category.icon}</span>
+                                  <div>
+                                    <div className="text-sm font-medium bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
+                                      {category.name}
                                     </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <motion.div
-                                      {...(animationsEnabled ? {
-                                        animate: { scale: [1, 1.1, 1] },
-                                        transition: { duration: 2, repeat: Infinity }
-                                      } : {})}
-                                    >
-                                      <Badge variant="outline" className="text-xs border-[rgba(var(--theme-primary),0.3)]">
-                                        {category.mods.length} mod{category.mods.length !== 1 ? 's' : ''}
-                                      </Badge>
-                                    </motion.div>
-                                    <motion.div
-                                      {...(animationsEnabled ? {
-                                        animate: { rotate: isExpanded ? 180 : 0 },
-                                        transition: { duration: 0.3 }
-                                      } : {})}
-                                    >
-                                      <ChevronDown className="h-3 w-3 text-[rgb(var(--theme-primary))]" />
-                                    </motion.div>
+                                    <div className="text-xs text-muted-foreground">{category.description}</div>
                                   </div>
                                 </div>
-                              </CardHeader>
-                            </MotionWrapper>
-                          </CollapsibleTrigger>
-
-                          <CollapsibleContent>
-                            <CardContent className="pt-0 space-y-1">
-                              {category.mods.map((template, modIndex) => (
-                                <MotionWrapper
-                                  key={template.id}
-                                  {...(animationsEnabled ? {
-                                    initial: { opacity: 0, x: -10 },
-                                    animate: { opacity: 1, x: 0 },
-                                    transition: { delay: modIndex * 0.05 },
-                                    whileHover: { scale: 1.02, x: 4 },
-                                    whileTap: { scale: 0.98 }
-                                  } : {})}
-                                >
-                                  <div
-                                    className="group relative p-2 rounded border cursor-grab active:cursor-grabbing hover:bg-[rgba(var(--theme-primary),0.1)] transition-all theme-outline-primary"
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(e, template)}
-                                    onDragEnd={handleDragEnd}
+                                <div className="flex items-center gap-2">
+                                  <motion.div
+                                    animate={animationsEnabled ? { scale: [1, 1.1, 1] } : {}}
+                                    transition={{ duration: 2, repeat: Infinity }}
                                   >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1 min-w-0">
-                                        <div className="text-xs font-medium truncate text-[rgb(var(--theme-secondary))]">
-                                          {template.metadata.displayName}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground truncate">
-                                          {template.metadata.description}
-                                        </div>
-                                        <div className="text-xs text-[rgba(var(--theme-primary),0.7)] mt-1">
-                                          {template.metadata.defaultWidth}×{template.metadata.defaultHeight}
-                                        </div>
+                                    <Badge variant="outline" className="text-xs border-[rgba(var(--theme-primary),0.3)]">
+                                      {category.mods.length} mod{category.mods.length !== 1 ? 's' : ''}
+                                    </Badge>
+                                  </motion.div>
+                                  <motion.div
+                                    animate={animationsEnabled ? { rotate: isExpanded ? 180 : 0 } : {}}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    <ChevronDown className="h-3 w-3 text-[rgb(var(--theme-primary))]" />
+                                  </motion.div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                          </motion.div>
+                        </CollapsibleTrigger>
+
+                        <CollapsibleContent>
+                          <CardContent className="pt-0 space-y-1">
+                            {category.mods.map((template, modIndex) => (
+                              <motion.div
+                                key={template.id}
+                                initial={animationsEnabled ? { opacity: 0, x: -10 } : {}}
+                                animate={animationsEnabled ? { opacity: 1, x: 0 } : {}}
+                                transition={{ delay: modIndex * 0.05 }}
+                                whileHover={animationsEnabled ? { scale: 1.02, x: 4 } : {}}
+                                whileTap={animationsEnabled ? { scale: 0.98 } : {}}
+                              >
+                                <div
+                                  className="group relative p-2 rounded border cursor-grab active:cursor-grabbing hover:bg-[rgba(var(--theme-primary),0.1)] transition-all theme-outline-primary"
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, template)}
+                                  onDragEnd={handleDragEnd}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs font-medium truncate text-[rgb(var(--theme-secondary))]">
+                                        {template.metadata.displayName}
                                       </div>
-                                      <MotionWrapper
-                                        {...(animationsEnabled ? {
-                                          whileHover: { scale: 1.1, rotate: 90 },
-                                          whileTap: { scale: 0.9 }
-                                        } : {})}
-                                      >
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all hover:bg-[rgba(var(--theme-primary),0.2)] theme-outline-primary"
-                                          onClick={() => createAriesModWidget(template)}
-                                          title="Add to Grid"
-                                        >
-                                          <Plus className="h-3 w-3" />
-                                        </Button>
-                                      </MotionWrapper>
+                                      <div className="text-xs text-muted-foreground truncate">
+                                        {template.metadata.description}
+                                      </div>
+                                      <div className="text-xs text-[rgba(var(--theme-primary),0.7)] mt-1">
+                                        {template.metadata.defaultWidth}×{template.metadata.defaultHeight}
+                                      </div>
                                     </div>
-                                    
-                                    {template.metadata.tags && template.metadata.tags.length > 0 && (
-                                      <div className="flex gap-1 mt-1 flex-wrap">
-                                        {template.metadata.tags.slice(0, 2).map((tag) => (
-                                          <Badge key={tag} variant="secondary" className="text-xs px-1 py-0 bg-[rgba(var(--theme-primary),0.2)] text-[rgb(var(--theme-secondary))] border-[rgba(var(--theme-primary),0.3)]">
-                                            {tag}
-                                          </Badge>
-                                        ))}
-                                        {template.metadata.tags.length > 2 && (
-                                          <span className="text-xs text-[rgba(var(--theme-primary),0.7)]">
-                                            +{template.metadata.tags.length - 2}
-                                          </span>
-                                        )}
-                                      </div>
-                                    )}
+                                    <motion.div
+                                      whileHover={animationsEnabled ? { scale: 1.1, rotate: 90 } : {}}
+                                      whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                    >
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all hover:bg-[rgba(var(--theme-primary),0.2)] theme-outline-primary"
+                                        onClick={() => createAriesModWidget(template)}
+                                        title="Add to Grid"
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </motion.div>
                                   </div>
-                                </MotionWrapper>
-                              ))}
-                            </CardContent>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </Card>
-                    </MotionWrapper>
-                  )
-                })
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </MotionWrapper>
+                                  
+                                  {template.metadata.tags && template.metadata.tags.length > 0 && (
+                                    <div className="flex gap-1 mt-1 flex-wrap">
+                                      {template.metadata.tags.slice(0, 2).map((tag) => (
+                                        <Badge key={tag} variant="secondary" className="text-xs px-1 py-0 bg-[rgba(var(--theme-primary),0.2)] text-[rgb(var(--theme-secondary))] border-[rgba(var(--theme-primary),0.3)]">
+                                          {tag}
+                                        </Badge>
+                                      ))}
+                                      {template.metadata.tags.length > 2 && (
+                                        <span className="text-xs text-[rgba(var(--theme-primary),0.7)]">
+                                          +{template.metadata.tags.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </Card>
+                  </motion.div>
+                )
+              })
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </AnimatePresence>
   )
 }

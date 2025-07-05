@@ -109,24 +109,30 @@ const ConnectionControls = () => {
     }, 100)
   }
 
+  // Conditional motion components
   const MotionWrapper = animationsEnabled ? motion.div : 'div'
+  const MotionDiv = animationsEnabled ? motion.div : 'div'
 
   return (
-    <motion.div
-      initial={animationsEnabled ? { opacity: 0, y: 20 } : {}}
-      animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5 }}
+    <MotionWrapper
+      {...(animationsEnabled ? {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.5 }
+      } : {})}
     >
       <div className="relative p-4 space-y-4 overflow-hidden">
         {/* Futuristic Background */}
         <ConnectionBackground animationsEnabled={animationsEnabled} />
         
         <div className="relative z-10">
-          <motion.div
+          <MotionDiv
             className="flex items-center justify-between mb-4"
-            initial={animationsEnabled ? { opacity: 0, x: -20 } : {}}
-            animate={animationsEnabled ? { opacity: 1, x: 0 } : {}}
-            transition={{ delay: 0.1 }}
+            {...(animationsEnabled ? {
+              initial: { opacity: 0, x: -20 },
+              animate: { opacity: 1, x: 0 },
+              transition: { delay: 0.1 }
+            } : {})}
           >
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-[rgba(var(--theme-primary),0.1)] rounded-md border border-[rgba(var(--theme-primary),0.2)]">
@@ -142,10 +148,12 @@ const ConnectionControls = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <motion.div
-                whileHover={animationsEnabled ? { scale: 1.05 } : {}}
-                whileTap={animationsEnabled ? { scale: 0.95 } : {}}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              <MotionDiv
+                {...(animationsEnabled ? {
+                  whileHover: { scale: 1.05 },
+                  whileTap: { scale: 0.95 },
+                  transition: { type: "spring", stiffness: 400, damping: 25 }
+                } : {})}
               >
                 <Button 
                   onClick={() => reconnect()} 
@@ -153,18 +161,22 @@ const ConnectionControls = () => {
                   size="sm"
                   className="gap-1.5 theme-outline-primary hover:bg-[rgba(var(--theme-primary),0.1)] transition-all text-xs"
                 >
-                  <motion.div
-                    animate={animationsEnabled ? { rotate: 360 } : {}}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  <MotionDiv
+                    {...(animationsEnabled ? {
+                      animate: { rotate: 360 },
+                      transition: { duration: 2, repeat: Infinity, ease: "linear" }
+                    } : {})}
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
-                  </motion.div>
+                  </MotionDiv>
                   Reconnect
                 </Button>
-              </motion.div>
-              <motion.div
-                animate={animationsEnabled ? { scale: [1, 1.05, 1] } : {}}
-                transition={{ duration: 2, repeat: Infinity }}
+              </MotionDiv>
+              <MotionDiv
+                {...(animationsEnabled ? {
+                  animate: { scale: [1, 1.05, 1] },
+                  transition: { duration: 2, repeat: Infinity }
+                } : {})}
               >
                 <Badge 
                   variant={isConnected ? "default" : "destructive"} 
@@ -175,18 +187,20 @@ const ConnectionControls = () => {
                 >
                   {isConnected ? "● ONLINE" : "● OFFLINE"}
                 </Badge>
-              </motion.div>
+              </MotionDiv>
             </div>
-          </motion.div>
+          </MotionDiv>
 
           <Accordion type="single" collapsible className="w-full space-y-3">
             {/* Ping Settings */}
             <AccordionItem value="ping-settings" className="theme-outline-primary bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
               <AccordionTrigger className="hover:no-underline hover:bg-[rgba(var(--theme-primary),0.05)] transition-all px-3 py-2">
-                <motion.div
+                <MotionDiv
                   className="flex items-center gap-2"
-                  whileHover={animationsEnabled ? { x: 4 } : {}}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  {...(animationsEnabled ? {
+                    whileHover: { x: 4 },
+                    transition: { type: "spring", stiffness: 400, damping: 25 }
+                  } : {})}
                 >
                   <div className="p-1.5 bg-[rgba(var(--theme-primary),0.1)] rounded-md">
                     <Clock className="h-3.5 w-3.5 text-[rgb(var(--theme-primary))]" />
@@ -198,7 +212,7 @@ const ConnectionControls = () => {
                   <Badge variant="outline" className="ml-auto border-[rgba(var(--theme-primary),0.3)] text-[rgb(var(--theme-primary))] text-xs font-medium">
                     ADVANCED
                   </Badge>
-                </motion.div>
+                </MotionDiv>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
                 <Card className="theme-outline-primary bg-background/80 backdrop-blur-sm">
@@ -218,11 +232,13 @@ const ConnectionControls = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <motion.div
+                      <MotionDiv
                         className="space-y-2"
-                        initial={animationsEnabled ? { opacity: 0, x: -20 } : {}}
-                        animate={animationsEnabled ? { opacity: 1, x: 0 } : {}}
-                        transition={{ delay: 0.2 }}
+                        {...(animationsEnabled ? {
+                          initial: { opacity: 0, x: -20 },
+                          animate: { opacity: 1, x: 0 },
+                          transition: { delay: 0.2 }
+                        } : {})}
                       >
                         <Label htmlFor="sh-ping" className="text-sm font-medium text-[rgb(var(--theme-primary))]">StreamHandler Ping</Label>
                         <Input
@@ -245,12 +261,14 @@ const ConnectionControls = () => {
                             <span className="text-[rgb(var(--theme-primary))] font-mono font-medium">{pingIntervals.sh}ms</span>
                           </div>
                         </div>
-                      </motion.div>
-                      <motion.div
+                      </MotionDiv>
+                      <MotionDiv
                         className="space-y-2"
-                        initial={animationsEnabled ? { opacity: 0, x: 20 } : {}}
-                        animate={animationsEnabled ? { opacity: 1, x: 0 } : {}}
-                        transition={{ delay: 0.3 }}
+                        {...(animationsEnabled ? {
+                          initial: { opacity: 0, x: 20 },
+                          animate: { opacity: 1, x: 0 },
+                          transition: { delay: 0.3 }
+                        } : {})}
                       >
                         <Label htmlFor="en-ping" className="text-sm font-medium text-[rgb(var(--theme-secondary))]">Engine Ping</Label>
                         <Input
@@ -273,13 +291,15 @@ const ConnectionControls = () => {
                             <span className="text-[rgb(var(--theme-primary))] font-mono font-medium">{pingIntervals.en}ms</span>
                           </div>
                         </div>
-                      </motion.div>
+                      </MotionDiv>
                     </div>
-                    <motion.div
+                    <MotionDiv
                       className="space-y-2"
-                      initial={animationsEnabled ? { opacity: 0, y: 20 } : {}}
-                      animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
-                      transition={{ delay: 0.4 }}
+                      {...(animationsEnabled ? {
+                        initial: { opacity: 0, y: 20 },
+                        animate: { opacity: 1, y: 0 },
+                        transition: { delay: 0.4 }
+                      } : {})}
                     >
                       <Label htmlFor="ui-update" className="text-sm font-medium text-[rgb(var(--theme-primary))]">UI Update Rate</Label>
                       <Input
@@ -295,11 +315,13 @@ const ConnectionControls = () => {
                       <p className="text-xs text-muted-foreground">
                         Controls UI refresh rate. Active: <span className="text-[rgb(var(--theme-primary))] font-mono font-medium">{pingIntervals.ui}ms</span>
                       </p>
-                    </motion.div>
-                    <motion.div
-                      whileHover={animationsEnabled ? { scale: 1.02 } : {}}
-                      whileTap={animationsEnabled ? { scale: 0.98 } : {}}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    </MotionDiv>
+                    <MotionDiv
+                      {...(animationsEnabled ? {
+                        whileHover: { scale: 1.02 },
+                        whileTap: { scale: 0.98 },
+                        transition: { type: "spring", stiffness: 400, damping: 25 }
+                      } : {})}
                     >
                       <Button 
                         onClick={handleSavePingSettings} 
@@ -316,7 +338,7 @@ const ConnectionControls = () => {
                          saveStatus === 'saved' ? 'Saved!' : 
                          'Apply Settings'}
                       </Button>
-                    </motion.div>
+                    </MotionDiv>
                   </CardContent>
                 </Card>
               </AccordionContent>
@@ -325,10 +347,12 @@ const ConnectionControls = () => {
             {/* StreamHandler Status */}
             <AccordionItem value="sh" className="theme-outline-primary bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
               <AccordionTrigger className="hover:no-underline hover:bg-[rgba(var(--theme-primary),0.05)] transition-all px-3 py-2">
-                <motion.div
+                <MotionDiv
                   className="flex items-center gap-2 w-full"
-                  whileHover={animationsEnabled ? { x: 4 } : {}}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  {...(animationsEnabled ? {
+                    whileHover: { x: 4 },
+                    transition: { type: "spring", stiffness: 400, damping: 25 }
+                  } : {})}
                 >
                   <div className="p-1.5 bg-[rgba(var(--theme-primary),0.1)] rounded-md">
                     <Server className="h-3.5 w-3.5 text-[rgb(var(--theme-primary))]" />
@@ -338,9 +362,11 @@ const ConnectionControls = () => {
                     <p className="text-xs text-muted-foreground">Backend data streaming service</p>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <motion.div
-                      animate={animationsEnabled ? { scale: [1, 1.05, 1] } : {}}
-                      transition={{ duration: 2, repeat: Infinity }}
+                    <MotionDiv
+                      {...(animationsEnabled ? {
+                        animate: { scale: [1, 1.05, 1] },
+                        transition: { duration: 2, repeat: Infinity }
+                      } : {})}
                     >
                       <Badge 
                         variant={pingData.sh.status === 'connected' ? "default" : "destructive"} 
@@ -351,7 +377,7 @@ const ConnectionControls = () => {
                       >
                         {pingData.sh.status === 'connected' ? '● ONLINE' : '● OFFLINE'}
                       </Badge>
-                    </motion.div>
+                    </MotionDiv>
                     {pingData.sh.latency > 0 && (
                       <Badge 
                         variant={pingData.sh.latency > 30 ? "secondary" : "outline"} 
@@ -364,7 +390,7 @@ const ConnectionControls = () => {
                       </Badge>
                     )}
                   </div>
-                </motion.div>
+                </MotionDiv>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
                 <Card className="border-[rgba(var(--theme-primary),0.2)] bg-background/80 backdrop-blur-sm">
@@ -386,10 +412,12 @@ const ConnectionControls = () => {
             {/* Engine Status */}
             <AccordionItem value="en" className="theme-outline-primary bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
               <AccordionTrigger className="hover:no-underline hover:bg-[rgba(var(--theme-primary),0.05)] transition-all px-3 py-2">
-                <motion.div
+                <MotionDiv
                   className="flex items-center gap-2 w-full"
-                  whileHover={animationsEnabled ? { x: 4 } : {}}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  {...(animationsEnabled ? {
+                    whileHover: { x: 4 },
+                    transition: { type: "spring", stiffness: 400, damping: 25 }
+                  } : {})}
                 >
                   <div className="p-1.5 bg-[rgba(var(--theme-primary),0.1)] rounded-md">
                     <Database className="h-3.5 w-3.5 text-[rgb(var(--theme-primary))]" />
@@ -399,9 +427,11 @@ const ConnectionControls = () => {
                     <p className="text-xs text-muted-foreground">Processing engine and data handler</p>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <motion.div
-                      animate={animationsEnabled ? { scale: [1, 1.05, 1] } : {}}
-                      transition={{ duration: 2, repeat: Infinity }}
+                    <MotionDiv
+                      {...(animationsEnabled ? {
+                        animate: { scale: [1, 1.05, 1] },
+                        transition: { duration: 2, repeat: Infinity }
+                      } : {})}
                     >
                       <Badge 
                         variant={pingData.en.status === 'connected' ? "default" : "destructive"} 
@@ -412,7 +442,7 @@ const ConnectionControls = () => {
                       >
                         {pingData.en.status === 'connected' ? '● ONLINE' : '● OFFLINE'}
                       </Badge>
-                    </motion.div>
+                    </MotionDiv>
                     {pingData.en.latency > 0 && (
                       <Badge 
                         variant={pingData.en.latency > 30 ? "secondary" : "outline"} 
@@ -425,7 +455,7 @@ const ConnectionControls = () => {
                       </Badge>
                     )}
                   </div>
-                </motion.div>
+                </MotionDiv>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
                 <Card className="theme-outline-primary bg-background/80 backdrop-blur-sm">
@@ -446,7 +476,7 @@ const ConnectionControls = () => {
           </Accordion>
         </div>
       </div>
-    </motion.div>
+    </MotionWrapper>
   )
 }
 

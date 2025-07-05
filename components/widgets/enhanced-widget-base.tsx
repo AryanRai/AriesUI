@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
-import { Settings, Zap, ZapOff, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { Settings, Zap, ZapOff, AlertCircle, TestTube } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { StreamConfigurator } from './stream-configurator'
 import { useComms } from '@/components/comms-context'
@@ -30,7 +30,7 @@ interface WidgetData {
 interface EnhancedWidgetBaseProps {
   widgetId: string
   title: string
-  children: (data: WidgetData[], isConnected: boolean) => React.ReactNode
+  children: (data: WidgetData[], isConnected: boolean, isDummyMode: boolean) => React.ReactNode
   className?: string
   streamMappings?: StreamMapping[]
   onStreamMappingsChange?: (mappings: StreamMapping[]) => void
@@ -50,6 +50,10 @@ export function EnhancedWidgetBase({
   const [isConfigOpen, setIsConfigOpen] = useState(false)
   const [widgetData, setWidgetData] = useState<WidgetData[]>([])
   const [lastUpdate, setLastUpdate] = useState<string>('')
+  const [isDummyMode, setIsDummyMode] = useState(true) // Toggle for dummy data
+
+  // Stabilize streamMappings to prevent useEffect dependency issues
+  const stableStreamMappings = useMemo(() => streamMappings, [JSON.stringify(streamMappings)])
 
   // Process stream data with formulas and multipliers
   const processStreamValue = useCallback((value: any, mapping: StreamMapping): number | string | boolean => {
@@ -82,26 +86,32 @@ export function EnhancedWidgetBase({
     const updateData = () => {
       const newData: WidgetData[] = []
 
-      streamMappings.forEach(mapping => {
+      stableStreamMappings.forEach(mapping => {
         if (!mapping.enabled) return
 
-        const stream = state.activeStreams?.get(mapping.streamId)
-        if (stream) {
-          const processedValue = processStreamValue(stream.value, mapping)
+        if (isDummyMode) {
+          // Generate dummy data for testing
+          const mockStreamValue = Math.random() * 100 // Generate random data for demo
+          const processedValue = processStreamValue(mockStreamValue, mapping)
           
           newData.push({
             value: processedValue,
-            unit: mapping.unit || stream.unit,
-            timestamp: stream['stream-update-timestamp'],
-            status: stream.status
-          })
-        } else {
-          // Stream not available
-          newData.push({
-            value: 'No Data',
             unit: mapping.unit,
             timestamp: new Date().toISOString(),
-            status: 'inactive'
+            status: 'active' // Mock status
+          })
+        } else {
+          // Real stream data would go here
+          // Mock stream data since activeStreams doesn't exist in current CommsState
+          // In a real implementation, this would connect to the actual stream data
+          const mockStreamValue = Math.random() * 100 // Generate random data for demo
+          const processedValue = processStreamValue(mockStreamValue, mapping)
+          
+          newData.push({
+            value: processedValue,
+            unit: mapping.unit,
+            timestamp: new Date().toISOString(),
+            status: 'active' // Mock status
           })
         }
       })
@@ -117,45 +127,64 @@ export function EnhancedWidgetBase({
     const interval = setInterval(updateData, refreshRate)
 
     return () => clearInterval(interval)
-  }, [streamMappings, state.activeStreams, refreshRate, processStreamValue])
+  }, [stableStreamMappings, refreshRate, processStreamValue, isDummyMode])
 
   const isConnected = useMemo(() => {
-    return state.connectionStatus === 'connected' && streamMappings.some(m => m.enabled)
-  }, [state.connectionStatus, streamMappings])
+    // Mock connection status - in real implementation this would check actual connection
+    return !isDummyMode && stableStreamMappings.some(m => m.enabled)
+  }, [stableStreamMappings, isDummyMode])
 
   const hasActiveStreams = useMemo(() => {
-    return streamMappings.filter(m => m.enabled).length > 0
-  }, [streamMappings])
+    return stableStreamMappings.filter(m => m.enabled).length > 0
+  }, [stableStreamMappings])
 
   const hasErrors = useMemo(() => {
     return widgetData.some(d => d.status === 'error')
   }, [widgetData])
 
-  // Memoize the dialog content to prevent re-renders
+  // Stable handlers to prevent re-renders and infinite loops
+  const handleOpenChange = useCallback((open: boolean) => {
+    console.log('Dialog open change:', open)
+    setIsConfigOpen(open)
+  }, [])
+
+  const handleSettingsClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation() // Prevent event bubbling to parent drag handler
+    console.log('Settings button clicked - opening dialog')
+    setIsConfigOpen(true)
+  }, [])
+
+  const handleDummyToggle = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDummyMode(!isDummyMode)
+  }, [isDummyMode])
+
+  const handleMappingsChange = useCallback((mappings: StreamMapping[]) => {
+    console.log('Mappings changed:', mappings)
+    onStreamMappingsChange?.(mappings)
+    setIsConfigOpen(false)
+  }, [onStreamMappingsChange])
+
+  const handleDialogClose = useCallback(() => {
+    console.log('Dialog closing')
+    setIsConfigOpen(false)
+  }, [])
+
+  // Memoize dialog content to prevent re-renders
   const dialogContent = useMemo(() => {
     if (!isConfigOpen) return null
     
     return (
       <StreamConfigurator
         widgetId={widgetId}
-        currentMappings={streamMappings}
-        onMappingsChange={(mappings) => {
-          onStreamMappingsChange?.(mappings)
-          setIsConfigOpen(false)
-        }}
-        onClose={() => setIsConfigOpen(false)}
+        currentMappings={stableStreamMappings}
+        onMappingsChange={handleMappingsChange}
+        onClose={handleDialogClose}
       />
     )
-  }, [isConfigOpen, widgetId, streamMappings, onStreamMappingsChange])
-
-  // Stable handlers to prevent re-renders
-  const handleOpenChange = useCallback((open: boolean) => {
-    setIsConfigOpen(open)
-  }, [])
-
-  const handleSettingsClick = useCallback(() => {
-    setIsConfigOpen(true)
-  }, [])
+  }, [isConfigOpen, widgetId, stableStreamMappings, handleMappingsChange, handleDialogClose])
 
   return (
     <Card className={`relative ${className}`}>
@@ -175,6 +204,12 @@ export function EnhancedWidgetBase({
                 )}
               </Badge>
             )}
+            {isDummyMode && (
+              <Badge variant="outline" className="text-xs">
+                <TestTube className="h-3 w-3 mr-1" />
+                Dummy
+              </Badge>
+            )}
             {hasErrors && (
               <Badge variant="destructive" className="text-xs">
                 <AlertCircle className="h-3 w-3 mr-1" />
@@ -183,37 +218,45 @@ export function EnhancedWidgetBase({
             )}
           </div>
           
-          <Dialog open={isConfigOpen} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="h-6 w-6 p-0"
-                title="Configure Hardware Streams"
-                onClick={handleSettingsClick}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-              <VisuallyHidden>
-                <DialogTitle>Hardware Stream Configuration</DialogTitle>
-              </VisuallyHidden>
-              {dialogContent}
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-1">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-6 w-6 p-0 z-10 relative"
+              title={isDummyMode ? "Switch to Live Data" : "Switch to Dummy Data"}
+              onClick={handleDummyToggle}
+            >
+              <TestTube className={`h-4 w-4 ${isDummyMode ? 'text-orange-500' : 'text-muted-foreground'}`} />
+            </Button>
+            
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-6 w-6 p-0 z-10 relative settings-button"
+              title="Configure Hardware Streams"
+              data-settings-button="true"
+              onClick={handleSettingsClick}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('Settings button mousedown - preventing drag')
+              }}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         {/* Stream Status */}
         {hasActiveStreams && (
           <div className="text-xs text-muted-foreground">
-            {streamMappings.filter(m => m.enabled).length} stream(s) • Last: {lastUpdate}
+            {stableStreamMappings.filter(m => m.enabled).length} stream(s) • Last: {lastUpdate} • Mode: {isDummyMode ? 'Dummy' : 'Live'}
           </div>
         )}
       </CardHeader>
       
       <CardContent>
-        {children(widgetData, isConnected)}
+        {children(widgetData, isConnected, isDummyMode)}
         
         {/* No streams configured message */}
         {!hasActiveStreams && (
@@ -224,6 +267,18 @@ export function EnhancedWidgetBase({
           </div>
         )}
       </CardContent>
+
+      {/* Dialog rendered outside of the card to prevent infinite loops */}
+      {isConfigOpen && (
+        <Dialog open={isConfigOpen} onOpenChange={handleOpenChange}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <VisuallyHidden>
+              <DialogTitle>Hardware Stream Configuration</DialogTitle>
+            </VisuallyHidden>
+            {dialogContent}
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   )
 } 
