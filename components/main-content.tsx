@@ -17,6 +17,7 @@ import { FloatingToolbar } from "@/components/floating-toolbar-merged"
 // Import enhanced hardware components
 import { EnhancedSensorWidget } from "@/components/widgets/enhanced-sensor-widget"
 import { HardwareAcceleratedWidget } from "@/components/widgets/hardware-accelerated-widget"
+import { commsClient } from "@/lib/comms-stream-client"
 
 // Import new grid components
 import { GridWidget } from "@/components/grid/GridWidget"
@@ -79,8 +80,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     zoom: 1,
   })
 
-  // Initialize nested widgets after nest containers are set
-  // REMOVED: Auto-adding default widgets to nests - nests should start empty
+  // Nested widgets are initialized empty - widgets can be dragged into nests
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -146,6 +146,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const [lastAutoSave, setLastAutoSave] = useState<string | null>(null)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [isDebugPanelVisible, setIsDebugPanelVisible] = useLocalStorage("aries-show-debug-panel", true)
+  const [hardwareConnectionStatus, setHardwareConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
   
   // Track if grid state has been initialized to avoid triggering unsaved changes on initial load
   const isGridStateInitialized = useRef(false)
@@ -579,6 +580,28 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   useEffect(() => {
     loadGridState()
   }, [loadGridState])
+
+  // Initialize hardware connection
+  useEffect(() => {
+    const handleConnectionChange = (connected: boolean) => {
+      setHardwareConnectionStatus(commsClient.status)
+    }
+
+    commsClient.onConnection(handleConnectionChange)
+    
+    // Auto-connect to hardware backend
+    commsClient.connect().then(success => {
+      if (success) {
+        dispatch({ type: "ADD_LOG", payload: "✅ Connected to Comms StreamHandler" })
+      } else {
+        dispatch({ type: "ADD_LOG", payload: "❌ Failed to connect to Comms StreamHandler" })
+      }
+    })
+
+    return () => {
+      commsClient.offConnection(handleConnectionChange)
+    }
+  }, [dispatch])
 
   // Add keyboard shortcuts for zoom
   useEffect(() => {
@@ -1156,14 +1179,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           
           // Schedule update for next frame
           rafRef.current = requestAnimationFrame(() => {
-            updateGridState((prev) => ({
-              ...prev,
-              nestContainers: prev.nestContainers.map((nest) => 
-                nest.id === dragState.draggedId 
-                  ? { ...nest, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
-                  : nest
-              ),
-            }))
+          updateGridState((prev) => ({
+            ...prev,
+            nestContainers: prev.nestContainers.map((nest) => 
+              nest.id === dragState.draggedId 
+                ? { ...nest, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                : nest
+            ),
+          }))
           })
           return // Early return to avoid any other processing
         }
@@ -1823,27 +1846,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     dispatch({ type: "ADD_LOG", payload: `Nest container created: ${newNest.id}` })
   }
 
-  // Auto-resize nests based on content - REMOVED: nests now maintain fixed size with scrolling
-  // useEffect(() => {
-  //   updateGridState((prev) => ({
-  //     ...prev,
-  //     nestContainers: prev.nestContainers.map((nest) => {
-  //       const nestWidgets = prev.nestedWidgets.filter((w) => w.nestId === nest.id)
-  //       const autoSize = calculateNestAutoSize(nestWidgets)
 
-  //       // Only update if size actually changed to prevent infinite loops
-  //       if (nest.w !== autoSize.w || nest.h !== autoSize.h) {
-  //         return {
-  //           ...nest,
-  //           w: autoSize.w,
-  //           h: autoSize.h,
-  //           updatedAt: new Date().toISOString(),
-  //         }
-  //       }
-  //       return nest
-  //     }),
-  //   }))
-  // }, [gridState.nestedWidgets, updateGridState])
 
   // Listen for nest creation from toolbar
   useEffect(() => {
@@ -1908,6 +1911,9 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           <div>Enhanced Sensors: {gridState.mainWidgets.filter(w => w.type === 'enhanced-sensor').length}</div>
           <div>Status: {dragState.isDragging ? 'DRAGGING' : isPanning ? 'PANNING' : 'READY'}</div>
           <div className="text-cyan-400 mt-1">GPU Layers: ENABLED | RAF: ACTIVE</div>
+          <div className={`${hardwareConnectionStatus === 'connected' ? 'text-green-400' : 'text-red-400'}`}>
+            Hardware: {hardwareConnectionStatus.toUpperCase()}
+          </div>
           <div>Auto-save: {isAutoSaveEnabled ? 'ON' : 'OFF'} | Unsaved: {hasUnsavedChanges ? 'YES' : 'NO'}</div>
         </div>
       )}
@@ -1949,28 +1955,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         isDebugPanelVisible={isDebugPanelVisible}
       />
       
-      {/* OLD ACTIONS TOOLBAR - REPLACED BY UNIFIED FLOATING TOOLBAR */}
-      {/* 
-      <div
-        className="absolute z-50"
-        style={{
-          top: actionsToolbarPosition.top,
-          right: actionsToolbarPosition.right,
-        }}
-      >
-        <Card className="bg-background/95 backdrop-blur-sm border-border/50 shadow-xl ring-1 ring-primary/10">
-          <CardHeader
-            className="py-1 px-2 cursor-grab active:cursor-grabbing text-center bg-primary/5"
-            onMouseDown={handleToolbarMouseDown}
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
-          </CardHeader>
-          <CardContent className="p-2 flex gap-2 flex-wrap max-w-md">
-            ... (All toolbar buttons removed and replaced by unified toolbar)
-          </CardContent>
-        </Card>
-      </div>
-      */}
+
 
       {/* Zoom Toolbar */}
       <div 
@@ -2114,7 +2099,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           {gridState.mainWidgets.map((widget) => (
             widget.type === "enhanced-sensor" ? (
               <HardwareAcceleratedWidget
-                key={widget.id}
+                        key={widget.id}
                 id={widget.id}
                 x={widget.x}
                 y={widget.y}
@@ -2136,12 +2121,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                   showTrend={true}
                   precision={2}
                 />
-                {getResizeHandles(widget.id, "widget")}
+                        {getResizeHandles(widget.id, "widget")}
               </HardwareAcceleratedWidget>
             ) : (
               <GridWidget
                 key={widget.id}
-                widget={widget}
+                          widget={widget}
                 isDragging={dragState.draggedId === widget.id}
                 isResizing={resizeState.resizedId === widget.id}
                 isPushed={pushedWidgets.has(widget.id)}
@@ -2185,8 +2170,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               {getResizeHandles(widget.id, "widget")}
             </HardwareAcceleratedWidget>
           ))}
-        </div>
-      </div>
+                </div>
+              </div>
 
       {/* Performance Status Bar */}
       <div className="absolute bottom-4 right-4 z-50 bg-black/80 text-green-400 px-3 py-1 rounded text-xs font-mono">
