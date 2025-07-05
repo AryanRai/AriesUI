@@ -279,8 +279,9 @@ export function WidgetPalette() {
         initial={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
         animate={animationsEnabled ? { scale: 1, opacity: 1 } : {}}
         transition={{ duration: 0.2, ease: "easeOut" }}
-        className="fixed z-40 select-none"
+        className="fixed z-40 select-none cursor-grab active:cursor-grabbing"
         style={{ left: position.x, top: position.y }}
+        onMouseDown={handleMouseDown}
       >
         <motion.div
           whileHover={animationsEnabled ? { scale: 1.05 } : {}}
@@ -291,8 +292,17 @@ export function WidgetPalette() {
             variant="outline"
             size="icon"
             className="w-10 h-10 rounded-full bg-card/95 backdrop-blur theme-outline-primary shadow-lg hover:shadow-xl transition-all"
-            onClick={() => setIsCollapsed(false)}
-            title="Expand AriesMods Palette"
+            onClick={(e) => {
+              // Only expand if we're not dragging
+              if (!isDragging) {
+                setIsCollapsed(false)
+              }
+            }}
+            onMouseDown={(e) => {
+              // Prevent the button's default behavior during drag
+              e.stopPropagation()
+            }}
+            title="Expand AriesMods Palette (Drag to move)"
           >
             <Package className="h-5 w-5 text-[rgb(var(--theme-primary))]" />
           </Button>

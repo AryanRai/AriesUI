@@ -2,17 +2,13 @@
 
 import React, { memo, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { GripVertical, Hash, Settings, X } from "lucide-react"
-import { AriesModWidget } from "@/components/widgets/ariesmod-widget"
-import type { 
-  MainGridWidget, 
-  NestedWidget, 
-  AriesWidget, 
-  NestedAriesWidget,
-  ResizeHandle 
-} from "./types"
+import { Badge } from "@/components/ui/badge"
+import { X, Settings, Hash, GripVertical } from "lucide-react"
+import { AriesModWidget } from "../widgets/ariesmod-widget"
+import { EditableTitle } from "../widgets/editable-title"
+import type { MainGridWidget, NestedWidget } from "./types"
+import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
 
 interface GridWidgetProps {
   widget: MainGridWidget | NestedWidget | AriesWidget | NestedAriesWidget
@@ -37,7 +33,8 @@ const RegularWidget = memo<{
   onRemove: (widgetId: string) => void
   onConfigOpen?: () => void
   getResizeHandles: (itemId: string, itemType: "widget") => React.ReactNode
-}>(({ widget, isDragging, isResizing, isPushed, onMouseDown, onRemove, onConfigOpen, getResizeHandles }) => {
+  onUpdate?: (widgetId: string, updates: Partial<AriesWidget | NestedAriesWidget>) => void
+}>(({ widget, isDragging, isResizing, isPushed, onMouseDown, onRemove, onConfigOpen, getResizeHandles, onUpdate }) => {
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     onMouseDown(e, widget.id, "widget")
   }, [onMouseDown, widget.id])
@@ -45,6 +42,16 @@ const RegularWidget = memo<{
   const handleRemove = useCallback(() => {
     onRemove(widget.id)
   }, [onRemove, widget.id])
+
+  const handleUpdate = useCallback((updates: Partial<AriesWidget | NestedAriesWidget>) => {
+    if (onUpdate) {
+      onUpdate(widget.id, updates)
+    }
+  }, [onUpdate, widget.id])
+
+  const handleTitleChange = useCallback((newTitle: string) => {
+    handleUpdate({ title: newTitle })
+  }, [handleUpdate])
 
   return (
     <Card
@@ -72,7 +79,11 @@ const RegularWidget = memo<{
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GripVertical className="h-3 w-3 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
+            <EditableTitle
+              title={widget.title}
+              onTitleChange={handleTitleChange}
+              className="text-sm font-medium"
+            />
             <Badge variant="secondary" className="text-xs font-mono opacity-0 group-hover:opacity-100">
               {widget.id.split("-").pop()}
             </Badge>
@@ -148,6 +159,10 @@ const AriesWidgetComponent = memo<{
     }
   }, [onUpdate, widget.id])
 
+  const handleTitleChange = useCallback((newTitle: string) => {
+    handleUpdate({ title: newTitle })
+  }, [handleUpdate])
+
   return (
     <div
       className={`absolute group select-none aries-widget-card ${
@@ -174,7 +189,11 @@ const AriesWidgetComponent = memo<{
       >
         <div className="flex items-center gap-1">
           <GripVertical className={`${isNested ? 'h-2 w-2' : 'h-3 w-3'} text-white`} />
-          <span className={`${isNested ? 'text-xs' : 'text-xs'} text-white font-medium`}>{widget.title}</span>
+          <EditableTitle
+            title={widget.title}
+            onTitleChange={handleTitleChange}
+            className={`${isNested ? 'text-xs' : 'text-xs'} text-white font-medium`}
+          />
         </div>
         <Button
           variant="ghost"
@@ -240,6 +259,7 @@ export const GridWidget = memo<GridWidgetProps>(({
       onRemove={onRemove}
       onConfigOpen={onConfigOpen}
       getResizeHandles={getResizeHandles}
+      onUpdate={onUpdate}
     />
   )
 })

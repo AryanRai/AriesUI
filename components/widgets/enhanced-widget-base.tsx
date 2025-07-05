@@ -1,13 +1,14 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Settings, Zap, ZapOff, AlertCircle, TestTube, GripVertical } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { Settings, Zap, ZapOff, TestTube, AlertCircle, GripVertical } from 'lucide-react'
 import { StreamConfigurator } from './stream-configurator'
+import { EditableTitle } from './editable-title'
 import { useComms } from '@/components/comms-context'
 
 interface StreamMapping {
@@ -35,6 +36,7 @@ interface EnhancedWidgetBaseProps {
   streamMappings?: StreamMapping[]
   onStreamMappingsChange?: (mappings: StreamMapping[]) => void
   refreshRate?: number // ms
+  onTitleChange?: (newTitle: string) => void
 }
 
 export function EnhancedWidgetBase({
@@ -44,7 +46,8 @@ export function EnhancedWidgetBase({
   className = "",
   streamMappings = [],
   onStreamMappingsChange,
-  refreshRate = 100
+  refreshRate = 100,
+  onTitleChange
 }: EnhancedWidgetBaseProps) {
   const { state } = useComms()
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -191,7 +194,10 @@ export function EnhancedWidgetBase({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm">{title}</h3>
+            <EditableTitle
+              title={title}
+              onTitleChange={onTitleChange}
+            />
             
             {/* Drag Handle */}
             <div 

@@ -234,8 +234,7 @@ const NestHeader = memo<{
 
 NestHeader.displayName = "NestHeader"
 
-// Enhanced virtualized widget container with dynamic bounds
-const WidgetContainer = memo<{
+interface WidgetContainerProps {
   nestedWidgets: NestedWidget[]
   nestedAriesWidgets: NestedAriesWidget[]
   nestedNestContainers: NestContainerType[]
@@ -256,7 +255,11 @@ const WidgetContainer = memo<{
   onDragLeave: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent, nestId: string) => void
   onRemove: (nestId: string) => void
-}>(({ 
+  onUpdate?: (nestId: string, updates: Partial<NestContainerType>) => void
+}
+
+// Enhanced virtualized widget container with dynamic bounds
+const WidgetContainer = memo<WidgetContainerProps>(({ 
   nestedWidgets, 
   nestedAriesWidgets, 
   nestedNestContainers = [],
@@ -276,7 +279,8 @@ const WidgetContainer = memo<{
   onDragOver,
   onDragLeave,
   onDrop,
-  onRemove
+  onRemove,
+  onUpdate
 }) => {
   // Memoize widget lists to prevent unnecessary re-renders
   const nestWidgets = useMemo(() => 
@@ -330,13 +334,14 @@ const WidgetContainer = memo<{
           pushedWidgets={pushedWidgets}
           dragState={dragState}
           resizeState={resizeState}
-          onMouseDown={onMouseDown}
+          onMouseDown={(e) => onMouseDown(e, childNest.id, "nest")}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onDragOver={onDragOver}
+          onDragOver={(e) => onDragOver(e, childNest.id)}
           onDragLeave={onDragLeave}
-          onDrop={onDrop}
+          onDrop={(e) => onDrop(e, childNest.id)}
           onRemove={onRemove}
+          onUpdate={onUpdate}
           onWidgetMouseDown={onWidgetMouseDown}
           onWidgetRemove={onWidgetRemove}
           onAriesWidgetUpdate={onAriesWidgetUpdate}
@@ -569,6 +574,7 @@ export const NestContainer = memo<NestContainerProps>(({
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             onRemove={onRemove}
+            onUpdate={onUpdate}
           />
         ) : (
           <EmptyNestState />

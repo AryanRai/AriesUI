@@ -57,17 +57,29 @@ export const HardwareAcceleratedWidget = memo<HardwareAcceleratedWidgetProps>(fu
       element.style.height = `${newH}px`
       transformRef.current = transform
       
-      // During resize, ensure handles stay aligned by forcing immediate layout
+      // Enhanced resize handling to prevent handle detachment
       if (isResizing) {
         element.style.left = '0px'
         element.style.top = '0px'
-        // Force layout recalculation to prevent handle detachment
+        element.style.position = 'absolute'
+        
+        // Force immediate layout recalculation for height changes
         void element.offsetHeight
+        void element.offsetWidth
+        
+        // Ensure resize handles container updates immediately
+        const handlesContainer = element.querySelector('.absolute.inset-0.pointer-events-none') as HTMLElement
+        if (handlesContainer) {
+          handlesContainer.style.width = `${newW}px`
+          handlesContainer.style.height = `${newH}px`
+          // Force layout update
+          void handlesContainer.offsetHeight
+        }
       }
     }
     
     if (immediate || isResizing) {
-      // Immediate updates during resize to prevent detachment
+      // Always use immediate updates during resize to prevent detachment
       updateProps()
     } else {
       if (rafRef.current) {
@@ -239,14 +251,29 @@ export const HardwareAcceleratedWidget = memo<HardwareAcceleratedWidgetProps>(fu
       </div>
 
       {/* Resize Handles - Enhanced positioning to prevent detachment */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          // Ensure handles container matches widget dimensions exactly
+          width: `${width}px`,
+          height: `${height}px`,
+          transform: 'translateZ(0)', // Force hardware layer
+          position: 'absolute',
+          top: 0,
+          left: 0,
+        }}
+      >
         <div 
           className="relative w-full h-full pointer-events-auto"
           style={{
-            // Ensure handles stay aligned during resize
+            // Ensure handles stay aligned during resize with immediate updates
             transform: 'translateZ(0)',
             position: 'relative',
             zIndex: isResizing ? 10 : 1,
+            width: '100%',
+            height: '100%',
+            // Force immediate layout updates during resize
+            willChange: isResizing ? 'transform, width, height' : 'auto',
           }}
         >
           {getResizeHandles && getResizeHandles(id, "widget")}

@@ -83,7 +83,7 @@ export function MovableDebugPanel({
         onClick={() => onToggleVisibility(true)}
         size="sm"
         variant="ghost"
-        className="fixed top-4 left-4 z-[100] h-8 w-8 p-0 bg-black/20 hover:bg-black/40 border border-green-500/50"
+        className="fixed bottom-4 left-4 z-[100] h-8 w-8 p-0 bg-black/20 hover:bg-black/40 border border-green-500/50"
         title="Show debug panel (Ctrl+D)"
       >
         <Terminal className="h-4 w-4 text-green-400" />

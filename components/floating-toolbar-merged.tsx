@@ -492,7 +492,7 @@ export function FloatingToolbar(props: ToolbarProps) {
         size={size}
         className={cn(
           "gap-2 transition-all duration-200",
-          isIcon ? "h-7 w-7" : "justify-start text-xs",
+          isIcon ? "h-6 w-6" : "justify-start text-xs",
           actionProps.isActive && "ring-2 ring-[rgba(var(--theme-primary),0.5)]",
           hasUnsavedChanges && actionId === "save" && "bg-orange-600 hover:bg-orange-700 animate-pulse",
           isAutoSaveEnabled && actionId === "auto" && (
@@ -507,7 +507,7 @@ export function FloatingToolbar(props: ToolbarProps) {
         disabled={actionProps.disabled}
         title={actionProps.label}
       >
-        <IconComponent className={cn("h-3 w-3", isIcon ? "h-3 w-3" : "h-3 w-3")} />
+        <IconComponent className={cn("h-2.5 w-2.5", isIcon ? "h-2.5 w-2.5" : "h-3 w-3")} />
         {!isIcon && actionProps.label}
         {actionProps.badge && (
           <span className="text-xs ml-1">{actionProps.badge}</span>
@@ -558,14 +558,14 @@ export function FloatingToolbar(props: ToolbarProps) {
           <ToolbarBackground animationsEnabled={animationsEnabled} />
           
           {/* Minimized Content */}
-          <div className="relative z-10 p-2 cursor-grab active:cursor-grabbing touch-none" onMouseDown={handleMouseDown}>
-            <div className="flex items-center gap-2">
+          <div className="relative z-10 p-1 cursor-grab active:cursor-grabbing touch-none" onMouseDown={handleMouseDown}>
+            <div className="flex items-center gap-1">
               <motion.div
-                className="flex items-center gap-1"
-                animate={animationsEnabled ? { x: [0, 2, 0] } : {}}
+                className="flex items-center gap-0.5"
+                animate={animationsEnabled ? { x: [0, 1, 0] } : {}}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <GripVertical className="h-3 w-3 text-[rgb(var(--theme-primary))]" />
+                <GripVertical className="h-2.5 w-2.5 text-[rgb(var(--theme-primary))]" />
               </motion.div>
 
               {/* Quick Action Buttons */}
@@ -585,11 +585,11 @@ export function FloatingToolbar(props: ToolbarProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 hover:bg-[rgba(var(--theme-primary),0.1)] ml-1 border-l border-[rgba(var(--theme-primary),0.2)] transition-all"
+                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border-l border-[rgba(var(--theme-primary),0.2)] transition-all"
                   onClick={() => setIsCustomizing(!isCustomizing)}
                   title="Customize Quick Actions"
                 >
-                  <Settings className="h-3 w-3" />
+                  <Settings className="h-2.5 w-2.5" />
                 </Button>
               </motion.div>
 
@@ -603,11 +603,11 @@ export function FloatingToolbar(props: ToolbarProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 hover:bg-[rgba(var(--theme-primary),0.1)] ml-1 border-l border-[rgba(var(--theme-primary),0.2)] transition-all"
+                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] transition-all"
                   onClick={() => setIsMinimized(false)}
                   title="Expand Toolbar"
                 >
-                  <Maximize2 className="h-3 w-3" />
+                  <Maximize2 className="h-2.5 w-2.5" />
                 </Button>
               </motion.div>
             </div>

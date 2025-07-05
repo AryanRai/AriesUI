@@ -103,6 +103,13 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
     })
   }
 
+  const handleTitleChange = (newTitle: string) => {
+    onUpdate({
+      title: newTitle,
+      updatedAt: new Date().toISOString()
+    })
+  }
+
   const handleDataRequest = (params: any) => {
     // This would send commands to hardware when real integration is implemented
     console.log('AriesMod data request:', params)
@@ -210,6 +217,7 @@ export const AriesModWidget: React.FC<AriesModWidgetProps> = ({
       className={className}
       streamMappings={widget.streamMappings || []}
       onStreamMappingsChange={handleStreamMappingsChange}
+      onTitleChange={handleTitleChange}
       refreshRate={100}
     >
       {(streamData, isConnected, isDummyMode) => {
