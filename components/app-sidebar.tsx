@@ -129,7 +129,14 @@ const FuturisticBackground = ({ animationsEnabled }: { animationsEnabled: boolea
 export function AppSidebar() {
   const { dispatch } = useComms()
   const { open } = useSidebar()
-  const [isPinned, setIsPinned] = useState(false)
+  const [isPinned, setIsPinned] = useState(() => {
+    // Load pinned state from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('comms-sidebar-pinned')
+      return saved ? JSON.parse(saved) : false
+    }
+    return false
+  })
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [showAutoNeuralMsg, setShowAutoNeuralMsg] = useState(true)
   const { animationsEnabled, toggleAnimations } = useAnimationPreferences()
@@ -182,12 +189,21 @@ export function AppSidebar() {
   }
 
   const togglePin = () => {
-    setIsPinned(!isPinned)
+    const newPinnedState = !isPinned
+    setIsPinned(newPinnedState)
+    
     // Reset message visibility when pinning/unpinning
     if (isPinned) {
       setShowAutoNeuralMsg(true) // Show message when unpinning
     }
-    // You can add logic here to persist the pinned state
+    
+    // Persist the pinned state and notify the parent
+    localStorage.setItem('comms-sidebar-pinned', JSON.stringify(newPinnedState))
+    
+    // Dispatch custom event to notify the main app
+    window.dispatchEvent(new CustomEvent('sidebarPinChanged', { 
+      detail: { pinned: newPinnedState } 
+    }))
   }
 
   const sidebarVariants = {

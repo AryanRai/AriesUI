@@ -102,18 +102,27 @@ const HeartbeatVisualizer = () => {
     .reduce((a, stage) => a + (stage.latency || 0), 0)
   const ArrowIcon = isReversed ? ChevronLeft : ChevronRight
 
+  // Use conditional wrapper for motion vs regular div
+  const Wrapper = animationsEnabled ? motion.div : 'div'
+  const MotionDiv = animationsEnabled ? motion.div : 'div'
+  const MotionSpan = animationsEnabled ? motion.span : 'span'
+
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <motion.div 
+        <Wrapper 
           className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-[rgba(var(--theme-primary),0.1)] px-3 py-2 rounded-lg transition-all theme-outline-primary bg-background/50 backdrop-blur-sm shadow-sm"
-          whileHover={animationsEnabled ? { scale: 1.02 } : {}}
-          whileTap={animationsEnabled ? { scale: 0.98 } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          {...(animationsEnabled ? {
+            whileHover: { scale: 1.02 },
+            whileTap: { scale: 0.98 },
+            transition: { type: "spring", stiffness: 400, damping: 25 }
+          } : {})}
         >
-          <motion.div
-            animate={animationsEnabled ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+          <MotionDiv
+            {...(animationsEnabled ? {
+              animate: { scale: [1, 1.2, 1] },
+              transition: { duration: 1, repeat: Infinity, ease: "easeInOut" }
+            } : {})}
             className={cn(
               "transition-colors",
               isConnected && stages.every(s => s.status === 'connected' || s.status === 'unknown') 
@@ -124,10 +133,10 @@ const HeartbeatVisualizer = () => {
             )}
           >
             <Heart className="h-5 w-5" />
-          </motion.div>
+          </MotionDiv>
           <div className="flex items-center bg-background/50 px-2 py-1 rounded-md theme-outline-primary backdrop-blur">
             <div className="flex items-center gap-1 pr-2 border-r border-[rgba(var(--theme-primary),0.2)]">
-              <motion.div 
+              <MotionDiv 
                 className={cn(
                   "h-2 w-2 rounded-full",
                   isConnected 
@@ -157,21 +166,23 @@ const HeartbeatVisualizer = () => {
             </div>
             {displayedStages.map((stage, index) => (
               <React.Fragment key={stage.name}>
-                <motion.div 
+                <MotionDiv 
                   className="flex flex-col items-center text-center px-2"
-                  initial={animationsEnabled ? { opacity: 0, y: 5 } : {}}
-                  animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
-                  transition={{ delay: index * 0.1 }}
+                  {...(animationsEnabled ? {
+                    initial: { opacity: 0, y: 5 },
+                    animate: { opacity: 1, y: 0 },
+                    transition: { delay: index * 0.1 }
+                  } : {})}
                 >
                   <div className="flex items-center gap-1">
-                    <motion.div
-                      animate={animationsEnabled && stage.status === 'connected' ? {
-                        rotate: [0, 5, 0, -5, 0]
-                      } : {}}
-                      transition={{ duration: 2, repeat: Infinity, delay: index * 0.3 }}
+                    <MotionDiv
+                      {...(animationsEnabled && stage.status === 'connected' ? {
+                        animate: { rotate: [0, 5, 0, -5, 0] },
+                        transition: { duration: 2, repeat: Infinity, delay: index * 0.3 }
+                      } : {})}
                     >
                       {stage.icon}
-                    </motion.div>
+                    </MotionDiv>
                     <span className="text-slate-300 font-medium">{stage.name}</span>
                   </div>
                   <div className="flex flex-col items-center">
@@ -197,29 +208,33 @@ const HeartbeatVisualizer = () => {
                       </span>
                     )}
                   </div>
-                </motion.div>
+                </MotionDiv>
                 {index < displayedStages.length - 1 && (
-                  <motion.div
-                    animate={animationsEnabled ? { 
-                      opacity: [0.3, 1, 0.3],
-                      x: [0, 2, 0] 
-                    } : {}}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear', delay: index * 0.2 }}
+                  <MotionDiv
+                    {...(animationsEnabled ? {
+                      animate: { 
+                        opacity: [0.3, 1, 0.3],
+                        x: [0, 2, 0] 
+                      },
+                      transition: { duration: 1.5, repeat: Infinity, ease: 'linear', delay: index * 0.2 }
+                    } : {})}
                   >
                     <ArrowIcon className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
-                  </motion.div>
+                  </MotionDiv>
                 )}
               </React.Fragment>
             ))}
           </div>
-          <motion.div 
+          <MotionDiv 
             className="flex flex-col items-center pl-2"
-            initial={animationsEnabled ? { opacity: 0, scale: 0.9 } : {}}
-            animate={animationsEnabled ? { opacity: 1, scale: 1 } : {}}
-            transition={{ delay: 0.5 }}
+            {...(animationsEnabled ? {
+              initial: { opacity: 0, scale: 0.9 },
+              animate: { opacity: 1, scale: 1 },
+              transition: { delay: 0.5 }
+            } : {})}
           >
             <span className="text-slate-300 font-medium">Total</span>
-            <motion.span 
+            <MotionSpan 
               className={cn(
                 "font-mono font-bold",
                 stages.some(s => s.status === 'disconnected') ? 'text-red-400' :
@@ -227,22 +242,25 @@ const HeartbeatVisualizer = () => {
                 totalLatency <= 100 ? 'text-[rgb(var(--theme-primary))]' :
                 totalLatency <= 200 ? 'text-orange-400' : 'text-red-400'
               )}
-              animate={animationsEnabled ? (
+              {...(animationsEnabled ? (
                 totalLatency > 100 ? {
-                  color: ["rgb(251, 146, 60)", "rgb(239, 68, 68)", "rgb(251, 146, 60)"]
+                  animate: { color: ["rgb(251, 146, 60)", "rgb(239, 68, 68)", "rgb(251, 146, 60)"] },
+                  transition: { duration: 2, repeat: Infinity }
                 } : totalLatency > 50 ? {
-                  color: [`rgb(var(--theme-primary))`, "rgb(251, 146, 60)", `rgb(var(--theme-primary))`]
+                  animate: { color: [`rgb(var(--theme-primary))`, "rgb(251, 146, 60)", `rgb(var(--theme-primary))`] },
+                  transition: { duration: 2, repeat: Infinity }
                 } : {}
-              ) : {}}
-              transition={{ duration: 2, repeat: Infinity }}
+              ) : {})}
             >
               {totalLatency}ms
-            </motion.span>
-          </motion.div>
-          <motion.div
-            whileHover={animationsEnabled ? { scale: 1.1, rotate: 180 } : {}}
-            whileTap={animationsEnabled ? { scale: 0.9 } : {}}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            </MotionSpan>
+          </MotionDiv>
+          <MotionDiv
+            {...(animationsEnabled ? {
+              whileHover: { scale: 1.1, rotate: 180 },
+              whileTap: { scale: 0.9 },
+              transition: { type: "spring", stiffness: 400, damping: 25 }
+            } : {})}
           >
             <Button
               size="icon"
@@ -253,8 +271,8 @@ const HeartbeatVisualizer = () => {
             >
               <Repeat className="h-4 w-4" />
             </Button>
-          </motion.div>
-        </motion.div>
+          </MotionDiv>
+        </Wrapper>
       </PopoverTrigger>
       <PopoverContent className="w-[450px] p-0 theme-outline-primary bg-background/98 backdrop-blur-xl shadow-2xl" align="end">
         <ConnectionControls />

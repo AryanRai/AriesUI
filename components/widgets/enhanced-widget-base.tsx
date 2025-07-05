@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react'
-import { Settings, Zap, ZapOff, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { Settings, Zap, ZapOff, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
@@ -52,7 +52,7 @@ export function EnhancedWidgetBase({
   const [lastUpdate, setLastUpdate] = useState<string>('')
 
   // Process stream data with formulas and multipliers
-  const processStreamValue = (value: any, mapping: StreamMapping): number | string | boolean => {
+  const processStreamValue = useCallback((value: any, mapping: StreamMapping): number | string | boolean => {
     if (typeof value !== 'number') return value
 
     let processedValue = value
@@ -75,7 +75,7 @@ export function EnhancedWidgetBase({
     }
 
     return processedValue
-  }
+  }, [widgetId])
 
   // Update widget data from streams
   useEffect(() => {
@@ -117,14 +117,45 @@ export function EnhancedWidgetBase({
     const interval = setInterval(updateData, refreshRate)
 
     return () => clearInterval(interval)
-  }, [streamMappings, state.activeStreams, refreshRate, widgetId])
+  }, [streamMappings, state.activeStreams, refreshRate, processStreamValue])
 
   const isConnected = useMemo(() => {
     return state.connectionStatus === 'connected' && streamMappings.some(m => m.enabled)
   }, [state.connectionStatus, streamMappings])
 
-  const hasActiveStreams = streamMappings.filter(m => m.enabled).length > 0
-  const hasErrors = widgetData.some(d => d.status === 'error')
+  const hasActiveStreams = useMemo(() => {
+    return streamMappings.filter(m => m.enabled).length > 0
+  }, [streamMappings])
+
+  const hasErrors = useMemo(() => {
+    return widgetData.some(d => d.status === 'error')
+  }, [widgetData])
+
+  // Memoize the dialog content to prevent re-renders
+  const dialogContent = useMemo(() => {
+    if (!isConfigOpen) return null
+    
+    return (
+      <StreamConfigurator
+        widgetId={widgetId}
+        currentMappings={streamMappings}
+        onMappingsChange={(mappings) => {
+          onStreamMappingsChange?.(mappings)
+          setIsConfigOpen(false)
+        }}
+        onClose={() => setIsConfigOpen(false)}
+      />
+    )
+  }, [isConfigOpen, widgetId, streamMappings, onStreamMappingsChange])
+
+  // Stable handlers to prevent re-renders
+  const handleOpenChange = useCallback((open: boolean) => {
+    setIsConfigOpen(open)
+  }, [])
+
+  const handleSettingsClick = useCallback(() => {
+    setIsConfigOpen(true)
+  }, [])
 
   return (
     <Card className={`relative ${className}`}>
@@ -152,13 +183,14 @@ export function EnhancedWidgetBase({
             )}
           </div>
           
-          <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+          <Dialog open={isConfigOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button 
                 size="sm" 
                 variant="ghost" 
                 className="h-6 w-6 p-0"
                 title="Configure Hardware Streams"
+                onClick={handleSettingsClick}
               >
                 <Settings className="h-4 w-4" />
               </Button>
@@ -167,15 +199,7 @@ export function EnhancedWidgetBase({
               <VisuallyHidden>
                 <DialogTitle>Hardware Stream Configuration</DialogTitle>
               </VisuallyHidden>
-              <StreamConfigurator
-                widgetId={widgetId}
-                currentMappings={streamMappings}
-                onMappingsChange={(mappings) => {
-                  onStreamMappingsChange?.(mappings)
-                  setIsConfigOpen(false)
-                }}
-                onClose={() => setIsConfigOpen(false)}
-              />
+              {dialogContent}
             </DialogContent>
           </Dialog>
         </div>

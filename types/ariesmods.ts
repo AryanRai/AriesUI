@@ -2,6 +2,17 @@
 
 export type AriesModData = Record<string, any>
 
+// Stream mapping configuration for hardware integration
+export interface StreamMapping {
+  id: string
+  streamId: string
+  streamName: string
+  multiplier: number
+  formula: string
+  unit: string
+  enabled: boolean
+}
+
 export interface AriesModProps {
   id: string
   title: string
@@ -60,6 +71,7 @@ export interface AriesWidget {
   h: number
   config: Record<string, any>
   data?: AriesModData
+  streamMappings?: StreamMapping[]
   createdAt: string
   updatedAt: string
 }

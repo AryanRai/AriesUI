@@ -710,7 +710,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
    */
   const handleMouseDown = (e: React.MouseEvent, itemId: string, itemType: "widget" | "nest") => {
     const target = e.target as HTMLElement
-    if (target.closest(".resize-handle")) return
+    
+    // Check if clicking on a resize handle - if so, don't start drag
+    if (target.closest(".resize-handle") || target.classList.contains("resize-handle")) {
+      console.log("Clicked on resize handle, preventing drag")
+      return
+    }
 
     e.preventDefault()
     e.stopPropagation()
@@ -2058,34 +2063,34 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       >
         {/* Temporarily revert to inline grid rendering to fix resize issues */}
         <div
-          className={`absolute inset-0 cursor-${isPanning ? "grabbing" : "grab"} ${
-            dropState.isDragOver && !dropState.targetNestId ? "border-primary/50 bg-primary/5 border-2 border-dashed" : ""
-          } ${
-            dragState.isDragging ? "aries-grid-smooth-drag" : ""
-          }`}
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)
-            `,
-            backgroundSize: `${gridState.gridSize * viewport.zoom}px ${gridState.gridSize * viewport.zoom}px`,
-            backgroundPosition: `${viewport.x * viewport.zoom}px ${viewport.y * viewport.zoom}px`,
+        className={`absolute inset-0 cursor-${isPanning ? "grabbing" : "grab"} ${
+          dropState.isDragOver && !dropState.targetNestId ? "border-primary/50 bg-primary/5 border-2 border-dashed" : ""
+        } ${
+          dragState.isDragging ? "aries-grid-smooth-drag" : ""
+        }`}
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)
+          `,
+          backgroundSize: `${gridState.gridSize * viewport.zoom}px ${gridState.gridSize * viewport.zoom}px`,
+          backgroundPosition: `${viewport.x * viewport.zoom}px ${viewport.y * viewport.zoom}px`,
             willChange: 'transform, background-position',
             transform: 'translate3d(0, 0, 0)', // Force hardware layer
-          }}
-          onDragOver={(e) => handleDragOver(e)}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e)}
-        >
+        }}
+        onDragOver={(e) => handleDragOver(e)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e)}
+      >
           {/* Hardware-Accelerated Viewport Transform Container */}
-          <div
-            className={dragState.isDragging || resizeState.isResizing ? "aries-grid-faded" : ""}
-            style={{
+        <div
+          className={dragState.isDragging || resizeState.isResizing ? "aries-grid-faded" : ""}
+          style={{
               transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.zoom})`,
-              transformOrigin: "0 0",
-              width: "100%",
-              height: "100%",
-              position: "relative",
+            transformOrigin: "0 0",
+            width: "100%",
+            height: "100%",
+            position: "relative",
               willChange: 'transform',
             }}
           >
@@ -2122,7 +2127,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             {virtualGrid.visibleMainWidgets.map((widget) => (
               widget.type === "enhanced-sensor" ? (
                 <HardwareAcceleratedWidget
-                  key={widget.id}
+                        key={widget.id}
                   id={widget.id}
                   x={widget.x}
                   y={widget.y}
@@ -2133,23 +2138,30 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                   isPushed={pushedWidgets.has(widget.id)}
                   onMouseDown={handleMouseDown}
                   onRemove={removeWidget}
+                  getResizeHandles={getResizeHandles}
                 >
                   <EnhancedSensorWidget
                     widgetId={widget.id}
                     title={widget.title}
                     sensorType="generic"
-                    streamMappings={[]}
-                    onStreamMappingsChange={() => {}}
+                    streamMappings={widget.streamMappings || []}
+                    onStreamMappingsChange={(mappings) => {
+                      updateGridState((prev) => ({
+                        ...prev,
+                        mainWidgets: prev.mainWidgets.map((w) =>
+                          w.id === widget.id ? { ...w, streamMappings: mappings, updatedAt: new Date().toISOString() } as any : w
+                        ),
+                      }))
+                    }}
                     className="w-full h-full"
                     showTrend={true}
                     precision={2}
                   />
-                  {getResizeHandles(widget.id, "widget")}
                 </HardwareAcceleratedWidget>
               ) : (
                 <GridWidget
                   key={widget.id}
-                  widget={widget}
+                          widget={widget}
                   isDragging={dragState.draggedId === widget.id}
                   isResizing={resizeState.resizedId === widget.id}
                   isPushed={pushedWidgets.has(widget.id)}
@@ -2164,7 +2176,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             {/* Hardware-Accelerated Main Grid AriesWidgets */}
             {virtualGrid.visibleMainAriesWidgets.map((widget) => (
               <HardwareAcceleratedWidget
-                key={widget.id}
+              key={widget.id}
                 id={widget.id}
                 x={widget.x}
                 y={widget.y}
@@ -2175,13 +2187,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 isPushed={pushedWidgets.has(widget.id)}
                 onMouseDown={handleMouseDown}
                 onRemove={removeAriesWidget}
+                getResizeHandles={getResizeHandles}
               >
                 <EnhancedSensorWidget
                   widgetId={widget.id}
                   title={widget.title}
                   sensorType="temperature"
-                  streamMappings={[]}
-                  onStreamMappingsChange={(mappings) => updateAriesWidget(widget.id, { streamMappings: mappings } as any)}
+                  streamMappings={widget.streamMappings || []}
+                  onStreamMappingsChange={(mappings) => updateAriesWidget(widget.id, { streamMappings: mappings })}
                   className="w-full h-full"
                   showTrend={true}
                   precision={1}
@@ -2190,10 +2203,9 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                     critical: { min: -10, max: 70 }
                   }}
                 />
-                {getResizeHandles(widget.id, "widget")}
               </HardwareAcceleratedWidget>
-            ))}
-          </div>
+          ))}
+        </div>
         </div>
       </div>
 

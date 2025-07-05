@@ -85,16 +85,49 @@ function AppContent() {
 
 export function CommsApp() {
   const [mounted, setMounted] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // If sidebar is pinned, start with it open
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('comms-sidebar-pinned')
+      return saved ? JSON.parse(saved) : false
+    }
+    return false
+  })
+  const [sidebarPinned, setSidebarPinned] = useState(() => {
+    // Load pinned state from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('comms-sidebar-pinned')
+      return saved ? JSON.parse(saved) : false
+    }
+    return false
+  })
 
   useEffect(() => {
     setMounted(true)
+    
+    // Listen for sidebar pin changes
+    const handleSidebarPinChanged = (event: CustomEvent) => {
+      const { pinned } = event.detail
+      setSidebarPinned(pinned)
+      if (pinned) {
+        setSidebarOpen(true) // Keep sidebar open when pinned
+      }
+    }
+    
+    window.addEventListener('sidebarPinChanged', handleSidebarPinChanged as EventListener)
+    
+    return () => {
+      window.removeEventListener('sidebarPinChanged', handleSidebarPinChanged as EventListener)
+    }
   }, [])
 
   useEffect(() => {
     let hoverTimeout: NodeJS.Timeout
 
     const handleMouseMove = (e: MouseEvent) => {
+      // Don't auto-hide if sidebar is pinned
+      if (sidebarPinned) return
+      
       // Show sidebar when mouse is near left edge (within 10px)
       if (e.clientX <= 10) {
         clearTimeout(hoverTimeout)
@@ -110,6 +143,9 @@ export function CommsApp() {
     }
 
     const handleMouseLeave = () => {
+      // Don't auto-hide if sidebar is pinned
+      if (sidebarPinned) return
+      
       // Hide sidebar when mouse leaves the window
       clearTimeout(hoverTimeout)
       hoverTimeout = setTimeout(() => {
@@ -125,7 +161,7 @@ export function CommsApp() {
       document.removeEventListener("mouseleave", handleMouseLeave)
       clearTimeout(hoverTimeout)
     }
-  }, [sidebarOpen])
+  }, [sidebarOpen, sidebarPinned])
 
   if (!mounted) {
     return null

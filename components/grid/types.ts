@@ -12,6 +12,19 @@ import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
 // =============================================================================
 
 /**
+ * Stream mapping configuration for hardware integration
+ */
+export interface StreamMapping {
+  id: string
+  streamId: string
+  streamName: string
+  multiplier: number
+  formula: string
+  unit: string
+  enabled: boolean
+}
+
+/**
  * Base interface for all widgets in the grid system
  */
 export interface BaseWidget {
@@ -35,6 +48,8 @@ export interface BaseWidget {
   createdAt: string
   /** Timestamp when widget was last updated */
   updatedAt: string
+  /** Stream mappings for hardware integration */
+  streamMappings?: StreamMapping[]
 }
 
 /**

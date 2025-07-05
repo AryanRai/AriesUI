@@ -154,6 +154,19 @@ export function EnhancedSensorWidget({
     }
   })
 
+  // Update previous values for trend calculation - MOVED OUTSIDE OF MAP
+  useEffect(() => {
+    displayData.forEach((item, index) => {
+      if (typeof item.value === 'number') {
+        setPreviousValues(prev => {
+          const newValues = [...prev]
+          newValues[index] = item.value
+          return newValues
+        })
+      }
+    })
+  }, [displayData])
+
   return (
     <div className={`relative ${className}`}>
       {/* Connection Status Indicator */}
@@ -198,17 +211,6 @@ export function EnhancedSensorWidget({
               const numericValue = typeof item.value === 'number' ? item.value : 0
               const status = typeof item.value === 'number' ? getValueStatus(numericValue) : 'normal'
               const previousValue = previousValues[index]
-              
-              // Update previous values for trend calculation
-              React.useEffect(() => {
-                if (typeof item.value === 'number') {
-                  setPreviousValues(prev => {
-                    const newValues = [...prev]
-                    newValues[index] = numericValue
-                    return newValues
-                  })
-                }
-              }, [item.value, index])
 
               return (
                 <div key={index} className="space-y-2">

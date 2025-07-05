@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useEffect, useRef, useCallback, memo } from 'react'
-import { StreamConfigurator } from './stream-configurator'
-import { EnhancedWidgetBase } from './enhanced-widget-base'
+import { Button } from '@/components/ui/button'
+import { X, Settings, Hash, GripVertical } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 interface HardwareAcceleratedWidgetProps {
   id: string
@@ -17,6 +18,7 @@ interface HardwareAcceleratedWidgetProps {
   children: React.ReactNode
   onMouseDown?: (e: React.MouseEvent, id: string, type: "widget" | "nest") => void
   onRemove?: (id: string) => void
+  getResizeHandles?: (itemId: string, itemType: "widget" | "nest") => React.ReactNode
   className?: string
 }
 
@@ -34,6 +36,7 @@ export const HardwareAcceleratedWidget = memo(function HardwareAcceleratedWidget
   children,
   onMouseDown,
   onRemove,
+  getResizeHandles,
   className = ""
 }: HardwareAcceleratedWidgetProps) {
   const elementRef = useRef<HTMLDivElement>(null)
@@ -115,7 +118,7 @@ export const HardwareAcceleratedWidget = memo(function HardwareAcceleratedWidget
     <div
       ref={elementRef}
       data-widget-id={id}
-      className={`absolute select-none ${className} ${
+      className={`absolute select-none group ${className} ${
         isDragging ? 'cursor-grabbing opacity-90' : 'cursor-grab'
       } ${
         isPushed ? 'transition-all duration-200 ease-out' : ''
@@ -131,6 +134,30 @@ export const HardwareAcceleratedWidget = memo(function HardwareAcceleratedWidget
       }}
       onMouseDown={handleMouseDown}
     >
+      {/* Widget Controls - Always visible on hover */}
+      <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 w-6 p-0 bg-background/80 hover:bg-background/90 backdrop-blur-sm"
+          onClick={() => onRemove?.(id)}
+          title="Remove Widget"
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+
+      {/* Widget ID Badge */}
+      <div className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Badge variant="secondary" className="text-xs h-5 px-1">
+          <Hash className="h-3 w-3 mr-1" />
+          {id.split('-')[0]}
+        </Badge>
+      </div>
+
+      {/* Resize Handles */}
+      {getResizeHandles && getResizeHandles(id, "widget")}
+      
       {/* Hardware-accelerated content container */}
       <div 
         className="w-full h-full"
