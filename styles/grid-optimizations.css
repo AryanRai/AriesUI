@@ -1,0 +1,459 @@
+/**
+ * Grid System Performance Optimizations
+ * 
+ * Hardware acceleration and performance-focused CSS for the AriesUI grid system.
+ * These styles are designed to maximize 60fps+ performance during interactions.
+ */
+
+/* =============================================================================
+   HARDWARE ACCELERATION BASE STYLES
+   ============================================================================= */
+
+.aries-grid-container {
+  /* Enable hardware acceleration for the main container */
+  transform: translateZ(0);
+  will-change: transform;
+  
+  /* Optimize rendering */
+  backface-visibility: hidden;
+  perspective: 1000px;
+  
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  
+  /* Prevent text selection during interactions */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.aries-widget-card {
+  /* Hardware acceleration for all widgets */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  
+  /* Optimize transitions */
+  transition-property: transform, opacity, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.2s;
+  
+  /* Prevent layout thrashing */
+  contain: layout style paint;
+}
+
+/* =============================================================================
+   DRAGGING OPTIMIZATIONS
+   ============================================================================= */
+
+.aries-widget-dragging {
+  /* Maximum performance during drag */
+  will-change: transform, z-index;
+  
+  /* Use transform3d for hardware acceleration */
+  transform: translate3d(var(--drag-x, 0), var(--drag-y, 0), 0) scale3d(1, 1, 1);
+  
+  /* Elevate dragged element */
+  z-index: 1000;
+  
+  /* Enhance visual feedback */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  
+  /* Disable pointer events for better performance */
+  pointer-events: none;
+  
+  /* Prevent text selection */
+  user-select: none;
+}
+
+.aries-widget-smooth-drag {
+  /* Smooth dragging with RequestAnimationFrame */
+  transition: none !important;
+  
+  /* Force GPU layer */
+  transform: translate3d(var(--drag-x, 0), var(--drag-y, 0), 0);
+  
+  /* Optimize for 60fps+ */
+  will-change: transform;
+}
+
+/* =============================================================================
+   RESIZE OPTIMIZATIONS
+   ============================================================================= */
+
+.aries-widget-resizing {
+  /* Hardware acceleration for resize */
+  will-change: width, height, transform;
+  
+  /* Smooth resize with GPU */
+  transform: translateZ(0);
+  
+  /* Prevent layout shifts */
+  contain: layout;
+  
+  /* Disable transitions during resize */
+  transition: none !important;
+}
+
+.aries-resize-handle {
+  /* Optimize resize handles */
+  transform: translateZ(0);
+  will-change: opacity, transform;
+  
+  /* Smooth opacity transitions */
+  transition: opacity 0.15s ease;
+  
+  /* Prevent interference with dragging */
+  pointer-events: auto;
+  
+  /* Ensure handles are on top */
+  z-index: 10;
+}
+
+.aries-resize-handle:hover {
+  /* Enhance visual feedback */
+  transform: scale(1.2) translateZ(0);
+}
+
+/* =============================================================================
+   PUSH PHYSICS OPTIMIZATIONS
+   ============================================================================= */
+
+.aries-widget-pushed {
+  /* Smooth push animations */
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+  
+  /* Visual feedback for pushed state */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.aries-widget-push-chain {
+  /* Chain reaction animations */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: 0.1s;
+}
+
+/* =============================================================================
+   NEST CONTAINER OPTIMIZATIONS
+   ============================================================================= */
+
+.aries-nest-container {
+  /* Hardware acceleration for nests */
+  transform: translateZ(0);
+  will-change: transform, width, height;
+  
+  /* Optimize scrolling */
+  overflow: hidden;
+  scroll-behavior: smooth;
+  
+  /* Contain layout calculations */
+  contain: layout style paint;
+}
+
+.aries-nest-scrollable {
+  /* Smooth scrolling for nest content */
+  overflow: auto;
+  scroll-behavior: smooth;
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  
+  /* Optimize scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.aries-nest-scrollable::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.aries-nest-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aries-nest-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.aries-nest-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* =============================================================================
+   VIEWPORT AND ZOOM OPTIMIZATIONS
+   ============================================================================= */
+
+.aries-viewport {
+  /* Hardware acceleration for viewport */
+  transform: translateZ(0);
+  will-change: transform;
+  
+  /* Optimize zoom and pan */
+  transform-origin: 0 0;
+  
+  /* Smooth transitions */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aries-viewport-panning {
+  /* Disable transitions during pan */
+  transition: none !important;
+  
+  /* Maximum performance */
+  will-change: transform;
+}
+
+.aries-zoom-smooth {
+  /* Smooth zoom transitions */
+  transition: transform 0.2s ease-out;
+}
+
+/* =============================================================================
+   ANIMATION PERFORMANCE CLASSES
+   ============================================================================= */
+
+.aries-animate-in {
+  /* Entrance animations */
+  animation: ariesFadeInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+}
+
+.aries-animate-out {
+  /* Exit animations */
+  animation: ariesFadeOutDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+}
+
+@keyframes ariesFadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ariesFadeOutDown {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+}
+
+/* =============================================================================
+   HIGH-FREQUENCY EVENT OPTIMIZATIONS
+   ============================================================================= */
+
+.aries-high-frequency {
+  /* Optimize for high-frequency updates */
+  will-change: transform, opacity;
+  
+  /* Force GPU layer */
+  transform: translateZ(0);
+  
+  /* Disable expensive operations */
+  contain: layout style paint;
+  
+  /* Prevent reflow */
+  position: absolute;
+}
+
+.aries-throttled-updates {
+  /* For throttled event handling */
+  transition: none !important;
+  will-change: transform;
+}
+
+/* =============================================================================
+   MEMORY OPTIMIZATION CLASSES
+   ============================================================================= */
+
+.aries-virtualized {
+  /* Virtualization optimizations */
+  contain: strict;
+  content-visibility: auto;
+  
+  /* Reduce memory usage */
+  will-change: auto;
+}
+
+.aries-offscreen {
+  /* Offscreen elements */
+  content-visibility: hidden;
+  contain: size layout style paint;
+}
+
+.aries-visible {
+  /* Visible elements */
+  content-visibility: visible;
+  contain: layout style paint;
+}
+
+/* =============================================================================
+   RESPONSIVE PERFORMANCE OPTIMIZATIONS
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .aries-widget-card {
+    /* Reduce effects on mobile */
+    transform: none;
+    will-change: auto;
+    transition-duration: 0.1s;
+  }
+  
+  .aries-widget-dragging {
+    /* Simplified dragging on mobile */
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aries-widget-card,
+  .aries-widget-dragging,
+  .aries-widget-pushed,
+  .aries-viewport {
+    /* Respect reduced motion preferences */
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* =============================================================================
+   ACCESSIBILITY OPTIMIZATIONS
+   ============================================================================= */
+
+.aries-focus-visible {
+  /* Enhanced focus indicators */
+  outline: 2px solid #007acc;
+  outline-offset: 2px;
+  
+  /* Ensure visibility */
+  z-index: 1001;
+}
+
+.aries-screen-reader-only {
+  /* Screen reader only content */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =============================================================================
+   BROWSER-SPECIFIC OPTIMIZATIONS
+   ============================================================================= */
+
+/* Chrome/Edge optimizations */
+@supports (-webkit-appearance: none) {
+  .aries-widget-card {
+    /* Use Chrome's optimized transforms */
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Firefox optimizations */
+@supports (-moz-appearance: none) {
+  .aries-widget-card {
+    /* Firefox-specific optimizations */
+    will-change: transform, opacity;
+  }
+}
+
+/* Safari optimizations */
+@supports (-webkit-backdrop-filter: blur(1px)) {
+  .aries-widget-card {
+    /* Safari hardware acceleration */
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+  }
+}
+
+/* =============================================================================
+   PERFORMANCE MONITORING HELPERS
+   ============================================================================= */
+
+.aries-performance-monitor {
+  /* Development helper for performance monitoring */
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.aries-fps-counter {
+  /* FPS counter styling */
+  color: #00ff00;
+}
+
+.aries-memory-usage {
+  /* Memory usage indicator */
+  color: #ffaa00;
+}
+
+.aries-performance-warning {
+  /* Performance warning indicator */
+  color: #ff0000;
+  font-weight: bold;
+}
+
+/* =============================================================================
+   UTILITY CLASSES FOR PERFORMANCE
+   ============================================================================= */
+
+.aries-gpu-accelerated {
+  /* Force GPU acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.aries-no-transitions {
+  /* Disable all transitions */
+  transition: none !important;
+  animation: none !important;
+}
+
+.aries-optimize-text {
+  /* Text rendering optimization */
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: subpixel-antialiased;
+  -moz-osx-font-smoothing: auto;
+}
+
+.aries-contain-layout {
+  /* Layout containment */
+  contain: layout;
+}
+
+.aries-contain-paint {
+  /* Paint containment */
+  contain: paint;
+}
+
+.aries-contain-strict {
+  /* Strict containment */
+  contain: strict;
+} 
