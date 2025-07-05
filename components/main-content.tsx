@@ -14,6 +14,10 @@ import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { FloatingToolbar } from "@/components/floating-toolbar-merged"
 
+// Import enhanced hardware components
+import { EnhancedSensorWidget } from "@/components/widgets/enhanced-sensor-widget"
+import { HardwareAcceleratedWidget } from "@/components/widgets/hardware-accelerated-widget"
+
 // Import new grid components
 import { GridWidget } from "@/components/grid/GridWidget"
 import { ResizeHandles } from "@/components/grid/ResizeHandles"
@@ -1066,9 +1070,10 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }
 
-  // Mouse move and mouse up handlers with throttling for performance
+  // Hardware-accelerated mouse movement with RequestAnimationFrame
   const [lastMouseMoveTime, setLastMouseMoveTime] = useState(0)
   const throttleInterval = 4 // 4ms throttle for ultra-responsive dragging (240fps)
+  const rafRef = useRef<number | null>(null)
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -1142,19 +1147,24 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         const snapX = Math.round(rawX / gridSize) * gridSize  // For drop positioning
         const snapY = Math.round(rawY / gridSize) * gridSize  // For drop positioning
 
-        // Optimize nest movement - direct update without push physics for instant response
+        // Hardware-accelerated nest movement - direct update with RAF
         if (dragState.draggedType === "nest") {
-          // Direct state update for nest position - maximum performance, no push physics
-          // NO THROTTLING for nest movement - instant response
-          // Use smooth coordinates for fluid movement
-          updateGridState((prev) => ({
-            ...prev,
-            nestContainers: prev.nestContainers.map((nest) => 
-              nest.id === dragState.draggedId 
-                ? { ...nest, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
-                : nest
-            ),
-          }))
+          // Cancel previous RAF to prevent stacking
+          if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current)
+          }
+          
+          // Schedule update for next frame
+          rafRef.current = requestAnimationFrame(() => {
+            updateGridState((prev) => ({
+              ...prev,
+              nestContainers: prev.nestContainers.map((nest) => 
+                nest.id === dragState.draggedId 
+                  ? { ...nest, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                  : nest
+              ),
+            }))
+          })
           return // Early return to avoid any other processing
         }
 
@@ -1662,6 +1672,10 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     return () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
+      // Cleanup RAF on unmount
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
     }
   }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch, isDraggingToolbar, isDraggingZoomToolbar, toolbarDragStart, zoomToolbarDragStart, setActionsToolbarPosition, setZoomToolbarPosition, lastMouseMoveTime, throttleInterval])
 
@@ -1760,13 +1774,13 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
     const newWidget: MainGridWidget = {
       id: generateUniqueId("widget"),
-      type: "basic",
-      title: "New Widget",
-      content: "Widget content",
+      type: "enhanced-sensor",
+      title: "Enhanced Sensor",
+      content: "Hardware-integrated sensor",
       x: nonCollidingPos.x,
       y: nonCollidingPos.y,
-      w: 200,
-      h: 150,
+      w: 250,
+      h: 180,
       container: "main",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1873,26 +1887,28 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-background to-background/80">
       
-      {/* Debug Info - Top Left Corner (Hideable) */}
+      {/* Enhanced Performance Debug Panel */}
       {isDebugPanelVisible && (
-        <div className="absolute top-4 left-4 z-50 bg-red-500/90 text-white p-2 rounded text-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-semibold">Debug Panel</span>
+        <div className="absolute top-4 left-4 z-50 bg-black/90 text-green-400 p-3 rounded font-mono text-xs border border-green-500/30">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-green-300 font-bold">⚡ HARDWARE ACCELERATION ACTIVE</span>
             <Button
               onClick={() => setIsDebugPanelVisible(false)}
               size="sm"
               variant="ghost"
-              className="h-4 w-4 p-0 text-white hover:bg-white/20"
+              className="h-4 w-4 p-0 text-red-400 hover:text-red-300"
               title="Hide debug panel (Ctrl+D)"
             >
               <X className="h-3 w-3" />
             </Button>
           </div>
-          <div>Auto-save: {isAutoSaveEnabled ? 'ON' : 'OFF'}</div>
-          <div>Interval: {autoSaveInterval / 1000}s</div>
-          <div>Toolbar: {actionsToolbarPosition.top}px, {actionsToolbarPosition.right}px</div>
-          <div>Unsaved: {hasUnsavedChanges ? 'YES' : 'NO'}</div>
-          <div>History: {historyIndex + 1}/{stateHistory.length}</div>
+          <div>Viewport: {viewport.x.toFixed(0)}, {viewport.y.toFixed(0)}, {(viewport.zoom * 100).toFixed(0)}%</div>
+          <div>Widgets: {gridState.mainWidgets.length} | Nests: {gridState.nestContainers.length}</div>
+          <div>AriesWidgets: {gridState.mainAriesWidgets.length}</div>
+          <div>Enhanced Sensors: {gridState.mainWidgets.filter(w => w.type === 'enhanced-sensor').length}</div>
+          <div>Status: {dragState.isDragging ? 'DRAGGING' : isPanning ? 'PANNING' : 'READY'}</div>
+          <div className="text-cyan-400 mt-1">GPU Layers: ENABLED | RAF: ACTIVE</div>
+          <div>Auto-save: {isAutoSaveEnabled ? 'ON' : 'OFF'} | Unsaved: {hasUnsavedChanges ? 'YES' : 'NO'}</div>
         </div>
       )}
       
@@ -2030,7 +2046,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         </div>
       )}
 
-      {/* Infinite Grid Container */}
+      {/* Hardware-Accelerated Grid Container */}
       <div
         ref={containerRef}
         className={`absolute inset-0 cursor-${isPanning ? "grabbing" : "grab"} ${
@@ -2045,20 +2061,24 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           `,
           backgroundSize: `${gridState.gridSize * viewport.zoom}px ${gridState.gridSize * viewport.zoom}px`,
           backgroundPosition: `${viewport.x * viewport.zoom}px ${viewport.y * viewport.zoom}px`,
+          willChange: 'transform, background-position',
+          transform: 'translate3d(0, 0, 0)', // Force hardware layer
         }}
         onMouseDown={handlePanStart}
         onDragOver={(e) => handleDragOver(e)}
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e)}
       >
+        {/* Hardware-Accelerated Viewport Transform Container */}
         <div
           className={dragState.isDragging || resizeState.isResizing ? "aries-grid-faded" : ""}
           style={{
-            transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+            transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.zoom})`,
             transformOrigin: "0 0",
             width: "100%",
             height: "100%",
             position: "relative",
+            willChange: 'transform',
           }}
         >
           {/* Nest Containers */}
@@ -2090,36 +2110,87 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             />
           ))}
 
-          {/* Main Grid Widgets */}
+          {/* Hardware-Accelerated Main Grid Widgets */}
           {gridState.mainWidgets.map((widget) => (
-            <GridWidget
-                        key={widget.id}
-                          widget={widget}
-              isDragging={dragState.draggedId === widget.id}
-              isResizing={resizeState.resizedId === widget.id}
-              isPushed={pushedWidgets.has(widget.id)}
-              onMouseDown={handleMouseDown}
-              onRemove={removeWidget}
-              onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
-              getResizeHandles={getResizeHandles}
-            />
+            widget.type === "enhanced-sensor" ? (
+              <HardwareAcceleratedWidget
+                key={widget.id}
+                id={widget.id}
+                x={widget.x}
+                y={widget.y}
+                width={widget.w}
+                height={widget.h}
+                isDragging={dragState.draggedId === widget.id}
+                isResizing={resizeState.resizedId === widget.id}
+                isPushed={pushedWidgets.has(widget.id)}
+                onMouseDown={handleMouseDown}
+                onRemove={removeWidget}
+              >
+                <EnhancedSensorWidget
+                  widgetId={widget.id}
+                  title={widget.title}
+                  sensorType="generic"
+                  streamMappings={[]}
+                  onStreamMappingsChange={() => {}}
+                  className="w-full h-full"
+                  showTrend={true}
+                  precision={2}
+                />
+                {getResizeHandles(widget.id, "widget")}
+              </HardwareAcceleratedWidget>
+            ) : (
+              <GridWidget
+                key={widget.id}
+                widget={widget}
+                isDragging={dragState.draggedId === widget.id}
+                isResizing={resizeState.resizedId === widget.id}
+                isPushed={pushedWidgets.has(widget.id)}
+                onMouseDown={handleMouseDown}
+                onRemove={removeWidget}
+                onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
+                getResizeHandles={getResizeHandles}
+              />
+            )
           ))}
 
-          {/* Main Grid AriesWidgets */}
+          {/* Hardware-Accelerated Main Grid AriesWidgets */}
           {gridState.mainAriesWidgets.map((widget) => (
-            <GridWidget
+            <HardwareAcceleratedWidget
               key={widget.id}
-                widget={widget}
+              id={widget.id}
+              x={widget.x}
+              y={widget.y}
+              width={widget.w}
+              height={widget.h}
               isDragging={dragState.draggedId === widget.id}
               isResizing={resizeState.resizedId === widget.id}
               isPushed={pushedWidgets.has(widget.id)}
               onMouseDown={handleMouseDown}
               onRemove={removeAriesWidget}
-              onUpdate={updateAriesWidget}
-              getResizeHandles={getResizeHandles}
-            />
+            >
+              <EnhancedSensorWidget
+                widgetId={widget.id}
+                title={widget.title}
+                sensorType="temperature"
+                streamMappings={[]}
+                onStreamMappingsChange={(mappings) => updateAriesWidget(widget.id, { streamMappings: mappings } as any)}
+                className="w-full h-full"
+                showTrend={true}
+                precision={1}
+                thresholds={{
+                  warning: { min: 0, max: 50 },
+                  critical: { min: -10, max: 70 }
+                }}
+              />
+              {getResizeHandles(widget.id, "widget")}
+            </HardwareAcceleratedWidget>
           ))}
         </div>
+      </div>
+
+      {/* Performance Status Bar */}
+      <div className="absolute bottom-4 right-4 z-50 bg-black/80 text-green-400 px-3 py-1 rounded text-xs font-mono">
+        ⚡ Hardware Acceleration: ACTIVE | Enhanced Widgets: {gridState.mainWidgets.filter(w => w.type === 'enhanced-sensor').length}/{gridState.mainWidgets.length + gridState.mainAriesWidgets.length}
       </div>
     </div>
   )
