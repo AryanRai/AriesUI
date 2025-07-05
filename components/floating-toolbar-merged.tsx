@@ -500,7 +500,7 @@ export function FloatingToolbar(props: ToolbarProps) {
             autoSaveStatus === 'saved' ? "bg-green-600 hover:bg-green-700" :
             autoSaveStatus === 'error' ? "bg-red-600 hover:bg-red-700 animate-pulse" : ""
           ),
-          "hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)]",
+          "hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary",
           animationsEnabled && "hover:scale-105 hover:translate-x-1 active:scale-95 active:translate-x-0"
         )}
         onClick={actionProps.action}
@@ -547,7 +547,7 @@ export function FloatingToolbar(props: ToolbarProps) {
       >
         <Card
           ref={toolbarRef}
-          className="fixed z-50 bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg select-none will-change-transform overflow-hidden"
+          className="fixed z-50 bg-card/95 backdrop-blur theme-outline-primary shadow-lg select-none will-change-transform overflow-hidden"
           style={{
             left: position.x,
             top: position.y,
@@ -628,7 +628,7 @@ export function FloatingToolbar(props: ToolbarProps) {
       >
         <Card
           ref={toolbarRef}
-          className="fixed z-50 w-80 max-h-[80vh] bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg select-none will-change-transform overflow-hidden flex flex-col"
+          className="fixed z-50 w-80 max-h-[80vh] bg-card/95 backdrop-blur theme-outline-primary shadow-lg select-none will-change-transform overflow-hidden flex flex-col"
           style={{
             left: position.x,
             top: position.y,
@@ -674,7 +674,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
                     onClick={() => setIsCustomizing(!isCustomizing)}
                     title="Customize Toolbar"
                   >
@@ -690,7 +690,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
                     onClick={() => setIsMinimized(true)}
                     title="Minimize Toolbar"
                   >
@@ -791,7 +791,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                       >
                         <Button 
                           variant="ghost" 
-                          className="w-full justify-between text-xs hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+                          className="w-full justify-between text-xs hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
                         >
                           {section.label}
                           <ChevronDown className={cn(
@@ -834,7 +834,7 @@ export function FloatingToolbar(props: ToolbarProps) {
               >
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-between text-xs hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+                  className="w-full justify-between text-xs hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
                   onClick={() => toggleSectionExpansion("ariesmods")}
                 >
                   AriesMods

@@ -151,7 +151,7 @@ const ConnectionControls = () => {
                   onClick={() => reconnect()} 
                   variant="outline" 
                   size="sm"
-                  className="gap-1.5 border-[rgba(var(--theme-primary),0.3)] hover:border-[rgba(var(--theme-primary),0.5)] hover:bg-[rgba(var(--theme-primary),0.1)] transition-all text-xs"
+                  className="gap-1.5 theme-outline-primary hover:bg-[rgba(var(--theme-primary),0.1)] transition-all text-xs"
                 >
                   <motion.div
                     animate={animationsEnabled ? { rotate: 360 } : {}}
@@ -181,7 +181,7 @@ const ConnectionControls = () => {
 
           <Accordion type="single" collapsible className="w-full space-y-3">
             {/* Ping Settings */}
-            <AccordionItem value="ping-settings" className="border-[rgba(var(--theme-primary),0.2)] bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
+            <AccordionItem value="ping-settings" className="theme-outline-primary bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
               <AccordionTrigger className="hover:no-underline hover:bg-[rgba(var(--theme-primary),0.05)] transition-all px-3 py-2">
                 <motion.div
                   className="flex items-center gap-2"
@@ -201,7 +201,7 @@ const ConnectionControls = () => {
                 </motion.div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
-                <Card className="border-[rgba(var(--theme-primary),0.2)] bg-background/80 backdrop-blur-sm">
+                <Card className="theme-outline-primary bg-background/80 backdrop-blur-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-semibold text-[rgb(var(--theme-primary))]">Network Intervals</CardTitle>
                     <CardDescription className="text-sm text-muted-foreground">
@@ -233,7 +233,7 @@ const ConnectionControls = () => {
                           min="100"
                           max="10000"
                           step="100"
-                          className="text-sm bg-background/80 border-[rgba(var(--theme-primary),0.3)] focus:border-[rgba(var(--theme-primary),0.5)] transition-all font-mono"
+                          className="text-sm bg-background/80 theme-outline-primary focus:border-[rgba(var(--theme-primary),0.5)] transition-all font-mono"
                         />
                         <div className="text-xs text-muted-foreground">
                           <div className="flex items-center justify-between">
@@ -261,7 +261,7 @@ const ConnectionControls = () => {
                           min="100"
                           max="10000"
                           step="100"
-                          className="text-sm bg-background/80 border-[rgba(var(--theme-primary),0.3)] focus:border-[rgba(var(--theme-primary),0.5)] transition-all font-mono"
+                          className="text-sm bg-background/80 theme-outline-primary focus:border-[rgba(var(--theme-primary),0.5)] transition-all font-mono"
                         />
                         <div className="text-xs text-muted-foreground">
                           <div className="flex items-center justify-between">
@@ -290,7 +290,7 @@ const ConnectionControls = () => {
                         min="50"
                         max="5000"
                         step="50"
-                        className="text-sm bg-background/80 border-[rgba(var(--theme-primary),0.3)] focus:border-[rgba(var(--theme-primary),0.5)] transition-all font-mono"
+                        className="text-sm bg-background/80 theme-outline-primary focus:border-[rgba(var(--theme-primary),0.5)] transition-all font-mono"
                       />
                       <p className="text-xs text-muted-foreground">
                         Controls UI refresh rate. Active: <span className="text-[rgb(var(--theme-primary))] font-mono font-medium">{pingIntervals.ui}ms</span>
@@ -323,7 +323,7 @@ const ConnectionControls = () => {
             </AccordionItem>
 
             {/* StreamHandler Status */}
-            <AccordionItem value="sh" className="border-[rgba(var(--theme-primary),0.2)] bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
+            <AccordionItem value="sh" className="theme-outline-primary bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
               <AccordionTrigger className="hover:no-underline hover:bg-[rgba(var(--theme-primary),0.05)] transition-all px-3 py-2">
                 <motion.div
                   className="flex items-center gap-2 w-full"
@@ -384,7 +384,7 @@ const ConnectionControls = () => {
             </AccordionItem>
 
             {/* Engine Status */}
-            <AccordionItem value="en" className="border-[rgba(var(--theme-primary),0.2)] bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
+            <AccordionItem value="en" className="theme-outline-primary bg-[rgba(var(--theme-primary),0.02)] rounded-lg overflow-hidden">
               <AccordionTrigger className="hover:no-underline hover:bg-[rgba(var(--theme-primary),0.05)] transition-all px-3 py-2">
                 <motion.div
                   className="flex items-center gap-2 w-full"
@@ -428,7 +428,7 @@ const ConnectionControls = () => {
                 </motion.div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
-                <Card className="border-[rgba(var(--theme-primary),0.2)] bg-background/80 backdrop-blur-sm">
+                <Card className="theme-outline-primary bg-background/80 backdrop-blur-sm">
                   <CardContent className="p-4">
                     <div className="text-center">
                       <div className="p-3 bg-[rgba(var(--theme-primary),0.05)] rounded border border-[rgba(var(--theme-primary),0.1)]">

@@ -106,7 +106,7 @@ const HeartbeatVisualizer = () => {
     <Popover>
       <PopoverTrigger asChild>
         <motion.div 
-          className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-[rgba(var(--theme-primary),0.1)] px-3 py-2 rounded-lg transition-all border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] bg-background/50 backdrop-blur-sm shadow-sm"
+          className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-[rgba(var(--theme-primary),0.1)] px-3 py-2 rounded-lg transition-all theme-outline-primary bg-background/50 backdrop-blur-sm shadow-sm"
           whileHover={animationsEnabled ? { scale: 1.02 } : {}}
           whileTap={animationsEnabled ? { scale: 0.98 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -125,7 +125,7 @@ const HeartbeatVisualizer = () => {
           >
             <Heart className="h-5 w-5" />
           </motion.div>
-          <div className="flex items-center bg-background/50 px-2 py-1 rounded-md border border-[rgba(var(--theme-primary),0.2)] backdrop-blur">
+          <div className="flex items-center bg-background/50 px-2 py-1 rounded-md theme-outline-primary backdrop-blur">
             <div className="flex items-center gap-1 pr-2 border-r border-[rgba(var(--theme-primary),0.2)]">
               <motion.div 
                 className={cn(
@@ -247,7 +247,7 @@ const HeartbeatVisualizer = () => {
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+              className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
               onMouseEnter={() => setIsReversed(true)}
               onMouseLeave={() => setIsReversed(false)}
             >
@@ -256,7 +256,7 @@ const HeartbeatVisualizer = () => {
           </motion.div>
         </motion.div>
       </PopoverTrigger>
-      <PopoverContent className="w-[450px] p-0 border-[rgba(var(--theme-primary),0.2)] bg-background/98 backdrop-blur-xl shadow-2xl" align="end">
+      <PopoverContent className="w-[450px] p-0 theme-outline-primary bg-background/98 backdrop-blur-xl shadow-2xl" align="end">
         <ConnectionControls />
       </PopoverContent>
     </Popover>

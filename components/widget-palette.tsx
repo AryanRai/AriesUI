@@ -271,7 +271,7 @@ export function WidgetPalette() {
             transform: "translate3d(0, 0, 0)",
           }}
         >
-          <Card className="bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg">
+          <Card className="bg-card/95 backdrop-blur theme-outline-primary shadow-lg">
             {/* Futuristic Background */}
             <PaletteBackground animationsEnabled={animationsEnabled} />
             
@@ -310,7 +310,7 @@ export function WidgetPalette() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] ml-2 border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] ml-2 theme-outline-primary transition-all"
                   onClick={() => setIsCollapsed(false)}
                   title="Expand AriesMods Palette"
                 >
@@ -343,7 +343,7 @@ export function WidgetPalette() {
             transform: "translate3d(0, 0, 0)",
           }}
         >
-          <Card className="bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg max-h-[calc(100vh-100px)] overflow-hidden">
+          <Card className="bg-card/95 backdrop-blur theme-outline-primary shadow-lg max-h-[calc(100vh-100px)] overflow-hidden">
             {/* Futuristic Background */}
             <PaletteBackground animationsEnabled={animationsEnabled} />
             
@@ -387,7 +387,7 @@ export function WidgetPalette() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] theme-outline-primary transition-all"
                     onClick={() => setIsCollapsed(true)}
                     title="Collapse AriesMods Palette"
                   >
@@ -410,7 +410,7 @@ export function WidgetPalette() {
                   placeholder="Search AriesMods..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-7 h-7 text-xs bg-background/50 border-[rgba(var(--theme-primary),0.3)] focus:border-[rgba(var(--theme-primary),0.5)] transition-all"
+                  className="pl-7 h-7 text-xs bg-background/50 theme-outline-primary focus:border-[rgba(var(--theme-primary),0.5)] transition-all"
                 />
               </MotionWrapper>
             </CardHeader>
@@ -440,7 +440,7 @@ export function WidgetPalette() {
                         transition: { delay: 0.3 + categoryIndex * 0.1 }
                       } : {})}
                     >
-                      <Card className="border-[rgba(var(--theme-primary),0.3)] bg-background/30 backdrop-blur-sm">
+                      <Card className="theme-outline-primary bg-background/30 backdrop-blur-sm">
                         <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.name)}>
                           <CollapsibleTrigger asChild>
                             <MotionWrapper
@@ -449,7 +449,7 @@ export function WidgetPalette() {
                                 whileTap: { scale: 0.99 }
                               } : {})}
                             >
-                              <CardHeader className="pb-2 cursor-pointer hover:bg-[rgba(var(--theme-primary),0.05)] transition-all border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] rounded-lg">
+                              <CardHeader className="pb-2 cursor-pointer hover:bg-[rgba(var(--theme-primary),0.05)] transition-all theme-outline-primary rounded-lg">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm">{category.icon}</span>
@@ -499,7 +499,7 @@ export function WidgetPalette() {
                                   } : {})}
                                 >
                                   <div
-                                    className="group relative p-2 rounded border cursor-grab active:cursor-grabbing hover:bg-[rgba(var(--theme-primary),0.1)] transition-all border-[rgba(var(--theme-primary),0.2)] hover:border-[rgba(var(--theme-primary),0.4)]"
+                                    className="group relative p-2 rounded border cursor-grab active:cursor-grabbing hover:bg-[rgba(var(--theme-primary),0.1)] transition-all theme-outline-primary"
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, template)}
                                     onDragEnd={handleDragEnd}
@@ -525,7 +525,7 @@ export function WidgetPalette() {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all hover:bg-[rgba(var(--theme-primary),0.2)] border border-transparent hover:border-[rgba(var(--theme-primary),0.3)]"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all hover:bg-[rgba(var(--theme-primary),0.2)] theme-outline-primary"
                                           onClick={() => createAriesModWidget(template)}
                                           title="Add to Grid"
                                         >

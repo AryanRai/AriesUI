@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Palette, Check } from "lucide-react"
-import { useThemeColors, themeColors, ThemeColorKey } from "@/hooks/use-theme-colors"
+import { useThemeColors, themeColors, ThemeColorKey, getThemeClasses } from "@/hooks/use-theme-colors"
 import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 import { cn } from "@/lib/utils"
 import { createPortal } from "react-dom"
@@ -15,12 +16,22 @@ interface ThemeColorSelectorProps {
   variant?: "button" | "inline"
 }
 
+/**
+ * Theme Color Selector component with outline toggle
+ * 
+ * Features:
+ * - Color palette selection with real-time preview
+ * - Toggle for theme-aware outlines (converts white borders to theme colors)
+ * - Persistent settings saved to localStorage
+ * - Animation support based on user preferences
+ */
+
 export function ThemeColorSelector({ 
   className = "", 
   showLabel = true, 
   variant = "button" 
 }: ThemeColorSelectorProps) {
-  const { currentTheme, setTheme } = useThemeColors()
+  const { currentTheme, setTheme, useThemeOutlines, setUseThemeOutlines } = useThemeColors()
   const { animationsEnabled } = useAnimationPreferences()
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -108,7 +119,7 @@ export function ThemeColorSelector({
           onClick={handleToggle}
           className={cn(
             "gap-2 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent",
-            "hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
+            getThemeClasses().outline, "transition-all"
           )}
         >
           <div
@@ -193,7 +204,24 @@ export function ThemeColorSelector({
                   ))}
                 </div>
                 
-                <div className="mt-3 pt-3 border-t border-border/40">
+                <div className="mt-4 pt-3 border-t border-border/40 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="theme-outlines"
+                      checked={useThemeOutlines}
+                      onCheckedChange={setUseThemeOutlines}
+                      className="border-border/60 data-[state=checked]:bg-[rgb(var(--theme-primary))] data-[state=checked]:border-[rgb(var(--theme-primary))]"
+                    />
+                    <label htmlFor="theme-outlines" className="text-sm font-medium text-foreground cursor-pointer">
+                      Use theme colors for outlines
+                    </label>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Enable to apply theme colors to element borders and outlines
+                  </div>
+                </div>
+                
+                <div className="mt-2 pt-2 border-t border-border/40">
                   <div className="text-xs text-muted-foreground text-center">
                     Theme colors affect all accent elements
                   </div>

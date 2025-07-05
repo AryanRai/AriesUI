@@ -68,6 +68,8 @@ interface ThemeColorContextType {
   currentTheme: ThemeColorKey
   setTheme: (theme: ThemeColorKey) => void
   colors: typeof themeColors[ThemeColorKey]
+  useThemeOutlines: boolean
+  setUseThemeOutlines: (enabled: boolean) => void
 }
 
 const ThemeColorContext = createContext<ThemeColorContextType | undefined>(undefined)
@@ -78,12 +80,18 @@ interface ThemeColorProviderProps {
 
 export function ThemeColorProvider({ children }: ThemeColorProviderProps) {
   const [currentTheme, setCurrentTheme] = useState<ThemeColorKey>('teal')
+  const [useThemeOutlines, setUseThemeOutlines] = useState(false)
 
   // Load saved theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('comms-theme-color') as ThemeColorKey
     if (savedTheme && themeColors[savedTheme]) {
       setCurrentTheme(savedTheme)
+    }
+    
+    const savedOutlines = localStorage.getItem('comms-theme-outlines')
+    if (savedOutlines !== null) {
+      setUseThemeOutlines(JSON.parse(savedOutlines))
     }
   }, [])
 
@@ -97,18 +105,30 @@ export function ThemeColorProvider({ children }: ThemeColorProviderProps) {
     root.style.setProperty('--theme-secondary', colors.secondary)
     root.style.setProperty('--theme-accent', colors.accent)
     
+    // Set outline preference
+    root.style.setProperty('--theme-outlines-enabled', useThemeOutlines ? '1' : '0')
+    
     // Save to localStorage
     localStorage.setItem('comms-theme-color', currentTheme)
-  }, [currentTheme])
+  }, [currentTheme, useThemeOutlines])
+
+  // Save outline preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('comms-theme-outlines', JSON.stringify(useThemeOutlines))
+  }, [useThemeOutlines])
 
   const setTheme = (theme: ThemeColorKey) => {
     setCurrentTheme(theme)
   }
 
+  const handleSetUseThemeOutlines = (enabled: boolean) => {
+    setUseThemeOutlines(enabled)
+  }
+
   const colors = themeColors[currentTheme]
 
   return (
-    <ThemeColorContext.Provider value={{ currentTheme, setTheme, colors }}>
+    <ThemeColorContext.Provider value={{ currentTheme, setTheme, colors, useThemeOutlines, setUseThemeOutlines: handleSetUseThemeOutlines }}>
       {children}
     </ThemeColorContext.Provider>
   )
@@ -131,6 +151,7 @@ export function getThemeClasses(variant: 'primary' | 'secondary' | 'accent' = 'p
     textWithOpacity: (opacity: number) => `text-[rgba(var(--theme-${variant}),${opacity})]`,
     border: `border-[rgb(var(--theme-${variant}))]`,
     borderWithOpacity: (opacity: number) => `border-[rgba(var(--theme-${variant}),${opacity})]`,
+    outline: variant === 'secondary' ? 'theme-outline-secondary' : 'theme-outline-primary',
     shadow: `shadow-[rgb(var(--theme-${variant}))]`,
     shadowWithOpacity: (opacity: number) => `shadow-[rgba(var(--theme-${variant}),${opacity})]`
   }

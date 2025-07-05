@@ -23,6 +23,7 @@
     --theme-primary: 20 184 166;
     --theme-secondary: 6 182 212;
     --theme-accent: 14 165 233;
+    --theme-outlines-enabled: 0;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
@@ -407,5 +408,30 @@
 
   .auto-neural-message-pulse {
     animation: preHidePulse 1s ease-in-out;
+  }
+
+  /* Theme-aware outline classes */
+  .theme-outline-primary {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  :root[style*="--theme-outlines-enabled: 1"] .theme-outline-primary {
+    border-color: rgba(var(--theme-primary), 0.3);
+  }
+  
+  :root[style*="--theme-outlines-enabled: 1"] .theme-outline-primary:hover {
+    border-color: rgba(var(--theme-primary), 0.5);
+  }
+  
+  .theme-outline-secondary {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  :root[style*="--theme-outlines-enabled: 1"] .theme-outline-secondary {
+    border-color: rgba(var(--theme-primary), 0.3);
+  }
+  
+  :root[style*="--theme-outlines-enabled: 1"] .theme-outline-secondary:hover {
+    border-color: rgba(var(--theme-primary), 0.5);
   }
 }
