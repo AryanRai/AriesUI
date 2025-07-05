@@ -233,9 +233,9 @@ const ToolbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }
         className="absolute inset-0 rounded-lg"
         animate={{
           boxShadow: [
-            "0 0 0px rgba(20, 184, 166, 0)",
-            "0 0 15px rgba(20, 184, 166, 0.3)",
-            "0 0 0px rgba(20, 184, 166, 0)"
+            "0 0 0px rgba(var(--theme-primary), 0)",
+            "0 0 15px rgba(var(--theme-primary), 0.3)",
+            "0 0 0px rgba(var(--theme-primary), 0)"
           ]
         }}
         transition={{
@@ -245,13 +245,13 @@ const ToolbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }
       />
       
       {/* Subtle grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.05)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--theme-primary),0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--theme-primary),0.05)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg" />
       
       {/* Corner accents */}
-      <div className="absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 border-teal-400/30 rounded-tl-lg" />
-      <div className="absolute top-0 right-0 w-4 h-4 border-r-2 border-t-2 border-teal-400/30 rounded-tr-lg" />
-      <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-teal-400/30 rounded-bl-lg" />
-      <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-teal-400/30 rounded-br-lg" />
+      <div className="absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 border-[rgba(var(--theme-primary),0.3)] rounded-tl-lg" />
+      <div className="absolute top-0 right-0 w-4 h-4 border-r-2 border-t-2 border-[rgba(var(--theme-primary),0.3)] rounded-tr-lg" />
+      <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-[rgba(var(--theme-primary),0.3)] rounded-bl-lg" />
+      <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-[rgba(var(--theme-primary),0.3)] rounded-br-lg" />
     </div>
   )
 }
@@ -480,66 +480,74 @@ export function FloatingToolbar(props: ToolbarProps) {
     )
   }, [setQuickActions])
 
-  const MotionWrapper = animationsEnabled ? motion.div : 'div'
-
   // Render action button
   const renderActionButton = useCallback((actionId: ActionId, size: "sm" | "icon" = "sm", keyPrefix: string = "action") => {
     const actionProps = getActionProps(actionId)
     const IconComponent = actionProps.icon
     const isIcon = size === "icon"
 
-    return (
-      <MotionWrapper
-        key={`${keyPrefix}-${actionId}`}
-        {...(animationsEnabled ? {
-          whileHover: { scale: 1.02, x: isIcon ? 0 : 2 },
-          whileTap: { scale: 0.98 }
-        } : {})}
+    const buttonContent = (
+      <Button
+        variant={actionProps.variant}
+        size={size}
+        className={cn(
+          "gap-2 transition-all duration-200",
+          isIcon ? "h-7 w-7" : "justify-start text-xs",
+          actionProps.isActive && "ring-2 ring-[rgba(var(--theme-primary),0.5)]",
+          hasUnsavedChanges && actionId === "save" && "bg-orange-600 hover:bg-orange-700 animate-pulse",
+          isAutoSaveEnabled && actionId === "auto" && (
+            autoSaveStatus === 'saving' ? "bg-blue-600 hover:bg-blue-700 animate-pulse" :
+            autoSaveStatus === 'saved' ? "bg-green-600 hover:bg-green-700" :
+            autoSaveStatus === 'error' ? "bg-red-600 hover:bg-red-700 animate-pulse" : ""
+          ),
+          "hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)]",
+          animationsEnabled && "hover:scale-105 hover:translate-x-1 active:scale-95 active:translate-x-0"
+        )}
+        onClick={actionProps.action}
+        disabled={actionProps.disabled}
+        title={actionProps.label}
       >
-        <Button
-          variant={actionProps.variant}
-          size={size}
-          className={cn(
-            "gap-2 transition-all",
-            isIcon ? "h-7 w-7" : "justify-start text-xs",
-            actionProps.isActive && "ring-2 ring-teal-400/50",
-            hasUnsavedChanges && actionId === "save" && "bg-orange-600 hover:bg-orange-700",
-            isAutoSaveEnabled && actionId === "auto" && (
-              autoSaveStatus === 'saving' ? "bg-blue-600 hover:bg-blue-700" :
-              autoSaveStatus === 'saved' ? "bg-green-600 hover:bg-green-700" :
-              autoSaveStatus === 'error' ? "bg-red-600 hover:bg-red-700" : ""
-            ),
-            "hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20"
-          )}
-          onClick={actionProps.action}
-          disabled={actionProps.disabled}
-          title={actionProps.label}
-        >
-          <IconComponent className={cn("h-3 w-3", isIcon ? "h-3 w-3" : "h-3 w-3")} />
-          {!isIcon && actionProps.label}
-          {actionProps.badge && (
-            <span className="text-xs ml-1">{actionProps.badge}</span>
-          )}
-        </Button>
-      </MotionWrapper>
+        <IconComponent className={cn("h-3 w-3", isIcon ? "h-3 w-3" : "h-3 w-3")} />
+        {!isIcon && actionProps.label}
+        {actionProps.badge && (
+          <span className="text-xs ml-1">{actionProps.badge}</span>
+        )}
+      </Button>
     )
-  }, [getActionProps, animationsEnabled, hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus, MotionWrapper])
+
+    if (animationsEnabled) {
+      return (
+        <motion.div
+          key={`${keyPrefix}-${actionId}`}
+          whileHover={{ scale: 1.02, x: isIcon ? 0 : 2 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        >
+          {buttonContent}
+        </motion.div>
+      )
+    }
+
+    return (
+      <div key={`${keyPrefix}-${actionId}`}>
+        {buttonContent}
+      </div>
+    )
+  }, [getActionProps, animationsEnabled, hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus])
 
   // If minimized, show compact version with quick actions
   if (isMinimized) {
     return (
-      <MotionWrapper
+      <motion.div
         key="minimized-toolbar"
-        {...(animationsEnabled ? {
-          initial: { scale: 0.8, opacity: 0 },
-          animate: { scale: 1, opacity: 1 },
-          exit: { scale: 0.8, opacity: 0 },
-          transition: { type: "spring", stiffness: 400, damping: 30 }
-        } : {})}
+        initial={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
+        animate={animationsEnabled ? { scale: 1, opacity: 1 } : {}}
+        exit={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
       >
         <Card
           ref={toolbarRef}
-          className="fixed z-50 bg-card/95 backdrop-blur border-teal-500/30 shadow-lg select-none will-change-transform overflow-hidden"
+          className="fixed z-50 bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg select-none will-change-transform overflow-hidden"
           style={{
             left: position.x,
             top: position.y,
@@ -554,12 +562,10 @@ export function FloatingToolbar(props: ToolbarProps) {
             <div className="flex items-center gap-2">
               <motion.div
                 className="flex items-center gap-1"
-                {...(animationsEnabled ? {
-                  animate: { x: [0, 2, 0] },
-                  transition: { duration: 2, repeat: Infinity }
-                } : {})}
+                animate={animationsEnabled ? { x: [0, 2, 0] } : {}}
+                transition={{ duration: 2, repeat: Infinity }}
               >
-                <GripVertical className="h-3 w-3 text-teal-400" />
+                <GripVertical className="h-3 w-3 text-[rgb(var(--theme-primary))]" />
               </motion.div>
 
               {/* Quick Action Buttons */}
@@ -570,63 +576,59 @@ export function FloatingToolbar(props: ToolbarProps) {
               ))}
 
               {/* Customize Button */}
-              <MotionWrapper
+              <motion.div
                 key="customize-button-mini"
-                {...(animationsEnabled ? {
-                  whileHover: { scale: 1.1, rotate: 180 },
-                  whileTap: { scale: 0.9 }
-                } : {})}
+                whileHover={animationsEnabled ? { scale: 1.1, rotate: 180 } : {}}
+                whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 hover:bg-teal-500/10 ml-1 border-l border-teal-500/20 transition-all"
+                  className="h-7 w-7 hover:bg-[rgba(var(--theme-primary),0.1)] ml-1 border-l border-[rgba(var(--theme-primary),0.2)] transition-all"
                   onClick={() => setIsCustomizing(!isCustomizing)}
                   title="Customize Quick Actions"
                 >
                   <Settings className="h-3 w-3" />
                 </Button>
-              </MotionWrapper>
+              </motion.div>
 
               {/* Maximize Button */}
-              <MotionWrapper
+              <motion.div
                 key="maximize-button-mini"
-                {...(animationsEnabled ? {
-                  whileHover: { scale: 1.1, rotate: 90 },
-                  whileTap: { scale: 0.9 }
-                } : {})}
+                whileHover={animationsEnabled ? { scale: 1.1, rotate: 90 } : {}}
+                whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 hover:bg-teal-500/10 ml-1 border-l border-teal-500/20 transition-all"
+                  className="h-7 w-7 hover:bg-[rgba(var(--theme-primary),0.1)] ml-1 border-l border-[rgba(var(--theme-primary),0.2)] transition-all"
                   onClick={() => setIsMinimized(false)}
                   title="Expand Toolbar"
                 >
                   <Maximize2 className="h-3 w-3" />
                 </Button>
-              </MotionWrapper>
+              </motion.div>
             </div>
           </div>
         </Card>
-      </MotionWrapper>
+      </motion.div>
     )
   }
 
   return (
     <AnimatePresence>
-      <MotionWrapper
+      <motion.div
         key="expanded-toolbar"
-        {...(animationsEnabled ? {
-          initial: { scale: 0.9, opacity: 0, y: 20 },
-          animate: { scale: 1, opacity: 1, y: 0 },
-          exit: { scale: 0.9, opacity: 0, y: 20 },
-          transition: { type: "spring", stiffness: 400, damping: 30 }
-        } : {})}
+        initial={animationsEnabled ? { scale: 0.9, opacity: 0, y: 20 } : {}}
+        animate={animationsEnabled ? { scale: 1, opacity: 1, y: 0 } : {}}
+        exit={animationsEnabled ? { scale: 0.9, opacity: 0, y: 20 } : {}}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
       >
         <Card
           ref={toolbarRef}
-          className="fixed z-50 w-80 max-h-[80vh] bg-card/95 backdrop-blur border-teal-500/30 shadow-lg select-none will-change-transform overflow-hidden flex flex-col"
+          className="fixed z-50 w-80 max-h-[80vh] bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg select-none will-change-transform overflow-hidden flex flex-col"
           style={{
             left: position.x,
             top: position.y,
@@ -638,87 +640,79 @@ export function FloatingToolbar(props: ToolbarProps) {
           
           {/* Header */}
           <CardHeader className="pb-2 cursor-grab active:cursor-grabbing touch-none relative z-10" onMouseDown={handleMouseDown}>
-            <MotionWrapper 
+            <motion.div 
               key="header-content"
               className="flex items-center justify-between"
-              {...(animationsEnabled ? {
-                initial: { opacity: 0, x: -10 },
-                animate: { opacity: 1, x: 0 },
-                transition: { delay: 0.1 }
-              } : {})}
+              initial={animationsEnabled ? { opacity: 0, x: -10 } : {}}
+              animate={animationsEnabled ? { opacity: 1, x: 0 } : {}}
+              transition={{ delay: 0.1 }}
             >
               <div className="flex items-center gap-2">
                 <motion.div
-                  className="text-teal-400"
-                  {...(animationsEnabled ? {
-                    animate: { x: [0, 2, 0] },
-                    transition: { duration: 2, repeat: Infinity }
-                  } : {})}
+                  className="text-[rgb(var(--theme-primary))]"
+                  animate={animationsEnabled ? { x: [0, 2, 0] } : {}}
+                  transition={{ duration: 2, repeat: Infinity }}
                 >
                   <GripVertical className="h-4 w-4" />
                 </motion.div>
-                <CardTitle className="text-sm bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent">
+                <CardTitle className="text-sm bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
                   Unified Toolkit
                 </CardTitle>
                 <motion.div
-                  className="w-2 h-2 bg-teal-400 rounded-full"
-                  {...(animationsEnabled ? {
-                    animate: { opacity: [0.5, 1, 0.5] },
-                    transition: { duration: 2, repeat: Infinity }
-                  } : {})}
+                  className="w-2 h-2 bg-[rgb(var(--theme-primary))] rounded-full"
+                  animate={animationsEnabled ? { opacity: [0.5, 1, 0.5] } : {}}
+                  transition={{ duration: 2, repeat: Infinity }}
                 />
               </div>
               <div className="flex items-center gap-1">
-                <MotionWrapper
+                <motion.div
                   key="settings-button"
-                  {...(animationsEnabled ? {
-                    whileHover: { scale: 1.1, rotate: 180 },
-                    whileTap: { scale: 0.9 }
-                  } : {})}
+                  whileHover={animationsEnabled ? { scale: 1.1, rotate: 180 } : {}}
+                  whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 >
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                     onClick={() => setIsCustomizing(!isCustomizing)}
                     title="Customize Toolbar"
                   >
                     <Settings className="h-3 w-3" />
                   </Button>
-                </MotionWrapper>
-                <MotionWrapper
+                </motion.div>
+                <motion.div
                   key="minimize-button"
-                  {...(animationsEnabled ? {
-                    whileHover: { scale: 1.1, rotate: 90 },
-                    whileTap: { scale: 0.9 }
-                  } : {})}
+                  whileHover={animationsEnabled ? { scale: 1.1, rotate: 90 } : {}}
+                  whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 >
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                     onClick={() => setIsMinimized(true)}
                     title="Minimize Toolbar"
                   >
                     <Minimize2 className="h-3 w-3" />
                   </Button>
-                </MotionWrapper>
+                </motion.div>
               </div>
-            </MotionWrapper>
+            </motion.div>
           </CardHeader>
           
           {/* Scroll indicator */}
           <motion.div 
             className={cn(
               "relative z-10 h-[1px] transition-opacity duration-300",
-              canScroll ? "bg-gradient-to-r from-transparent via-teal-500/20 to-transparent opacity-100" : "opacity-0"
+              canScroll ? "bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary),0.2)] to-transparent opacity-100" : "opacity-0"
             )}
             {...(animationsEnabled && canScroll ? {
               animate: { 
                 background: [
-                  "linear-gradient(to right, transparent, rgba(20, 184, 166, 0.2), transparent)",
-                  "linear-gradient(to right, transparent, rgba(20, 184, 166, 0.4), transparent)",
-                  "linear-gradient(to right, transparent, rgba(20, 184, 166, 0.2), transparent)"
+                  "linear-gradient(to right, transparent, rgba(var(--theme-primary), 0.2), transparent)",
+                  "linear-gradient(to right, transparent, rgba(var(--theme-primary), 0.4), transparent)",
+                  "linear-gradient(to right, transparent, rgba(var(--theme-primary), 0.2), transparent)"
                 ]
               },
               transition: { duration: 2, repeat: Infinity }
@@ -728,30 +722,28 @@ export function FloatingToolbar(props: ToolbarProps) {
           {/* Content */}
           <CardContent 
             ref={contentRef}
-            className="space-y-3 relative z-10 overflow-y-auto overflow-x-hidden flex-1 pb-4 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:transparent [&::-webkit-scrollbar-thumb]:bg-teal-500/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-teal-500/40"
+            className="space-y-3 relative z-10 overflow-y-auto overflow-x-hidden flex-1 pb-4 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:transparent [&::-webkit-scrollbar-thumb]:bg-[rgba(var(--theme-primary),0.2)] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[rgba(var(--theme-primary),0.4)]"
             style={{
               scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(20, 184, 166, 0.3) transparent',
+              scrollbarColor: 'rgba(var(--theme-primary), 0.3) transparent',
             }}
           >
             {/* Quick Actions Customization */}
             {isCustomizing && (
-              <MotionWrapper
+              <motion.div
                 key="customization-panel"
-                {...(animationsEnabled ? {
-                  initial: { opacity: 0, height: 0 },
-                  animate: { opacity: 1, height: "auto" },
-                  exit: { opacity: 0, height: 0 },
-                  transition: { duration: 0.3 }
-                } : {})}
+                initial={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+                animate={animationsEnabled ? { opacity: 1, height: "auto" } : {}}
+                exit={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+                transition={{ duration: 0.3 }}
               >
-                <div className="p-3 bg-teal-500/10 rounded-lg border border-teal-500/20">
+                <div className="p-3 bg-[rgba(var(--theme-primary),0.1)] rounded-lg border border-[rgba(var(--theme-primary),0.2)]">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-teal-300">Quick Actions</h4>
+                    <h4 className="text-sm font-medium text-[rgb(var(--theme-secondary))]">Quick Actions</h4>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-4 w-4 hover:bg-teal-500/20"
+                      className="h-4 w-4 hover:bg-[rgba(var(--theme-primary),0.2)]"
                       onClick={() => setIsCustomizing(false)}
                     >
                       <X className="h-3 w-3" />
@@ -779,7 +771,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                     })}
                   </div>
                 </div>
-              </MotionWrapper>
+              </motion.div>
             )}
 
             {/* Toolbar Sections */}
@@ -791,16 +783,15 @@ export function FloatingToolbar(props: ToolbarProps) {
                     onOpenChange={() => toggleSectionExpansion(section.id)}
                   >
                     <CollapsibleTrigger asChild>
-                      <MotionWrapper
+                      <motion.div
                         key={`section-trigger-${section.id}`}
-                        {...(animationsEnabled ? {
-                          whileHover: { scale: 1.02, x: 2 },
-                          whileTap: { scale: 0.98 }
-                        } : {})}
+                        whileHover={animationsEnabled ? { scale: 1.02, x: 2 } : {}}
+                        whileTap={animationsEnabled ? { scale: 0.98 } : {}}
+                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
                       >
                         <Button 
                           variant="ghost" 
-                          className="w-full justify-between text-xs hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                          className="w-full justify-between text-xs hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                         >
                           {section.label}
                           <ChevronDown className={cn(
@@ -808,7 +799,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                             expandedSections.includes(section.id) && "rotate-180"
                           )} />
                         </Button>
-                      </MotionWrapper>
+                      </motion.div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-1 mt-1">
                       {section.actions.map((actionId) => (
@@ -820,7 +811,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                   </Collapsible>
                 ) : (
                   <div className="space-y-1">
-                    <div className="text-xs font-medium text-teal-300 px-2 py-1">
+                    <div className="text-xs font-medium text-[rgb(var(--theme-secondary))] px-2 py-1">
                       {section.label}
                     </div>
                     {section.actions.map((actionId) => (
@@ -835,16 +826,15 @@ export function FloatingToolbar(props: ToolbarProps) {
 
             {/* AriesMods Section */}
             <div key="ariesmods-section" className="space-y-1">
-              <MotionWrapper
+              <motion.div
                 key="ariesmods-trigger"
-                {...(animationsEnabled ? {
-                  whileHover: { scale: 1.02, x: 2 },
-                  whileTap: { scale: 0.98 }
-                } : {})}
+                whileHover={animationsEnabled ? { scale: 1.02, x: 2 } : {}}
+                whileTap={animationsEnabled ? { scale: 0.98 } : {}}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-between text-xs hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                  className="w-full justify-between text-xs hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                   onClick={() => toggleSectionExpansion("ariesmods")}
                 >
                   AriesMods
@@ -853,74 +843,74 @@ export function FloatingToolbar(props: ToolbarProps) {
                     expandedSections.includes("ariesmods") && "rotate-180"
                   )} />
                 </Button>
-              </MotionWrapper>
+              </motion.div>
               {expandedSections.includes("ariesmods") && (
-                <MotionWrapper
+                <motion.div
                   key="ariesmods-content"
-                  {...(animationsEnabled ? {
-                    initial: { opacity: 0, height: 0 },
-                    animate: { opacity: 1, height: "auto" },
-                    exit: { opacity: 0, height: 0 },
-                    transition: { duration: 0.3 }
-                  } : {})}
+                  initial={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+                  animate={animationsEnabled ? { opacity: 1, height: "auto" } : {}}
+                  exit={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+                  transition={{ duration: 0.3 }}
                 >
                   <div className="pl-4">
                     <motion.div 
-                      className="border-2 border-dashed border-teal-500/30 rounded p-2 text-center hover:border-teal-500/50 transition-colors"
-                      {...(animationsEnabled ? {
-                        whileHover: { scale: 1.02 },
-                        animate: {
-                          borderColor: [
-                            "rgba(20, 184, 166, 0.3)",
-                            "rgba(20, 184, 166, 0.5)",
-                            "rgba(20, 184, 166, 0.3)"
-                          ]
-                        },
-                        transition: { duration: 3, repeat: Infinity }
-                      } : {})}
+                      className="border-2 border-dashed border-[rgba(var(--theme-primary),0.3)] rounded p-2 text-center hover:border-[rgba(var(--theme-primary),0.5)] transition-colors"
+                      whileHover={animationsEnabled ? { scale: 1.02 } : {}}
+                      animate={animationsEnabled ? {
+                        borderColor: [
+                          "rgba(var(--theme-primary), 0.3)",
+                          "rgba(var(--theme-primary), 0.5)",
+                          "rgba(var(--theme-primary), 0.3)"
+                        ]
+                      } : {}}
+                      transition={{ duration: 3, repeat: Infinity }}
                     >
-                      <p className="text-xs text-teal-300">Drop .js files here</p>
+                      <p className="text-xs text-[rgb(var(--theme-secondary))]">Drop .js files here</p>
                     </motion.div>
                   </div>
-                </MotionWrapper>
+                </motion.div>
               )}
             </div>
 
             {/* Auto-save interval selector */}
             {isAutoSaveEnabled && (
-              <MotionWrapper
+              <motion.div
                 key="auto-save-interval"
-                {...(animationsEnabled ? {
-                  initial: { opacity: 0, height: 0 },
-                  animate: { opacity: 1, height: "auto" },
-                  exit: { opacity: 0, height: 0 },
-                  transition: { duration: 0.3 }
-                } : {})}
+                initial={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+                animate={animationsEnabled ? { opacity: 1, height: "auto" } : {}}
+                exit={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+                transition={{ duration: 0.3 }}
               >
-                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-blue-300">Auto-save Interval</label>
+                <div className="px-2 py-1 bg-blue-500/5 rounded border border-blue-500/10">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-medium text-blue-300">Auto</span>
+                      <select
+                        value={autoSaveInterval}
+                        onChange={(e) => setAutoSaveInterval(Number(e.target.value))}
+                        className="text-xs bg-transparent border-none outline-none text-blue-300 cursor-pointer hover:text-blue-200"
+                      >
+                        <option value={5000} className="bg-background text-foreground">5s</option>
+                        <option value={10000} className="bg-background text-foreground">10s</option>
+                        <option value={30000} className="bg-background text-foreground">30s</option>
+                        <option value={60000} className="bg-background text-foreground">1m</option>
+                        <option value={300000} className="bg-background text-foreground">5m</option>
+                        <option value={600000} className="bg-background text-foreground">10m</option>
+                      </select>
+                    </div>
                     <div className="flex items-center gap-1 text-xs text-blue-300">
                       {autoSaveStatus === 'saving' && <Clock className="h-3 w-3 animate-spin" />}
-                      {autoSaveStatus === 'saved' && <Check className="h-3 w-3" />}
-                      {autoSaveStatus === 'error' && <AlertCircle className="h-3 w-3" />}
-                      {lastAutoSave && <span>Last: {lastAutoSave}</span>}
+                      {autoSaveStatus === 'saved' && <Check className="h-3 w-3 animate-pulse" />}
+                      {autoSaveStatus === 'error' && <AlertCircle className="h-3 w-3 animate-pulse text-red-400" />}
                     </div>
                   </div>
-                  <select
-                    value={autoSaveInterval}
-                    onChange={(e) => setAutoSaveInterval(Number(e.target.value))}
-                    className="w-full px-2 py-1 text-xs border border-blue-500/30 rounded bg-background/50 text-foreground backdrop-blur-sm"
-                  >
-                    <option value={5000}>Every 5 seconds</option>
-                    <option value={10000}>Every 10 seconds</option>
-                    <option value={30000}>Every 30 seconds</option>
-                    <option value={60000}>Every minute</option>
-                    <option value={300000}>Every 5 minutes</option>
-                    <option value={600000}>Every 10 minutes</option>
-                  </select>
+                  {lastAutoSave && (
+                    <div className="text-xs text-blue-300/50 mt-0.5 truncate" title={`Last saved: ${lastAutoSave}`}>
+                      {lastAutoSave}
+                    </div>
+                  )}
                 </div>
-              </MotionWrapper>
+              </motion.div>
             )}
 
             {/* Scroll padding for last item visibility */}
@@ -931,21 +921,21 @@ export function FloatingToolbar(props: ToolbarProps) {
           <motion.div 
             className={cn(
               "relative z-10 h-[1px] transition-opacity duration-300",
-              canScroll && !isScrolledToBottom ? "bg-gradient-to-r from-transparent via-teal-500/30 to-transparent opacity-100" : "opacity-0"
+              canScroll && !isScrolledToBottom ? "bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary),0.3)] to-transparent opacity-100" : "opacity-0"
             )}
             {...(animationsEnabled && canScroll && !isScrolledToBottom ? {
               animate: { 
                 background: [
-                  "linear-gradient(to right, transparent, rgba(20, 184, 166, 0.3), transparent)",
-                  "linear-gradient(to right, transparent, rgba(20, 184, 166, 0.6), transparent)",
-                  "linear-gradient(to right, transparent, rgba(20, 184, 166, 0.3), transparent)"
+                  "linear-gradient(to right, transparent, rgba(var(--theme-primary), 0.3), transparent)",
+                  "linear-gradient(to right, transparent, rgba(var(--theme-primary), 0.6), transparent)",
+                  "linear-gradient(to right, transparent, rgba(var(--theme-primary), 0.3), transparent)"
                 ]
               },
               transition: { duration: 1.5, repeat: Infinity }
             } : {})}
           />
         </Card>
-      </MotionWrapper>
+      </motion.div>
 
       {/* Hidden file input for import */}
       <input

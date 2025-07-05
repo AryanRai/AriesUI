@@ -52,7 +52,7 @@ const PaletteBackground = ({ animationsEnabled }: { animationsEnabled: boolean }
       
       {/* Animated scan line */}
       <motion.div
-        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-400/50 to-transparent"
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary),0.5)] to-transparent"
         animate={{
           y: [0, 400, 0],
           opacity: [0, 1, 0]
@@ -65,13 +65,13 @@ const PaletteBackground = ({ animationsEnabled }: { animationsEnabled: boolean }
       />
       
       {/* Subtle grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--theme-primary),0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--theme-primary),0.03)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg" />
       
       {/* Corner accents */}
-      <div className="absolute top-0 left-0 w-6 h-6 border-l-2 border-t-2 border-teal-400/30 rounded-tl-lg" />
-      <div className="absolute top-0 right-0 w-6 h-6 border-r-2 border-t-2 border-teal-400/30 rounded-tr-lg" />
-      <div className="absolute bottom-0 left-0 w-6 h-6 border-l-2 border-b-2 border-teal-400/30 rounded-bl-lg" />
-      <div className="absolute bottom-0 right-0 w-6 h-6 border-r-2 border-b-2 border-teal-400/30 rounded-br-lg" />
+      <div className="absolute top-0 left-0 w-6 h-6 border-l-2 border-t-2 border-[rgba(var(--theme-primary),0.3)] rounded-tl-lg" />
+      <div className="absolute top-0 right-0 w-6 h-6 border-r-2 border-t-2 border-[rgba(var(--theme-primary),0.3)] rounded-tr-lg" />
+      <div className="absolute bottom-0 left-0 w-6 h-6 border-l-2 border-b-2 border-[rgba(var(--theme-primary),0.3)] rounded-bl-lg" />
+      <div className="absolute bottom-0 right-0 w-6 h-6 border-r-2 border-b-2 border-[rgba(var(--theme-primary),0.3)] rounded-br-lg" />
     </div>
   )
 }
@@ -256,10 +256,10 @@ export function WidgetPalette() {
     return (
       <MotionWrapper
         {...(animationsEnabled ? {
-          initial: { scale: 0.8, opacity: 0 },
+          initial: { scale: 0.9, opacity: 0 },
           animate: { scale: 1, opacity: 1 },
-          exit: { scale: 0.8, opacity: 0 },
-          transition: { type: "spring", stiffness: 400, damping: 30 }
+          exit: { scale: 0.9, opacity: 0 },
+          transition: { duration: 0.2, ease: "easeOut" }
         } : {})}
       >
         <div
@@ -271,17 +271,17 @@ export function WidgetPalette() {
             transform: "translate3d(0, 0, 0)",
           }}
         >
-          <Card className="bg-card/95 backdrop-blur border-teal-500/30 shadow-lg">
+          <Card className="bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg">
             {/* Futuristic Background */}
             <PaletteBackground animationsEnabled={animationsEnabled} />
             
             <div className="flex items-center gap-2 p-3 relative z-10">
               <div
-                className="cursor-grab active:cursor-grabbing p-1 hover:bg-teal-500/10 rounded touch-none transition-colors"
+                className="cursor-grab active:cursor-grabbing p-1 hover:bg-[rgba(var(--theme-primary),0.1)] rounded touch-none transition-colors"
                 onMouseDown={handleMouseDown}
               >
                 <motion.div
-                  className="text-teal-400"
+                  className="text-[rgb(var(--theme-primary))]"
                   {...(animationsEnabled ? {
                     animate: { x: [0, 2, 0] },
                     transition: { duration: 2, repeat: Infinity }
@@ -290,12 +290,12 @@ export function WidgetPalette() {
                   <GripVertical className="h-4 w-4" />
                 </motion.div>
               </div>
-              <Package className="h-4 w-4 text-teal-400" />
-              <span className="text-sm font-medium bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent">
+              <Package className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
+              <span className="text-sm font-medium bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
                 AriesMods
               </span>
               <motion.div
-                className="w-2 h-2 bg-teal-400 rounded-full"
+                className="w-2 h-2 bg-[rgb(var(--theme-primary))] rounded-full"
                 {...(animationsEnabled ? {
                   animate: { opacity: [0.5, 1, 0.5] },
                   transition: { duration: 2, repeat: Infinity }
@@ -310,7 +310,7 @@ export function WidgetPalette() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 hover:bg-teal-500/10 ml-2 border border-transparent hover:border-teal-500/20 transition-all"
+                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] ml-2 border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                   onClick={() => setIsCollapsed(false)}
                   title="Expand AriesMods Palette"
                 >
@@ -328,10 +328,10 @@ export function WidgetPalette() {
     <AnimatePresence>
       <MotionWrapper
         {...(animationsEnabled ? {
-          initial: { scale: 0.9, opacity: 0, y: 20 },
+          initial: { scale: 0.95, opacity: 0, y: 10 },
           animate: { scale: 1, opacity: 1, y: 0 },
-          exit: { scale: 0.9, opacity: 0, y: 20 },
-          transition: { type: "spring", stiffness: 400, damping: 30 }
+          exit: { scale: 0.95, opacity: 0, y: 10 },
+          transition: { duration: 0.2, ease: "easeOut" }
         } : {})}
       >
         <div
@@ -343,7 +343,7 @@ export function WidgetPalette() {
             transform: "translate3d(0, 0, 0)",
           }}
         >
-          <Card className="bg-card/95 backdrop-blur border-teal-500/30 shadow-lg max-h-[calc(100vh-100px)] overflow-hidden">
+          <Card className="bg-card/95 backdrop-blur border-[rgba(var(--theme-primary),0.3)] shadow-lg max-h-[calc(100vh-100px)] overflow-hidden">
             {/* Futuristic Background */}
             <PaletteBackground animationsEnabled={animationsEnabled} />
             
@@ -358,7 +358,7 @@ export function WidgetPalette() {
               >
                 <div className="flex items-center gap-2">
                   <motion.div
-                    className="text-teal-400"
+                    className="text-[rgb(var(--theme-primary))]"
                     {...(animationsEnabled ? {
                       animate: { x: [0, 2, 0] },
                       transition: { duration: 2, repeat: Infinity }
@@ -366,12 +366,12 @@ export function WidgetPalette() {
                   >
                     <GripVertical className="h-4 w-4" />
                   </motion.div>
-                  <Package className="h-4 w-4 text-teal-400" />
-                  <CardTitle className="text-sm bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent">
+                  <Package className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
+                  <CardTitle className="text-sm bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
                     AriesMods Palette
                   </CardTitle>
                   <motion.div
-                    className="w-2 h-2 bg-teal-400 rounded-full"
+                    className="w-2 h-2 bg-[rgb(var(--theme-primary))] rounded-full"
                     {...(animationsEnabled ? {
                       animate: { opacity: [0.5, 1, 0.5] },
                       transition: { duration: 2, repeat: Infinity }
@@ -387,7 +387,7 @@ export function WidgetPalette() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                     onClick={() => setIsCollapsed(true)}
                     title="Collapse AriesMods Palette"
                   >
@@ -405,12 +405,12 @@ export function WidgetPalette() {
                   transition: { delay: 0.2 }
                 } : {})}
               >
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-teal-400/70" />
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-[rgba(var(--theme-primary),0.7)]" />
                 <Input
                   placeholder="Search AriesMods..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-7 h-7 text-xs bg-background/50 border-teal-500/30 focus:border-teal-500/50 transition-all"
+                  className="pl-7 h-7 text-xs bg-background/50 border-[rgba(var(--theme-primary),0.3)] focus:border-[rgba(var(--theme-primary),0.5)] transition-all"
                 />
               </MotionWrapper>
             </CardHeader>
@@ -440,7 +440,7 @@ export function WidgetPalette() {
                         transition: { delay: 0.3 + categoryIndex * 0.1 }
                       } : {})}
                     >
-                      <Card className="border-teal-500/30 bg-background/30 backdrop-blur-sm">
+                      <Card className="border-[rgba(var(--theme-primary),0.3)] bg-background/30 backdrop-blur-sm">
                         <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.name)}>
                           <CollapsibleTrigger asChild>
                             <MotionWrapper
@@ -449,12 +449,12 @@ export function WidgetPalette() {
                                 whileTap: { scale: 0.99 }
                               } : {})}
                             >
-                              <CardHeader className="pb-2 cursor-pointer hover:bg-teal-500/5 transition-all border border-transparent hover:border-teal-500/20 rounded-lg">
+                              <CardHeader className="pb-2 cursor-pointer hover:bg-[rgba(var(--theme-primary),0.05)] transition-all border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] rounded-lg">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm">{category.icon}</span>
                                     <div>
-                                      <div className="text-sm font-medium bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent">
+                                      <div className="text-sm font-medium bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
                                         {category.name}
                                       </div>
                                       <div className="text-xs text-muted-foreground">{category.description}</div>
@@ -467,7 +467,7 @@ export function WidgetPalette() {
                                         transition: { duration: 2, repeat: Infinity }
                                       } : {})}
                                     >
-                                      <Badge variant="outline" className="text-xs border-teal-500/30">
+                                      <Badge variant="outline" className="text-xs border-[rgba(var(--theme-primary),0.3)]">
                                         {category.mods.length} mod{category.mods.length !== 1 ? 's' : ''}
                                       </Badge>
                                     </motion.div>
@@ -477,7 +477,7 @@ export function WidgetPalette() {
                                         transition: { duration: 0.3 }
                                       } : {})}
                                     >
-                                      <ChevronDown className="h-3 w-3 text-teal-400" />
+                                      <ChevronDown className="h-3 w-3 text-[rgb(var(--theme-primary))]" />
                                     </motion.div>
                                   </div>
                                 </div>
@@ -499,20 +499,20 @@ export function WidgetPalette() {
                                   } : {})}
                                 >
                                   <div
-                                    className="group relative p-2 rounded border cursor-grab active:cursor-grabbing hover:bg-teal-500/10 transition-all border-teal-500/20 hover:border-teal-500/40"
+                                    className="group relative p-2 rounded border cursor-grab active:cursor-grabbing hover:bg-[rgba(var(--theme-primary),0.1)] transition-all border-[rgba(var(--theme-primary),0.2)] hover:border-[rgba(var(--theme-primary),0.4)]"
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, template)}
                                     onDragEnd={handleDragEnd}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div className="flex-1 min-w-0">
-                                        <div className="text-xs font-medium truncate text-teal-300">
+                                        <div className="text-xs font-medium truncate text-[rgb(var(--theme-secondary))]">
                                           {template.metadata.displayName}
                                         </div>
                                         <div className="text-xs text-muted-foreground truncate">
                                           {template.metadata.description}
                                         </div>
-                                        <div className="text-xs text-teal-400/70 mt-1">
+                                        <div className="text-xs text-[rgba(var(--theme-primary),0.7)] mt-1">
                                           {template.metadata.defaultWidth}×{template.metadata.defaultHeight}
                                         </div>
                                       </div>
@@ -525,7 +525,7 @@ export function WidgetPalette() {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all hover:bg-teal-500/20 border border-transparent hover:border-teal-500/30"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all hover:bg-[rgba(var(--theme-primary),0.2)] border border-transparent hover:border-[rgba(var(--theme-primary),0.3)]"
                                           onClick={() => createAriesModWidget(template)}
                                           title="Add to Grid"
                                         >
@@ -537,12 +537,12 @@ export function WidgetPalette() {
                                     {template.metadata.tags && template.metadata.tags.length > 0 && (
                                       <div className="flex gap-1 mt-1 flex-wrap">
                                         {template.metadata.tags.slice(0, 2).map((tag) => (
-                                          <Badge key={tag} variant="secondary" className="text-xs px-1 py-0 bg-teal-500/20 text-teal-300 border-teal-500/30">
+                                          <Badge key={tag} variant="secondary" className="text-xs px-1 py-0 bg-[rgba(var(--theme-primary),0.2)] text-[rgb(var(--theme-secondary))] border-[rgba(var(--theme-primary),0.3)]">
                                             {tag}
                                           </Badge>
                                         ))}
                                         {template.metadata.tags.length > 2 && (
-                                          <span className="text-xs text-teal-400/70">
+                                          <span className="text-xs text-[rgba(var(--theme-primary),0.7)]">
                                             +{template.metadata.tags.length - 2}
                                           </span>
                                         )}

@@ -101,23 +101,19 @@ const HeartbeatVisualizer = () => {
     .filter(stage => stage.latency !== null)
     .reduce((a, stage) => a + (stage.latency || 0), 0)
   const ArrowIcon = isReversed ? ChevronLeft : ChevronRight
-  const MotionWrapper = animationsEnabled ? motion.div : 'div'
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <MotionWrapper 
-          className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-teal-500/10 px-2 py-1 rounded-md transition-colors border border-transparent hover:border-teal-500/20"
-          {...(animationsEnabled ? {
-            whileHover: { scale: 1.02 },
-            whileTap: { scale: 0.98 }
-          } : {})}
+        <motion.div 
+          className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-[rgba(var(--theme-primary),0.1)] px-3 py-2 rounded-lg transition-all border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] bg-background/50 backdrop-blur-sm shadow-sm"
+          whileHover={animationsEnabled ? { scale: 1.02 } : {}}
+          whileTap={animationsEnabled ? { scale: 0.98 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >
-          <MotionWrapper
-            {...(animationsEnabled ? {
-              animate: { scale: [1, 1.2, 1] },
-              transition: { duration: 1, repeat: Infinity, ease: "easeInOut" }
-            } : {})}
+          <motion.div
+            animate={animationsEnabled ? { scale: [1, 1.2, 1] } : {}}
+            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
             className={cn(
               "transition-colors",
               isConnected && stages.every(s => s.status === 'connected' || s.status === 'unknown') 
@@ -128,9 +124,9 @@ const HeartbeatVisualizer = () => {
             )}
           >
             <Heart className="h-5 w-5" />
-          </MotionWrapper>
-          <div className="flex items-center bg-background/50 px-2 py-1 rounded-md border border-teal-500/20 backdrop-blur">
-            <div className="flex items-center gap-1 pr-2 border-r border-teal-500/20">
+          </motion.div>
+          <div className="flex items-center bg-background/50 px-2 py-1 rounded-md border border-[rgba(var(--theme-primary),0.2)] backdrop-blur">
+            <div className="flex items-center gap-1 pr-2 border-r border-[rgba(var(--theme-primary),0.2)]">
               <motion.div 
                 className={cn(
                   "h-2 w-2 rounded-full",
@@ -151,7 +147,7 @@ const HeartbeatVisualizer = () => {
                   transition: { duration: 1.5, repeat: Infinity }
                 } : {})}
               />
-              <span className="text-xs text-teal-300">
+              <span className="text-xs text-[rgb(var(--theme-primary))]">
                 {isConnected 
                   ? stages.every(s => s.status === 'connected' || s.status === 'unknown')
                     ? "Nominal Link"
@@ -161,33 +157,29 @@ const HeartbeatVisualizer = () => {
             </div>
             {displayedStages.map((stage, index) => (
               <React.Fragment key={stage.name}>
-                <MotionWrapper 
+                <motion.div 
                   className="flex flex-col items-center text-center px-2"
-                  {...(animationsEnabled ? {
-                    initial: { opacity: 0, y: 5 },
-                    animate: { opacity: 1, y: 0 },
-                    transition: { delay: index * 0.1 }
-                  } : {})}
+                  initial={animationsEnabled ? { opacity: 0, y: 5 } : {}}
+                  animate={animationsEnabled ? { opacity: 1, y: 0 } : {}}
+                  transition={{ delay: index * 0.1 }}
                 >
                   <div className="flex items-center gap-1">
                     <motion.div
-                      {...(animationsEnabled ? {
-                        animate: stage.status === 'connected' ? {
-                          rotate: [0, 5, 0, -5, 0]
-                        } : {},
-                        transition: { duration: 2, repeat: Infinity, delay: index * 0.3 }
-                      } : {})}
+                      animate={animationsEnabled && stage.status === 'connected' ? {
+                        rotate: [0, 5, 0, -5, 0]
+                      } : {}}
+                      transition={{ duration: 2, repeat: Infinity, delay: index * 0.3 }}
                     >
                       {stage.icon}
                     </motion.div>
-                    <span className="text-slate-300">{stage.name}</span>
+                    <span className="text-slate-300 font-medium">{stage.name}</span>
                   </div>
                   <div className="flex flex-col items-center">
                     <span className={cn(
-                      "text-xs font-mono",
+                      "text-xs font-mono font-bold",
                       stage.status === 'connected' ? (
                         !stage.latency || stage.latency <= 10 ? 'text-green-400' :
-                        stage.latency <= 30 ? 'text-teal-400' :
+                        stage.latency <= 30 ? 'text-[rgb(var(--theme-primary))]' :
                         stage.latency <= 100 ? 'text-orange-400' : 'text-red-400'
                       ) : stage.status === 'unknown' ? 'text-slate-500' : 'text-red-400'
                     )}>
@@ -195,7 +187,7 @@ const HeartbeatVisualizer = () => {
                     </span>
                     {stage.status !== 'unknown' && (
                       <span className={cn(
-                        "text-[10px]",
+                        "text-[10px] font-semibold uppercase tracking-wider",
                         stage.status === 'connected' ? 
                           (!stage.latency || stage.latency <= 30 ? 'text-green-400' : 
                            stage.latency <= 100 ? 'text-orange-400' : 'text-red-400') : 
@@ -205,71 +197,66 @@ const HeartbeatVisualizer = () => {
                       </span>
                     )}
                   </div>
-                </MotionWrapper>
+                </motion.div>
                 {index < displayedStages.length - 1 && (
-                  <MotionWrapper
-                    {...(animationsEnabled ? {
-                      animate: { 
-                        opacity: [0.3, 1, 0.3],
-                        x: [0, 2, 0] 
-                      },
-                      transition: { duration: 1.5, repeat: Infinity, ease: 'linear', delay: index * 0.2 }
-                    } : {})}
+                  <motion.div
+                    animate={animationsEnabled ? { 
+                      opacity: [0.3, 1, 0.3],
+                      x: [0, 2, 0] 
+                    } : {}}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear', delay: index * 0.2 }}
                   >
-                    <ArrowIcon className="h-4 w-4 text-teal-400" />
-                  </MotionWrapper>
+                    <ArrowIcon className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
+                  </motion.div>
                 )}
               </React.Fragment>
             ))}
           </div>
-          <MotionWrapper 
+          <motion.div 
             className="flex flex-col items-center pl-2"
-            {...(animationsEnabled ? {
-              initial: { opacity: 0, scale: 0.9 },
-              animate: { opacity: 1, scale: 1 },
-              transition: { delay: 0.5 }
-            } : {})}
+            initial={animationsEnabled ? { opacity: 0, scale: 0.9 } : {}}
+            animate={animationsEnabled ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.5 }}
           >
-            <span className="text-slate-300">Total</span>
+            <span className="text-slate-300 font-medium">Total</span>
             <motion.span 
               className={cn(
-                "font-mono",
+                "font-mono font-bold",
                 stages.some(s => s.status === 'disconnected') ? 'text-red-400' :
                 totalLatency <= 50 ? 'text-green-400' :
-                totalLatency <= 100 ? 'text-teal-400' :
+                totalLatency <= 100 ? 'text-[rgb(var(--theme-primary))]' :
                 totalLatency <= 200 ? 'text-orange-400' : 'text-red-400'
               )}
-              {...(animationsEnabled ? {
-                animate: totalLatency > 100 ? {
+              animate={animationsEnabled ? (
+                totalLatency > 100 ? {
                   color: ["rgb(251, 146, 60)", "rgb(239, 68, 68)", "rgb(251, 146, 60)"]
                 } : totalLatency > 50 ? {
-                  color: ["rgb(20, 184, 166)", "rgb(251, 146, 60)", "rgb(20, 184, 166)"]
-                } : {},
-                transition: { duration: 2, repeat: Infinity }
-              } : {})}
+                  color: [`rgb(var(--theme-primary))`, "rgb(251, 146, 60)", `rgb(var(--theme-primary))`]
+                } : {}
+              ) : {}}
+              transition={{ duration: 2, repeat: Infinity }}
             >
               {totalLatency}ms
             </motion.span>
-          </MotionWrapper>
-          <MotionWrapper
-            {...(animationsEnabled ? {
-              whileHover: { scale: 1.1, rotate: 180 },
-              whileTap: { scale: 0.9 }
-            } : {})}
+          </motion.div>
+          <motion.div
+            whileHover={animationsEnabled ? { scale: 1.1, rotate: 180 } : {}}
+            whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+              className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
               onMouseEnter={() => setIsReversed(true)}
               onMouseLeave={() => setIsReversed(false)}
             >
               <Repeat className="h-4 w-4" />
             </Button>
-          </MotionWrapper>
-        </MotionWrapper>
+          </motion.div>
+        </motion.div>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0 border-teal-500/20 bg-background/95 backdrop-blur" align="end">
+      <PopoverContent className="w-[450px] p-0 border-[rgba(var(--theme-primary),0.2)] bg-background/98 backdrop-blur-xl shadow-2xl" align="end">
         <ConnectionControls />
       </PopoverContent>
     </Popover>

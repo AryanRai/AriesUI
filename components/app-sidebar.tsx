@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { PreloaderIcon } from "@/components/preloader-icon"
+import { ThemeColorSelector } from "@/components/theme-color-selector"
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
@@ -77,7 +78,7 @@ const FuturisticBackground = ({ animationsEnabled }: { animationsEnabled: boolea
       
       {/* Animated beams - monochrome with teal accent */}
       <motion.div
-        className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-teal-400/30 to-transparent"
+        className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary),0.3)] to-transparent"
         animate={{
           x: [-100, 400],
         }}
@@ -104,7 +105,7 @@ const FuturisticBackground = ({ animationsEnabled }: { animationsEnabled: boolea
       {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-0.5 h-0.5 bg-teal-400/20 rounded-full"
+          className="absolute w-0.5 h-0.5 bg-[rgba(var(--theme-primary),0.2)] rounded-full"
           animate={{
             y: [-10, -80],
             opacity: [0, 0.5, 0],
@@ -278,7 +279,7 @@ export function AppSidebar() {
                     />
                     <div>
                       <MotionWrapper 
-                        className="font-bold text-xl bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent"
+                        className="font-bold text-xl bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent"
                         {...(animationsEnabled ? {
                           initial: { opacity: 0 },
                           animate: { opacity: 1 },
@@ -295,7 +296,7 @@ export function AppSidebar() {
                           transition: { delay: 0.4 }
                         } : {})}
                       >
-                        <div className={cn("w-1 h-1 bg-teal-400 rounded-full", animationsEnabled && "animate-pulse")} />
+                        <div className={cn("w-1 h-1 bg-[rgb(var(--theme-primary))] rounded-full", animationsEnabled && "animate-pulse")} />
                         nominal interface
                       </MotionWrapper>
                     </div>
@@ -311,12 +312,12 @@ export function AppSidebar() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-6 w-6 opacity-60 hover:opacity-100 hover:bg-teal-500/10" 
+                        className="h-6 w-6 opacity-60 hover:opacity-100 hover:bg-[rgba(var(--theme-primary),0.1)]" 
                         onClick={toggleAnimations}
                         title={animationsEnabled ? "Disable animations" : "Enable animations"}
                       >
                         <motion.div
-                          className={cn("w-3 h-3 rounded-full", animationsEnabled ? "bg-teal-400" : "bg-muted-foreground")}
+                          className={cn("w-3 h-3 rounded-full", animationsEnabled ? "bg-[rgb(var(--theme-primary))]" : "bg-muted-foreground")}
                           {...(animationsEnabled ? {
                             animate: { scale: [1, 1.2, 1] },
                             transition: { duration: 1.5, repeat: Infinity }
@@ -334,7 +335,7 @@ export function AppSidebar() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 opacity-60 hover:opacity-100 hover:bg-teal-500/10" 
+                        className="h-8 w-8 opacity-60 hover:opacity-100 hover:bg-[rgba(var(--theme-primary),0.1)]" 
                         onClick={togglePin}
                       >
                         <MotionWrapper
@@ -381,8 +382,8 @@ export function AppSidebar() {
                                   onClick={() => handleMenuClick(item.id)} 
                                   className={cn(
                                     "w-full justify-start relative overflow-hidden",
-                                    "hover:bg-gradient-to-r hover:from-teal-500/10 hover:to-slate-500/5",
-                                    "border border-transparent hover:border-teal-500/20",
+                                    "hover:bg-gradient-to-r hover:from-[rgba(var(--theme-primary),0.1)] hover:to-slate-500/5",
+                                    "border border-transparent hover:border-[rgba(var(--theme-primary),0.2)]",
                                     "transition-all duration-300"
                                   )}
                                 >
@@ -402,12 +403,12 @@ export function AppSidebar() {
                                   >
                                     <item.icon className={cn(
                                       "h-4 w-4 relative z-10 transition-colors duration-200",
-                                      hoveredItem === item.id ? "text-teal-300" : "text-slate-300"
+                                      hoveredItem === item.id ? "text-[rgb(var(--theme-secondary))]" : "text-slate-300"
                                     )} />
                                     <AnimationPresenceWrapper>
                                       {hoveredItem === item.id && animationsEnabled && (
                                         <motion.div
-                                          className="absolute inset-0 bg-teal-500/20"
+                                          className="absolute inset-0 bg-[rgba(var(--theme-primary),0.2)]"
                                           initial={{ scale: 0, opacity: 0 }}
                                           animate={{ scale: 1, opacity: 1 }}
                                           exit={{ scale: 0, opacity: 0 }}
@@ -423,7 +424,7 @@ export function AppSidebar() {
                                   <AnimationPresenceWrapper>
                                     {hoveredItem === item.id && (
                                       <MotionWrapper
-                                        className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-teal-400 to-teal-600"
+                                        className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[rgb(var(--theme-primary))] to-[rgb(var(--theme-accent))]"
                                         {...(animationsEnabled ? {
                                           initial: { scaleY: 0, opacity: 0 },
                                           animate: { scaleY: 1, opacity: 1 },
@@ -438,7 +439,7 @@ export function AppSidebar() {
                                   <AnimationPresenceWrapper>
                                     {hoveredItem === item.id && (
                                       <MotionWrapper
-                                        className="absolute inset-0 bg-gradient-to-r from-teal-500/5 to-transparent rounded-lg"
+                                        className="absolute inset-0 bg-gradient-to-r from-[rgba(var(--theme-primary),0.05)] to-transparent rounded-lg"
                                         {...(animationsEnabled ? {
                                           initial: { scale: 0, opacity: 0 },
                                           animate: { scale: 1, opacity: 1 },
@@ -539,7 +540,7 @@ export function AppSidebar() {
                     >
                       <div className="flex items-center gap-1.5">
                         <MotionWrapper
-                          className="w-1 h-1 bg-teal-400 rounded-full"
+                          className="w-1 h-1 bg-[rgb(var(--theme-primary))] rounded-full"
                           {...(animationsEnabled ? {
                             animate: { opacity: [1, 0.3, 1] },
                             transition: { duration: 2, repeat: Infinity }
@@ -580,7 +581,7 @@ export function AppSidebar() {
                           comms
                         </div>
                         <div className="text-xs text-muted-foreground flex items-center gap-1">
-                          <div className="w-1 h-1 bg-teal-400 rounded-full" />
+                          <div className="w-1 h-1 bg-[rgb(var(--theme-primary))] rounded-full" />
                           nominal interface
                         </div>
                       </div>
@@ -590,12 +591,15 @@ export function AppSidebar() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-6 w-6 opacity-60 hover:opacity-100 hover:bg-teal-500/10" 
+                        className="h-6 w-6 opacity-60 hover:opacity-100 hover:bg-[rgba(var(--theme-primary),0.1)]" 
                         onClick={toggleAnimations}
                         title={animationsEnabled ? "Disable animations" : "Enable animations"}
                       >
-                        <div className={cn("w-3 h-3 rounded-full", animationsEnabled ? "bg-teal-400" : "bg-muted-foreground")} />
+                        <div className={cn("w-3 h-3 rounded-full", animationsEnabled ? "bg-[rgb(var(--theme-primary))]" : "bg-muted-foreground")} />
                       </Button>
+                      
+                      {/* Theme color selector */}
+                      <ThemeColorSelector showLabel={false} className="opacity-60 hover:opacity-100" />
                       
                       <Button 
                         variant="ghost" 
@@ -675,7 +679,7 @@ export function AppSidebar() {
                   <div className="absolute top-2 right-2 z-50">
                     <div className="text-xs text-muted-foreground bg-gradient-to-r from-teal-500/15 to-slate-500/10 border border-teal-500/30 rounded-md px-2 py-1 backdrop-blur-sm auto-neural-message auto-neural-message-fadein shadow-sm">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-1 h-1 bg-teal-400 rounded-full" />
+                        <div className="w-1 h-1 bg-[rgb(var(--theme-primary))] rounded-full" />
                         <span className="whitespace-nowrap">auto • pin</span>
                       </div>
                     </div>

@@ -6,6 +6,8 @@ import { useComms } from "@/components/comms-context"
 import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { PreloaderIcon } from "@/components/preloader-icon"
+import { useThemeColors } from "@/hooks/use-theme-colors"
 
 // Futuristic background for status bar
 const StatusBarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }) => {
@@ -21,7 +23,7 @@ const StatusBarBackground = ({ animationsEnabled }: { animationsEnabled: boolean
       
       {/* Animated status indicator */}
       <motion.div
-        className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-400/30 to-transparent"
+        className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary),0.3)] to-transparent"
         animate={{
           x: [-200, window.innerWidth + 200],
         }}
@@ -36,7 +38,7 @@ const StatusBarBackground = ({ animationsEnabled }: { animationsEnabled: boolean
       {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-1 h-1 bg-teal-400/20 rounded-full"
+          className="absolute w-1 h-1 bg-[rgba(var(--theme-primary),0.2)] rounded-full"
           animate={{
             x: [-20, window.innerWidth + 20],
             opacity: [0, 0.5, 0],
@@ -60,6 +62,7 @@ const StatusBarBackground = ({ animationsEnabled }: { animationsEnabled: boolean
 export function StatusBar() {
   const { state } = useComms()
   const { animationsEnabled } = useAnimationPreferences()
+  const { colors } = useThemeColors()
   const [widgetCount, setWidgetCount] = useState(0)
 
   // Listen for widget count updates from main content
@@ -92,17 +95,12 @@ export function StatusBar() {
           } : {})}
         >
           <div className="flex items-center gap-2">
-            <motion.div
-              className="w-2 h-2 bg-teal-400 rounded-full"
-              {...(animationsEnabled ? {
-                animate: { 
-                  scale: [1, 1.2, 1],
-                  opacity: [0.7, 1, 0.7]
-                },
-                transition: { duration: 2, repeat: Infinity }
-              } : {})}
+            <PreloaderIcon 
+              size={12} 
+              animationsEnabled={animationsEnabled}
+              className="opacity-80"
             />
-            <span className="text-teal-300">Ready</span>
+            <span className="text-[rgb(var(--theme-primary))]">Ready</span>
           </div>
           
           <MotionWrapper
@@ -114,8 +112,8 @@ export function StatusBar() {
             <Badge 
               variant="outline" 
               className={cn(
-                "text-xs border-teal-500/30 bg-teal-500/10 text-teal-300",
-                "hover:border-teal-500/50 hover:bg-teal-500/20 transition-all"
+                "text-xs border-[rgba(var(--theme-primary),0.3)] bg-[rgba(var(--theme-primary),0.1)] text-[rgb(var(--theme-primary))]",
+                "hover:border-[rgba(var(--theme-primary),0.5)] hover:bg-[rgba(var(--theme-primary),0.2)] transition-all"
               )}
             >
               Streams: {connectedStreams}/{totalStreams}
@@ -131,8 +129,8 @@ export function StatusBar() {
             <Badge 
               variant="outline" 
               className={cn(
-                "text-xs border-teal-500/30 bg-teal-500/10 text-teal-300",
-                "hover:border-teal-500/50 hover:bg-teal-500/20 transition-all"
+                "text-xs border-[rgba(var(--theme-primary),0.3)] bg-[rgba(var(--theme-primary),0.1)] text-[rgb(var(--theme-primary))]",
+                "hover:border-[rgba(var(--theme-primary),0.5)] hover:bg-[rgba(var(--theme-primary),0.2)] transition-all"
               )}
             >
               Widgets: {widgetCount}
@@ -149,7 +147,7 @@ export function StatusBar() {
           } : {})}
         >
           <span className="text-muted-foreground">AriesUI</span>
-          <span className="text-teal-400">v1.0.0</span>
+          <span className="text-[rgb(var(--theme-primary))]">v1.0.0</span>
         </MotionWrapper>
       </div>
     </div>

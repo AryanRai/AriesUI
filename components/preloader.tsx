@@ -8,7 +8,7 @@ interface PreloaderProps {
   onComplete?: () => void
 }
 
-export function Preloader({ duration = 10000, onComplete }: PreloaderProps) {
+export function Preloader({ duration = 3500, onComplete }: PreloaderProps) {
   const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {

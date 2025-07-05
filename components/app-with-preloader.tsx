@@ -10,6 +10,7 @@ interface AppWithPreloaderProps {
 export function AppWithPreloader({ children }: AppWithPreloaderProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [sessionKey, setSessionKey] = useState<string | null>(null)
+  const [isHotReload, setIsHotReload] = useState(false)
 
   // Always start with loading state on mount
   useEffect(() => {
@@ -26,6 +27,7 @@ export function AppWithPreloader({ children }: AppWithPreloaderProps) {
       // For development, always show preloader
       if (process.env.NODE_ENV === 'development') {
         setIsLoading(true)
+        setIsHotReload(true) // Mark as hot reload
         localStorage.setItem('comms-session-key', currentSession)
         setSessionKey(currentSession)
       }
@@ -37,12 +39,14 @@ export function AppWithPreloader({ children }: AppWithPreloaderProps) {
     if (process.env.NODE_ENV === 'development') {
       const handleBeforeUnload = () => {
         setIsLoading(true)
+        setIsHotReload(true) // Mark as hot reload
       }
       
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
           // Reset preloader when tab becomes visible again
           setIsLoading(true)
+          setIsHotReload(true) // Mark as hot reload
         }
       }
       
@@ -58,13 +62,25 @@ export function AppWithPreloader({ children }: AppWithPreloaderProps) {
 
   const handlePreloaderComplete = () => {
     setIsLoading(false)
+    setIsHotReload(false) // Reset hot reload flag
+  }
+
+  // Dynamic duration based on context
+  const getPreloaderDuration = () => {
+    if (isHotReload) {
+      return 1500 // 1.5 seconds for hot reloads
+    }
+    if (process.env.NODE_ENV === 'development') {
+      return 2500 // 2.5 seconds for development
+    }
+    return 3500 // 3.5 seconds for production (first load)
   }
 
   return (
     <>
       {isLoading && (
         <Preloader 
-          duration={10000} // 10 seconds
+          duration={getPreloaderDuration()}
           onComplete={handlePreloaderComplete}
         />
       )}

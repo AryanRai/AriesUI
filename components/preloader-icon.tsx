@@ -81,8 +81,12 @@ export function PreloaderIcon({ size = 40, animationsEnabled = true, className =
           top: 50%;
           left: 50%;
           translate: -50% -50%;
-          background-color: white;
-          box-shadow: 0px 0px ${10 * scale}px red, 0px 0px ${20 * scale}px blue, 0px 0px ${21 * scale}px green;
+          background-color: rgb(var(--theme-primary));
+          box-shadow: 
+            0px 0px ${8 * scale}px rgba(var(--theme-primary), 0.8),
+            0px 0px ${16 * scale}px rgba(var(--theme-secondary), 0.6),
+            0px 0px ${24 * scale}px rgba(var(--theme-accent), 0.4),
+            inset 0px 0px ${6 * scale}px rgba(255, 255, 255, 0.3);
           animation: icon-grow 2s linear(
             0 0%, 0 2.27%, 0.02 4.53%, 0.04 6.8%, 0.06 9.07%, 0.1 11.33%, 0.14 13.6%, 0.25 18.15%,
             0.39 22.7%, 0.56 27.25%, 0.77 31.8%, 1 36.35%, 0.89 40.9%, 0.85 43.18%, 0.81 45.45%, 0.79 47.72%,
@@ -90,7 +94,8 @@ export function PreloaderIcon({ size = 40, animationsEnabled = true, className =
             0.89 68.2%, 1 72.7%, 0.97 74.98%, 0.95 77.25%, 0.94 79.53%, 0.94 81.8%, 0.94 84.08%, 0.95 86.35%,
             0.97 88.63%, 1 90.9%, 0.99 93.18%, 0.98 95.45%, 0.99 97.73%, 1 100%
           ) infinite alternate,
-          icon-rot 4s ease 1s infinite;
+          icon-rot 4s ease 1s infinite,
+          icon-glow 3s ease-in-out infinite;
           will-change: contents;
         }
 
@@ -101,7 +106,8 @@ export function PreloaderIcon({ size = 40, animationsEnabled = true, className =
           top: 50%;
           left: 50%;
           translate: -50% -50%;
-          background-color: rgb(0, 0, 0);
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b  50%, #334155 100%);
+          border: ${1 * scale}px solid rgba(var(--theme-primary), 0.3);
           animation: icon-grow 1s linear(
             0 0%, 0 2.27%, 0.02 4.53%, 0.04 6.8%, 0.06 9.07%, 0.1 11.33%, 0.14 13.6%, 0.25 18.15%,
             0.39 22.7%, 0.56 27.25%, 0.77 31.8%, 1 36.35%, 0.89 40.9%, 0.85 43.18%, 0.81 45.45%, 0.79 47.72%,
@@ -121,8 +127,12 @@ export function PreloaderIcon({ size = 40, animationsEnabled = true, className =
           left: 50%;
           translate: -50% -50%;
           border-radius: 50%;
-          background-color: rgb(255, 255, 255);
-          box-shadow: 0px 0px ${10 * scale}px red, 0px 0px ${20 * scale}px blue, 0px 0px ${21 * scale}px green;
+          background: linear-gradient(45deg, rgb(var(--theme-secondary)) 0%, rgb(var(--theme-primary)) 50%, rgb(var(--theme-accent)) 100%);
+          box-shadow: 
+            0px 0px ${6 * scale}px rgba(var(--theme-secondary), 0.7),
+            0px 0px ${12 * scale}px rgba(var(--theme-primary), 0.5),
+            0px 0px ${18 * scale}px rgba(var(--theme-accent), 0.3),
+            inset 0px 0px ${4 * scale}px rgba(255, 255, 255, 0.4);
           animation: icon-grow 1s linear(
             0 0%, 0 2.27%, 0.02 4.53%, 0.04 6.8%, 0.06 9.07%, 0.1 11.33%, 0.14 13.6%, 0.25 18.15%,
             0.39 22.7%, 0.56 27.25%, 0.77 31.8%, 1 36.35%, 0.89 40.9%, 0.85 43.18%, 0.81 45.45%, 0.79 47.72%,
@@ -130,7 +140,8 @@ export function PreloaderIcon({ size = 40, animationsEnabled = true, className =
             0.89 68.2%, 1 72.7%, 0.97 74.98%, 0.95 77.25%, 0.94 79.53%, 0.94 81.8%, 0.94 84.08%, 0.95 86.35%,
             0.97 88.63%, 1 90.9%, 0.99 93.18%, 0.98 95.45%, 0.99 97.73%, 1 100%
           ) infinite alternate,
-          icon-rot 2s ease 3s infinite;
+          icon-rot 2s ease 3s infinite,
+          icon-pulse 2.5s ease-in-out infinite;
           will-change: contents;
         }
 
@@ -141,7 +152,9 @@ export function PreloaderIcon({ size = 40, animationsEnabled = true, className =
           top: 50%;
           left: 50%;
           translate: -50% -50%;
-          background-color: rgb(0, 0, 0);
+          background: radial-gradient(circle at center, #0c0a09 0%, #1c1917 50%, #292524 100%);
+          border: ${0.5 * scale}px solid rgba(6, 182, 212, 0.4);
+          border-radius: 20%;
           animation: icon-grow 4s linear(
             0 0%, 0 2.27%, 0.02 4.53%, 0.04 6.8%, 0.06 9.07%, 0.1 11.33%, 0.14 13.6%, 0.25 18.15%,
             0.39 22.7%, 0.56 27.25%, 0.77 31.8%, 1 36.35%, 0.89 40.9%, 0.85 43.18%, 0.81 45.45%, 0.79 47.72%,

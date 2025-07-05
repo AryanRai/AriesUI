@@ -4,12 +4,14 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { ChevronDown, Menu, Users, PanelRightOpen, Zap, Settings2 } from "lucide-react"
+import { ChevronDown, Menu, Layout, PanelRightOpen, Zap, Settings2, Settings } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useComms } from "@/components/comms-context"
 import { useAnimationPreferences, standardAnimationVariants } from "@/hooks/use-animation-preferences"
 import { cn } from "@/lib/utils"
 import HeartbeatVisualizer from './heartbeat-visualizer'
+import { PreloaderIcon } from "@/components/preloader-icon"
+import { ThemeColorSelector } from "@/components/theme-color-selector"
 
 // Futuristic background component for navbar
 const NavbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }) => {
@@ -25,7 +27,7 @@ const NavbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean })
       
       {/* Animated scan line */}
       <motion.div
-        className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-400/50 to-transparent"
+        className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary),0.5)] to-transparent"
         animate={{
           x: [-100, window.innerWidth + 100],
         }}
@@ -37,7 +39,7 @@ const NavbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean })
       />
       
       {/* Subtle grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.02)_1px,transparent_1px)] bg-[size:40px_40px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--theme-primary),0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--theme-primary),0.02)_1px,transparent_1px)] bg-[size:40px_40px]" />
     </div>
   )
 }
@@ -48,24 +50,24 @@ export function TopNavigation() {
   const { animationsEnabled, toggleAnimations } = useAnimationPreferences()
   const [marqueeText] = useState("System Status: All systems operational • Data streams active • Connection stable")
 
-  const handleProfileSwitch = (name: string) => {
-    const profile = state.profiles[name]
-    if (profile) {
+  const handleLayoutSwitch = (name: string) => {
+    const layout = state.profiles[name]
+    if (layout) {
       // Dispatch event to save current state before switching
       window.dispatchEvent(new CustomEvent("beforeProfileChange"))
       
-      // Save the profile data to localStorage
-      localStorage.setItem("comms-grid-state", JSON.stringify(profile))
+      // Save the layout data to localStorage
+      localStorage.setItem("comms-grid-state", JSON.stringify(layout))
       
-      // Set the active profile
+      // Set the active layout
       loadProfile(name)
       
       // Dispatch a custom event to trigger grid state reload
       window.dispatchEvent(new CustomEvent("profileChanged", { detail: { profileName: name } }))
       
-      dispatch({ type: "ADD_LOG", payload: `Switched to profile: ${name}` })
+      dispatch({ type: "ADD_LOG", payload: `Switched to layout: ${name}` })
     } else {
-      dispatch({ type: "ADD_LOG", payload: `Failed to switch to profile "${name}" - profile not found` })
+      dispatch({ type: "ADD_LOG", payload: `Failed to switch to layout "${name}" - layout not found` })
     }
   }
 
@@ -96,7 +98,7 @@ export function TopNavigation() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-colors" 
+              className="h-8 w-8 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-colors" 
               onClick={toggleSidebar}
             >
               <Menu className="h-4 w-4" />
@@ -113,21 +115,15 @@ export function TopNavigation() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-colors opacity-70 hover:opacity-100" 
+              className="h-8 w-8 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-colors opacity-70 hover:opacity-100 flex items-center justify-center" 
               onClick={toggleAnimations}
               title={animationsEnabled ? "Disable animations" : "Enable animations"}
             >
-              <motion.div
-                className={cn("w-4 h-4 rounded-full flex items-center justify-center", 
-                  animationsEnabled ? "bg-teal-500/20" : "bg-slate-600/50"
-                )}
-                {...(animationsEnabled ? {
-                  animate: { rotate: 360 },
-                  transition: { duration: 2, repeat: Infinity, ease: "linear" }
-                } : {})}
-              >
-                <Zap className={cn("w-2.5 h-2.5", animationsEnabled ? "text-teal-400" : "text-slate-400")} />
-              </motion.div>
+              <PreloaderIcon 
+                size={30} 
+                animationsEnabled={animationsEnabled}
+                className="opacity-90"
+              />
             </Button>
           </MotionWrapper>
         </MotionWrapper>
@@ -164,25 +160,34 @@ export function TopNavigation() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="border-teal-500/20 hover:border-teal-500/40 hover:bg-teal-500/10 transition-all"
+                  className="border-[rgba(var(--theme-primary),0.2)] hover:border-[rgba(var(--theme-primary),0.4)] hover:bg-[rgba(var(--theme-primary),0.1)] transition-all"
                 >
-                  <Users className="h-4 w-4 mr-2" />
+                  <Layout className="h-4 w-4 mr-2" />
                   <span>{state.activeProfile}</span>
+                  <ChevronDown className="h-3 w-3 ml-2" />
                 </Button>
               </MotionWrapper>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="border-teal-500/20 bg-background/95 backdrop-blur">
-              <DropdownMenuLabel>Switch Profile</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-teal-500/20" />
+            <DropdownMenuContent align="end" className="border-[rgba(var(--theme-primary),0.2)] bg-background/95 backdrop-blur">
+              <DropdownMenuLabel>Switch Layout</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-[rgba(var(--theme-primary),0.2)]" />
               {Object.keys(state.profiles).map((name) => (
                 <DropdownMenuItem 
                   key={name} 
-                  onClick={() => handleProfileSwitch(name)}
-                  className="hover:bg-teal-500/10 focus:bg-teal-500/10"
+                  onClick={() => handleLayoutSwitch(name)}
+                  className="hover:bg-[rgba(var(--theme-primary),0.1)] focus:bg-[rgba(var(--theme-primary),0.1)]"
                 >
                   {name}
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator className="bg-[rgba(var(--theme-primary),0.2)]" />
+              <DropdownMenuItem 
+                onClick={() => dispatch({ type: "SET_MODAL", payload: "profiles" })}
+                className="hover:bg-[rgba(var(--theme-primary),0.1)] focus:bg-[rgba(var(--theme-primary),0.1)]"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Layouts
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -194,23 +199,8 @@ export function TopNavigation() {
           >
             <Button 
               variant="ghost" 
-              onClick={() => dispatch({ type: "SET_MODAL", payload: "profiles" })}
-              className="hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
-            >
-              Profiles
-            </Button>
-          </MotionWrapper>
-          
-          <MotionWrapper
-            {...(animationsEnabled ? {
-              whileHover: { scale: 1.02 },
-              whileTap: { scale: 0.98 }
-            } : {})}
-          >
-            <Button 
-              variant="ghost" 
               onClick={() => dispatch({ type: "SET_MODAL", payload: "marketplace" })}
-              className="hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+              className="hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
             >
               Marketplace
             </Button>
@@ -222,10 +212,19 @@ export function TopNavigation() {
               whileTap: { scale: 0.98 }
             } : {})}
           >
+            <ThemeColorSelector showLabel={false} />
+          </MotionWrapper>
+          
+          <MotionWrapper
+            {...(animationsEnabled ? {
+              whileHover: { scale: 1.02 },
+              whileTap: { scale: 0.98 }
+            } : {})}
+          >
             <Button 
               variant="outline" 
               onClick={() => dispatch({ type: "TOGGLE_RIGHT_SIDEBAR" })} 
-              className="gap-2 bg-transparent border-teal-500/20 hover:border-teal-500/40 hover:bg-teal-500/10 transition-all"
+              className="gap-2 bg-transparent border-[rgba(var(--theme-primary),0.2)] hover:border-[rgba(var(--theme-primary),0.4)] hover:bg-[rgba(var(--theme-primary),0.1)] transition-all"
             >
               <PanelRightOpen className="h-4 w-4" />
               Inspector

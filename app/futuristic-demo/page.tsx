@@ -30,12 +30,12 @@ export default function FuturisticDemoPage() {
 
   const themes = {
     default: {
-      name: 'Default (Teal)',
-      bg: 'bg-teal-500/5',
-      border: 'border-teal-500/20',
-      text: 'text-teal-400',
-      accent: 'bg-teal-500/10',
-      glow: 'shadow-teal-500/20'
+      name: 'Default (Theme)',
+      bg: 'bg-[rgba(var(--theme-primary),0.05)]',
+      border: 'border-[rgba(var(--theme-primary),0.2)]',
+      text: 'text-[rgb(var(--theme-primary))]',
+      accent: 'bg-[rgba(var(--theme-primary),0.1)]',
+      glow: 'shadow-[rgba(var(--theme-primary),0.2)]'
     },
     success: {
       name: 'Success (Green)',

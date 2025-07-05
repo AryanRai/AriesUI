@@ -25,7 +25,7 @@ const RightSidebarBackground = ({ animationsEnabled }: { animationsEnabled: bool
       
       {/* Animated scan line */}
       <motion.div
-        className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-teal-400/50 to-transparent"
+        className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[rgba(var(--theme-primary),0.5)] to-transparent"
         animate={{
           y: [-100, window.innerHeight + 100],
         }}
@@ -40,8 +40,8 @@ const RightSidebarBackground = ({ animationsEnabled }: { animationsEnabled: bool
       <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.02)_1px,transparent_1px)] bg-[size:30px_30px]" />
       
       {/* Corner accents */}
-      <div className="absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 border-teal-400/30" />
-      <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-teal-400/30" />
+      <div className="absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 border-[rgba(var(--theme-primary),0.3)]" />
+      <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-[rgba(var(--theme-primary),0.3)]" />
     </div>
   )
 }
@@ -145,10 +145,10 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
           <RightSidebarBackground animationsEnabled={animationsEnabled} />
           
           {/* Content */}
-          <div className="relative z-10 h-full flex flex-col border-l border-teal-500/20">
+          <div className="relative z-10 h-full flex flex-col border-l border-[rgba(var(--theme-primary),0.2)]">
             {/* Header */}
             <MotionWrapper 
-              className="flex items-center justify-between p-2 border-b border-teal-500/20"
+              className="flex items-center justify-between p-2 border-b border-[rgba(var(--theme-primary),0.2)]"
               {...(animationsEnabled ? {
                 initial: { opacity: 0, y: -10 },
                 animate: { opacity: 1, y: 0 },
@@ -157,13 +157,13 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
             >
               <div className="flex items-center gap-2">
                 <motion.div
-                  className="w-2 h-2 bg-teal-400 rounded-full"
+                  className="w-2 h-2 bg-[rgb(var(--theme-primary))] rounded-full"
                   {...(animationsEnabled ? {
                     animate: { opacity: [0.5, 1, 0.5] },
                     transition: { duration: 2, repeat: Infinity }
                   } : {})}
                 />
-                <h2 className="text-lg font-semibold bg-gradient-to-r from-teal-400 to-slate-200 bg-clip-text text-transparent">
+                <h2 className="text-lg font-semibold bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
                   Inspector
                 </h2>
               </div>
@@ -177,7 +177,7 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
                   variant="ghost" 
                   size="icon" 
                   onClick={onToggle}
-                  className="hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                  className="hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                 >
                   <PanelRightClose className="h-4 w-4" />
                 </Button>
@@ -186,24 +186,24 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
 
             <Tabs defaultValue="grid" className="flex-1 flex flex-col">
               <MotionWrapper 
-                className="border-b border-teal-500/20 px-2"
+                className="border-b border-[rgba(var(--theme-primary),0.2)] px-2"
                 {...(animationsEnabled ? {
                   initial: { opacity: 0, y: -5 },
                   animate: { opacity: 1, y: 0 },
                   transition: { delay: 0.2 }
                 } : {})}
               >
-                <TabsList className="w-full bg-background/50 border border-teal-500/20">
+                <TabsList className="w-full bg-background/50 border border-[rgba(var(--theme-primary),0.2)]">
                   <TabsTrigger 
                     value="grid" 
-                    className="flex-1 data-[state=active]:bg-teal-500/10 data-[state=active]:text-teal-300 data-[state=active]:border-teal-500/30"
+                    className="flex-1 data-[state=active]:bg-[rgba(var(--theme-primary),0.1)] data-[state=active]:text-[rgb(var(--theme-primary))] data-[state=active]:border-[rgba(var(--theme-primary),0.3)]"
                   >
                     <Grid className="h-4 w-4 mr-2" />
                     Grid
                   </TabsTrigger>
                   <TabsTrigger 
                     value="hardware" 
-                    className="flex-1 data-[state=active]:bg-teal-500/10 data-[state=active]:text-teal-300 data-[state=active]:border-teal-500/30"
+                    className="flex-1 data-[state=active]:bg-[rgba(var(--theme-primary),0.1)] data-[state=active]:text-[rgb(var(--theme-primary))] data-[state=active]:border-[rgba(var(--theme-primary),0.3)]"
                   >
                     <Cpu className="h-4 w-4 mr-2" />
                     Hardware
@@ -230,10 +230,10 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
                             transition: { delay: 0.4 + groupIndex * 0.1 }
                           } : {})}
                         >
-                          <AccordionItem value={groupName} className="border-teal-500/20">
-                            <AccordionTrigger className="hover:bg-teal-500/10 hover:text-teal-300 transition-all rounded px-2">
+                          <AccordionItem value={groupName} className="border-[rgba(var(--theme-primary),0.2)]">
+                            <AccordionTrigger className="hover:bg-[rgba(var(--theme-primary),0.1)] hover:text-[rgb(var(--theme-primary))] transition-all rounded px-2">
                               <div className="flex items-center gap-2">
-                                <Zap className="h-4 w-4 text-teal-400" />
+                                <Zap className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
                                 {groupName} ({items.length})
                               </div>
                             </AccordionTrigger>
@@ -242,7 +242,7 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
                                 {items.map((item, itemIndex) => (
                                   <MotionWrapper
                                     key={item.id}
-                                    className="p-2 border border-teal-500/20 rounded-md text-sm bg-background/30 hover:bg-teal-500/5 transition-all"
+                                    className="p-2 border border-[rgba(var(--theme-primary),0.2)] rounded-md text-sm bg-background/30 hover:bg-[rgba(var(--theme-primary),0.05)] transition-all"
                                     {...(animationsEnabled ? {
                                       initial: { opacity: 0, scale: 0.95 },
                                       animate: { opacity: 1, scale: 1 },
@@ -251,7 +251,7 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
                                     } : {})}
                                   >
                                     <div className="font-semibold text-slate-200">{item.title || item.type}</div>
-                                    <div className="text-xs text-teal-400 truncate">ID: {item.id}</div>
+                                    <div className="text-xs text-[rgb(var(--theme-primary))] truncate">ID: {item.id}</div>
                                     <div className="flex justify-end space-x-1 mt-1">
                                       <MotionWrapper
                                         {...(animationsEnabled ? {
@@ -262,7 +262,7 @@ const RightSidebar = ({ isOpen, gridState, onToggle }: RightSidebarProps) => {
                                         <Button 
                                           variant="ghost" 
                                           size="icon" 
-                                          className="h-6 w-6 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-all"
+                                          className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border border-transparent hover:border-[rgba(var(--theme-primary),0.2)] transition-all"
                                         >
                                           <Settings className="h-3 w-3" />
                                         </Button>

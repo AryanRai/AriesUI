@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AppWithPreloader } from '@/components/app-with-preloader'
+import { ThemeColorProvider } from '@/hooks/use-theme-colors'
 
 export const metadata: Metadata = {
   title: 'Comms',
@@ -21,9 +22,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppWithPreloader>
-          {children}
-        </AppWithPreloader>
+        <ThemeColorProvider>
+          <AppWithPreloader>
+            {children}
+          </AppWithPreloader>
+        </ThemeColorProvider>
       </body>
     </html>
   )

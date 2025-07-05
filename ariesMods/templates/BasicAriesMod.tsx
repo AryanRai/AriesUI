@@ -64,11 +64,11 @@ const BasicAriesMod: React.FC<AriesModProps> = ({
         accent: 'bg-red-500/10'
       }
       default: return { 
-        bg: 'bg-teal-500/5', 
-        border: 'border-teal-500/20', 
-        text: 'text-teal-400',
-        glow: 'shadow-teal-500/20',
-        accent: 'bg-teal-500/10'
+        bg: 'bg-[rgba(var(--theme-primary),0.05)]', 
+        border: 'border-[rgba(var(--theme-primary),0.2)]', 
+        text: 'text-[rgb(var(--theme-primary))]',
+        glow: 'shadow-[rgba(var(--theme-primary),0.2)]',
+        accent: 'bg-[rgba(var(--theme-primary),0.1)]'
       }
     }
   }
