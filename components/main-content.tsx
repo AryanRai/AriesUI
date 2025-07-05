@@ -14,63 +14,25 @@ import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { FloatingToolbar } from "@/components/floating-toolbar-merged"
 
-interface BaseWidget {
-  id: string
-  type: string
-  title: string
-  content: string
-  x: number
-  y: number
-  w: number
-  h: number
-  createdAt: string
-  updatedAt: string
-}
-
-interface MainGridWidget extends BaseWidget {
-  container: "main"
-}
-
-interface NestedWidget extends BaseWidget {
-  container: "nest"
-  nestId: string
-}
-
-interface NestContainer {
-  id: string
-  type: string
-  title: string
-  x: number
-  y: number
-  w: number
-  h: number
-  createdAt: string
-  updatedAt: string
-}
-
-interface GridState {
-  mainWidgets: MainGridWidget[]
-  nestContainers: NestContainer[]
-  nestedWidgets: NestedWidget[]
-  mainAriesWidgets: AriesWidget[]
-  nestedAriesWidgets: NestedAriesWidget[]
-  viewport: {
-    x: number
-    y: number
-    zoom: number
-  }
-  gridSize: number
-  lastSaved: string | null
-  version: string
-}
+// Import new grid components
+import { GridWidget } from "@/components/grid/GridWidget"
+import { ResizeHandles } from "@/components/grid/ResizeHandles"
+import { NestContainer } from "@/components/grid/NestContainer"
+import { useGridEvents } from "@/components/grid/useGridEvents"
+import { useGridState } from "@/components/grid/useGridState"
+import type { 
+  BaseWidget, 
+  MainGridWidget, 
+  NestedWidget, 
+  NestContainer as NestContainerType, 
+  GridState as GridStateType, 
+  ResizeHandle 
+} from "@/components/grid/types"
 
 interface MainContentProps {
-  gridState: GridState
-  setGridState: React.Dispatch<React.SetStateAction<GridState>>
+  gridState: GridStateType
+  setGridState: React.Dispatch<React.SetStateAction<GridStateType>>
 }
-
-type Widget = MainGridWidget | NestedWidget
-type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w"
 
 // Utility function to generate unique IDs
 const generateUniqueId = (prefix: string): string => {
@@ -397,7 +359,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const isGridStateInitialized = useRef(false)
   
   // State history for undo/redo functionality
-  const [stateHistory, setStateHistory] = useState<Array<{ gridState: GridState; viewport: { x: number; y: number; zoom: number } }>>([])
+  const [stateHistory, setStateHistory] = useState<Array<{ gridState: GridStateType; viewport: { x: number; y: number; zoom: number } }>>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const maxHistorySize = 50
 
@@ -427,7 +389,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   }
 
   // Save state to history for undo/redo
-  const saveStateToHistory = useCallback((gridState: GridState, viewport: { x: number; y: number; zoom: number }) => {
+  const saveStateToHistory = useCallback((gridState: GridStateType, viewport: { x: number; y: number; zoom: number }) => {
     setStateHistory(prev => {
       const newHistory = [...prev.slice(0, historyIndex + 1), { gridState, viewport }]
       // Keep only the last maxHistorySize items
@@ -538,7 +500,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   }, [gridState, viewport, dispatch])
 
   // Update grid state helper
-  const updateGridState = useCallback((updater: (prev: GridState) => GridState) => {
+  const updateGridState = useCallback((updater: (prev: GridStateType) => GridStateType) => {
     setGridState((prev) => {
       const newState = updater(prev)
       return newState
@@ -1748,7 +1710,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         if (!currentWidget) return
 
         // Check if widget is over a nest based on widget's current position
-        let targetNest: NestContainer | null = null
+        let targetNest: NestContainerType | null = null
         const widgetCenterX = currentWidget.x + currentWidget.w / 2
         const widgetCenterY = currentWidget.y + currentWidget.h / 2
 
@@ -2018,7 +1980,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   const addNestContainer = () => {
     const gridSize = gridState.gridSize
-    const existingItems = [...gridState.mainWidgets, gridState.nestContainers]
+    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers]
 
     const baseNest = {
       x: Math.round((Math.random() * 200) / gridSize) * gridSize,
@@ -2029,7 +1991,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
     const nonCollidingPos = findNonCollidingPosition(baseNest, existingItems, gridSize)
 
-    const newNest: NestContainer = {
+    const newNest: NestContainerType = {
       id: generateUniqueId("nest"),
       type: "nest",
       title: "Nest Container",
