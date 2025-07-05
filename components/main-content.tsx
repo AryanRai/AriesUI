@@ -20,6 +20,13 @@ import { ResizeHandles } from "@/components/grid/ResizeHandles"
 import { NestContainer } from "@/components/grid/NestContainer"
 import { useGridEvents } from "@/components/grid/useGridEvents"
 import { useGridState } from "@/components/grid/useGridState"
+import { 
+  generateUniqueId, 
+  checkCollision, 
+  applyPushPhysics, 
+  findNonCollidingPosition,
+  calculateNestAutoSize 
+} from "@/components/grid/utils"
 import type { 
   BaseWidget, 
   MainGridWidget, 
@@ -34,242 +41,23 @@ interface MainContentProps {
   setGridState: React.Dispatch<React.SetStateAction<GridStateType>>
 }
 
-// Utility function to generate unique IDs
-const generateUniqueId = (prefix: string): string => {
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).substr(2, 9)
-  return `${prefix}-${timestamp}-${random}`
-}
+// Utility functions are now imported from grid/utils
 
-// Enhanced collision detection utilities with improved push physics
-const checkCollision = (
-  rect1: { x: number; y: number; w: number; h: number },
-  rect2: { x: number; y: number; w: number; h: number },
-): boolean => {
-  return !(
-    rect1.x + rect1.w <= rect2.x ||
-    rect2.x + rect2.w <= rect1.x ||
-    rect1.y + rect1.h <= rect2.y ||
-    rect2.y + rect2.h <= rect1.y
-  )
-}
-
-const getCollisionOverlap = (
-  rect1: { x: number; y: number; w: number; h: number },
-  rect2: { x: number; y: number; w: number; h: number },
-): { overlapX: number; overlapY: number; direction: "horizontal" | "vertical" } => {
-  const overlapX = Math.min(rect1.x + rect1.w, rect2.x + rect2.w) - Math.max(rect1.x, rect2.x)
-  const overlapY = Math.min(rect1.y + rect1.h, rect2.y + rect2.h) - Math.max(rect1.y, rect2.y)
-
-  // Determine primary push direction based on smaller overlap
-  const direction = overlapX < overlapY ? "horizontal" : "vertical"
-
-  return { overlapX, overlapY, direction }
-}
-
-const calculatePushDirection = (
-  draggedWidget: { x: number; y: number; w: number; h: number },
-  targetWidget: { x: number; y: number; w: number; h: number },
-): { dx: number; dy: number } => {
-  const draggedCenterX = draggedWidget.x + draggedWidget.w / 2
-  const draggedCenterY = draggedWidget.y + draggedWidget.h / 2
-  const targetCenterX = targetWidget.x + targetWidget.w / 2
-  const targetCenterY = targetWidget.y + targetWidget.h / 2
-
-  const deltaX = targetCenterX - draggedCenterX
-  const deltaY = targetCenterY - draggedCenterY
-
-  const overlap = getCollisionOverlap(draggedWidget, targetWidget)
-
-  if (overlap.direction === "horizontal") {
-    // Push horizontally with reduced force
-    const pushDistance = overlap.overlapX + 5 // Reduced buffer for smoother interaction
-    return {
-      dx: deltaX > 0 ? pushDistance : -pushDistance,
-      dy: 0,
-    }
-  } else {
-    // Push vertically with reduced force
-    const pushDistance = overlap.overlapY + 5 // Reduced buffer for smoother interaction
-    return {
-      dx: 0,
-      dy: deltaY > 0 ? pushDistance : -pushDistance,
-    }
-  }
-}
-
-const findNonCollidingPosition = (
-  newWidget: { x: number; y: number; w: number; h: number },
-  existingWidgets: { x: number; y: number; w: number; h: number }[],
-  gridSize: number,
-  containerBounds?: { x: number; y: number; w: number; h: number },
-): { x: number; y: number } => {
-  let { x, y } = newWidget
-  const maxAttempts = 1000
-  let attempts = 0
-
-  while (attempts < maxAttempts) {
-    const testRect = { x, y, w: newWidget.w, h: newWidget.h }
-    let hasCollision = false
-
-    // Check collision with existing widgets
-    for (const widget of existingWidgets) {
-      if (checkCollision(testRect, widget)) {
-        hasCollision = true
-        break
-      }
-    }
-
-    if (!hasCollision) {
-      // Ensure within container bounds if specified
-      if (containerBounds) {
-        if (
-          x >= containerBounds.x &&
-          y >= containerBounds.y &&
-          x + newWidget.w <= containerBounds.x + containerBounds.w &&
-          y + newWidget.h <= containerBounds.y + containerBounds.h
-        ) {
-          return { x, y }
-        }
-      } else {
-        return { x, y }
-      }
-    }
-
-    // Try next position
-    x += gridSize
-    if (containerBounds && x + newWidget.w > containerBounds.x + containerBounds.w) {
-      x = containerBounds?.x || 0
-      y += gridSize
-    } else if (!containerBounds && x > 2000) {
-      x = 0
-      y += gridSize
-    }
-
-    attempts++
-  }
-
-  // Fallback to original position if no valid position found
-  return { x: newWidget.x, y: newWidget.y }
-}
-
-const applyPushPhysics = (
-  draggedWidget: { id: string; x: number; y: number; w: number; h: number },
-  widgets: Array<{ id: string; x: number; y: number; w: number; h: number }>,
-  gridSize: number,
-  containerBounds?: { x: number; y: number; w: number; h: number },
-): Array<{ id: string; x: number; y: number; w: number; h: number; pushed?: boolean }> => {
-  const result = widgets.map((w) => ({ ...w, pushed: false }))
-  const pushedWidgets = new Set<string>()
-
-  // Find widgets that collide with the dragged widget
-  const collidingWidgets = result.filter(
-    (widget) => widget.id !== draggedWidget.id && checkCollision(draggedWidget, widget),
-  )
-
-  // Apply push physics to colliding widgets
-  for (const collidingWidget of collidingWidgets) {
-    if (pushedWidgets.has(collidingWidget.id)) continue
-
-    const pushDirection = calculatePushDirection(draggedWidget, collidingWidget)
-    let newX = collidingWidget.x + pushDirection.dx
-    let newY = collidingWidget.y + pushDirection.dy
-
-    // Snap to grid
-    newX = Math.round(newX / gridSize) * gridSize
-    newY = Math.round(newY / gridSize) * gridSize
-
-    // Remove all artificial boundaries - allow free movement anywhere including negative coordinates
-    // Only enforce container bounds if explicitly provided for nests
-    if (containerBounds) {
-      // For nests, allow overflow but provide soft bounds
-      newX = Math.max(containerBounds.x - containerBounds.w, Math.min(newX, containerBounds.x + containerBounds.w * 2))
-      newY = Math.max(containerBounds.y - containerBounds.h, Math.min(newY, containerBounds.y + containerBounds.h * 2))
-    }
-    // For main grid: no constraints, complete freedom
-
-    // Update the widget position
-    const widgetIndex = result.findIndex((w) => w.id === collidingWidget.id)
-    if (widgetIndex !== -1) {
-      result[widgetIndex] = {
-        ...result[widgetIndex],
-        x: newX,
-        y: newY,
-        pushed: true,
-      }
-      pushedWidgets.add(collidingWidget.id)
-    }
-
-    // Check for chain reactions - if the pushed widget now collides with others
-    const pushedWidgetRect = { ...result[widgetIndex] }
-    const secondaryCollisions = result.filter(
-      (widget) =>
-        widget.id !== pushedWidgetRect.id &&
-        widget.id !== draggedWidget.id &&
-        !pushedWidgets.has(widget.id) &&
-        checkCollision(pushedWidgetRect, widget),
-    )
-
-    // Apply secondary pushes (chain reaction)
-    for (const secondaryWidget of secondaryCollisions) {
-      const secondaryPush = calculatePushDirection(pushedWidgetRect, secondaryWidget)
-      let secondaryX = secondaryWidget.x + secondaryPush.dx
-      let secondaryY = secondaryWidget.y + secondaryPush.dy
-
-      // Snap to grid
-      secondaryX = Math.round(secondaryX / gridSize) * gridSize
-      secondaryY = Math.round(secondaryY / gridSize) * gridSize
-
-      // Remove artificial boundaries for complete freedom
-      if (containerBounds) {
-        // For nests, allow overflow
-        secondaryX = Math.max(containerBounds.x - containerBounds.w, Math.min(secondaryX, containerBounds.x + containerBounds.w * 2))
-        secondaryY = Math.max(containerBounds.y - containerBounds.h, Math.min(secondaryY, containerBounds.y + containerBounds.h * 2))
-      }
-      // For main grid: no constraints
-
-      const secondaryIndex = result.findIndex((w) => w.id === secondaryWidget.id)
-      if (secondaryIndex !== -1) {
-        result[secondaryIndex] = {
-          ...result[secondaryIndex],
-          x: secondaryX,
-          y: secondaryY,
-          pushed: true,
-        }
-        pushedWidgets.add(secondaryWidget.id)
-      }
-    }
-  }
-
-  return result
-}
-
-const calculateNestAutoSize = (
-  nestWidgets: NestedWidget[],
-  minWidth = 400,
-  minHeight = 300,
-  padding = 20,
-): { w: number; h: number } => {
-  if (nestWidgets.length === 0) {
-    return { w: minWidth, h: minHeight }
-  }
-
-  let maxX = 0
-  let maxY = 0
-
-  nestWidgets.forEach((widget) => {
-    const rightEdge = widget.x + widget.w
-    const bottomEdge = widget.y + widget.h
-    if (rightEdge > maxX) maxX = rightEdge
-    if (bottomEdge > maxY) maxY = bottomEdge
-  })
-
-  const calculatedWidth = Math.max(minWidth, maxX + padding)
-  const calculatedHeight = Math.max(minHeight, maxY + padding + 40) // +40 for header
-
-  return { w: calculatedWidth, h: calculatedHeight }
-}
-
+/**
+ * MainContent component - The main grid dashboard with drag-and-drop functionality
+ * 
+ * This component provides:
+ * - Grid-based widget layout with drag & drop
+ * - Nested containers for organizing widgets
+ * - Zoom and pan viewport controls
+ * - Resize handles for widgets and nests
+ * - Push physics for collision handling
+ * - Auto-save functionality
+ * - Undo/redo history
+ * 
+ * @param gridState - Current grid state containing widgets and nests
+ * @param setGridState - Function to update the grid state
+ */
 export function MainContent({ gridState, setGridState }: MainContentProps) {
   const { 
     state,
@@ -287,13 +75,13 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     zoom: 1,
   })
 
-  const [isPanning, setIsPanning] = useState(false)
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
-  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
-
   // Initialize nested widgets after nest containers are set
   // REMOVED: Auto-adding default widgets to nests - nests should start empty
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  // State management for drag, resize, and drop operations
   const [dragState, setDragState] = useState<{
     isDragging: boolean
     draggedId: string | null
@@ -335,12 +123,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     targetNestId: null,
   })
 
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
   const [dragOverNest, setDragOverNest] = useState<string | null>(null)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [pushedWidgets, setPushedWidgets] = useState<Set<string>>(new Set())
   const [isHoveringOverNest, setIsHoveringOverNest] = useState(false)
-
-  const containerRef = useRef<HTMLDivElement>(null)
 
   const [isViewportInfoVisible, setIsViewportInfoVisible] = useLocalStorage("aries-show-viewport-info", true)
   const [actionsToolbarPosition, setActionsToolbarPosition] = useLocalStorage("aries-actions-toolbar-pos", { top: 80, right: 20 })
@@ -856,7 +644,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     return () => window.removeEventListener("beforeProfileChange", handleBeforeProfileChange)
   }, [saveCurrentStateToProfile])
 
-  // Handle mouse down for dragging
+  /**
+   * Handle mouse down for dragging widgets and nests
+   * @param e - Mouse event
+   * @param itemId - ID of the item being dragged
+   * @param itemType - Type of item ("widget" or "nest")
+   */
   const handleMouseDown = (e: React.MouseEvent, itemId: string, itemType: "widget" | "nest") => {
     const target = e.target as HTMLElement
     if (target.closest(".resize-handle")) return
@@ -873,7 +666,6 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     let sourceNestId: string | undefined
 
     if (itemType === "widget") {
-      // Check both regular widgets and AriesWidgets
       const nestedWidget = gridState.nestedWidgets.find((w) => w.id === itemId)
       const nestedAriesWidget = gridState.nestedAriesWidgets.find((w) => w.id === itemId)
       
@@ -886,11 +678,11 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       }
     }
 
-    // Calculate offset in world coordinates to fix zoom positioning issues
+    // Calculate offset in world coordinates
     const worldMouseX = (e.clientX - containerRect.left) / viewport.zoom - viewport.x
     const worldMouseY = (e.clientY - containerRect.top) / viewport.zoom - viewport.y
     
-    // Get the item's current position to calculate proper offset
+    // Get the item's current position
     let item: any = null
     if (itemType === "widget") {
       item = gridState.mainWidgets.find((w) => w.id === itemId) || 
@@ -916,10 +708,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     })
   }
 
-  // Handle panning
+  /**
+   * Handle panning start with middle mouse or Ctrl+click
+   * @param e - Mouse event
+   */
   const handlePanStart = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
-      // Middle mouse or Ctrl+Left click
       e.preventDefault()
       setIsPanning(true)
       setPanStart({ x: e.clientX, y: e.clientY })
@@ -961,7 +755,13 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }, [isHoveringOverNest])
 
-  // Handle resize mouse down
+  /**
+   * Handle resize mouse down for widgets and nests
+   * @param e - Mouse event
+   * @param itemId - ID of the item being resized
+   * @param itemType - Type of item ("widget" or "nest")
+   * @param handle - Resize handle being used
+   */
   const handleResizeMouseDown = (
     e: React.MouseEvent,
     itemId: string,
@@ -983,7 +783,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
     if (!item) return
 
-    // Set proper cursor based on handle to prevent cursor bugs
+    // Set proper cursor based on handle
     const cursorMap: Record<ResizeHandle, string> = {
       'nw': 'nw-resize',
       'n': 'n-resize',
@@ -996,7 +796,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
     document.body.style.cursor = cursorMap[handle]
 
-    // Convert to world coordinates for consistent positioning at all zoom levels
+    // Convert to world coordinates
     const containerRect = containerRef.current?.getBoundingClientRect()
     if (!containerRect) return
 
@@ -2052,28 +1852,16 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }, [state.widgets.length]);
 
-  // Resize handles component
-  const getResizeHandles = (itemId: string, itemType: "widget" | "nest") => {
-    const handles: { handle: ResizeHandle; className: string; cursor: string }[] = [
-      { handle: "nw", className: "top-0 left-0 -translate-x-1/2 -translate-y-1/2", cursor: "nw-resize" },
-      { handle: "n", className: "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2", cursor: "n-resize" },
-      { handle: "ne", className: "top-0 right-0 translate-x-1/2 -translate-y-1/2", cursor: "ne-resize" },
-      { handle: "e", className: "top-1/2 right-0 translate-x-1/2 -translate-y-1/2", cursor: "e-resize" },
-      { handle: "se", className: "bottom-0 right-0 translate-x-1/2 translate-y-1/2", cursor: "se-resize" },
-      { handle: "s", className: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2", cursor: "s-resize" },
-      { handle: "sw", className: "bottom-0 left-0 -translate-x-1/2 translate-y-1/2", cursor: "sw-resize" },
-      { handle: "w", className: "top-1/2 left-0 -translate-x-1/2 -translate-y-1/2", cursor: "w-resize" },
-    ]
-
-    return handles.map(({ handle, className, cursor }) => (
-      <div
-        key={handle}
-        className={`resize-handle absolute w-3 h-3 bg-primary border border-primary-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity z-20 ${className}`}
-        style={{ cursor }}
-        onMouseDown={(e) => handleResizeMouseDown(e, itemId, itemType, handle)}
+  // Resize handles component - using new ResizeHandles component
+  const getResizeHandles = useCallback((itemId: string, itemType: "widget" | "nest") => {
+    return (
+      <ResizeHandles
+        itemId={itemId}
+        itemType={itemType}
+        onResizeMouseDown={handleResizeMouseDown}
       />
-    ))
-  }
+    )
+  }, [handleResizeMouseDown])
 
   // Update widget count and broadcast to status bar
   useEffect(() => {
@@ -2274,335 +2062,62 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           }}
         >
           {/* Nest Containers */}
-          {gridState.nestContainers.map((nest) => {
-            const nestWidgets = gridState.nestedWidgets.filter((w) => w.nestId === nest.id)
-            const nestAriesWidgets = gridState.nestedAriesWidgets.filter((w) => w.nestId === nest.id)
-            const totalWidgets = nestWidgets.length + nestAriesWidgets.length
-
-            return (
-              <Card
+          {gridState.nestContainers.map((nest) => (
+            <NestContainer
                 key={nest.id}
-                className={`absolute group bg-muted/20 backdrop-blur border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 transition-all duration-200 select-none ${
-                  dragState.draggedId === nest.id ? "shadow-lg scale-105 z-10 aries-widget-smooth-drag" : ""
-                } ${resizeState.resizedId === nest.id ? "shadow-lg z-10" : ""} ${
-                  dropState.isDragOver && dropState.targetNestId === nest.id ? "border-primary/50 bg-primary/10" : ""
-                } ${dragOverNest === nest.id ? "border-green-500/50 bg-green-500/10 scale-102" : ""}`}
-                style={{
-                  left: nest.x,
-                  top: nest.y,
-                  width: nest.w,
-                  height: nest.h,
-                  cursor: dragState.draggedId === nest.id ? "grabbing" : "default",
-                }}
+              nest={nest}
+              nestedWidgets={gridState.nestedWidgets}
+              nestedAriesWidgets={gridState.nestedAriesWidgets}
+              isDragging={dragState.draggedId === nest.id}
+              isResizing={resizeState.resizedId === nest.id}
+              dragOverNest={dragOverNest}
+              dropState={dropState}
+              pushedWidgets={pushedWidgets}
+              dragState={dragState}
+              resizeState={resizeState}
+              onMouseDown={(e) => handleMouseDown(e, nest.id, "nest")}
                 onMouseEnter={() => setIsHoveringOverNest(true)}
                 onMouseLeave={() => setIsHoveringOverNest(false)}
                 onDragOver={(e) => handleDragOver(e, nest.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, nest.id)}
-              >
-                {/* Resize Handles */}
-                {getResizeHandles(nest.id, "nest")}
-
-                <CardHeader
-                  className="pb-2 cursor-grab active:cursor-grabbing bg-muted/40 border-b border-muted-foreground/20"
-                  onMouseDown={(e) => handleMouseDown(e, nest.id, "nest")}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Grid3X3 className="h-3 w-3 text-muted-foreground" />
-                      <CardTitle className="text-sm font-medium">{nest.title}</CardTitle>
-                      <Badge variant="secondary" className="text-xs font-mono">
-                        {nest.id.split("-").pop()}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Badge variant="outline" className="text-xs">
-                        {totalWidgets} widget{totalWidgets !== 1 ? 's' : ''}
-                      </Badge>
-                      {totalWidgets > 0 && (
-                        <Badge variant="secondary" className="text-xs bg-teal-500/10 text-teal-400 border-teal-500/20">
-                          ↕ scroll
-                        </Badge>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => removeNestContainer(nest.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent 
-                  className="p-0 overflow-auto relative" 
-                  style={{ 
-                    scrollBehavior: 'smooth',
-                    height: 'calc(100% - 68px)' // Account for header height with padding
-                  }}
-                  onWheel={(e) => {
-                    // Always prevent page scrolling when hovering inside nest
-                    e.stopPropagation()
-                    
-                    const target = e.currentTarget
-                    const { scrollTop, scrollHeight, clientHeight } = target
-                    
-                    // Check if the nest content is scrollable
-                    const isScrollable = scrollHeight > clientHeight
-                    
-                    if (isScrollable) {
-                      // Check if we're at the top/bottom of the scroll container
-                      const atTop = scrollTop === 0
-                      const atBottom = scrollTop >= scrollHeight - clientHeight
-                      
-                      // If scrolling would go beyond boundaries, prevent it entirely
-                      if ((atTop && e.deltaY < 0) || (atBottom && e.deltaY > 0)) {
-                        e.preventDefault()
-                      }
-                    } else {
-                      // If nest is not scrollable, prevent page scrolling entirely
-                      e.preventDefault()
-                    }
-                  }}
-                >
-                  {/* Scroll indicators for overflow content */}
-                  {totalWidgets > 0 && (
-                    <>
-                      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-b from-muted/20 to-transparent pointer-events-none z-10" />
-                      <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-t from-muted/20 to-transparent pointer-events-none z-10" />
-                    </>
-                  )}
-                  <div className="p-2 relative" style={{ minHeight: '100%' }}>
-                    {/* Nested Widgets with hardware-accelerated CSS animations */}
-                    {nestWidgets.map((widget) => (
-                      <Card
-                        key={widget.id}              className={`absolute group bg-card/80 backdrop-blur border-border/50 hover:border-border transition-all duration-200 select-none aries-widget-card ${
-                dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
-              } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
-                pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
-              }`}
-                        style={{
-                          left: widget.x,
-                          top: widget.y,
-                          width: widget.w,
-                          height: widget.h,
-                          willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
-                        }}
-                      >
-                        {/* Resize Handles */}
-                        {getResizeHandles(widget.id, "widget")}
-
-                        <CardHeader
-                          className="pb-1 cursor-grab active:cursor-grabbing"
-                          onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                              <GripVertical className="h-2 w-2 text-muted-foreground" />
-                              <CardTitle className="text-xs font-medium">{widget.title}</CardTitle>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Badge variant="secondary" className="text-xs font-mono opacity-0 group-hover:opacity-100">
-                                {widget.id.split("-").pop()}
-                              </Badge>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-4 w-4 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
-                                onClick={() => removeWidget(widget.id)}
-                              >
-                                <X className="h-2 w-2" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0 text-xs text-center">{widget.content}</CardContent>
-                      </Card>
-                    ))}
-
-                    {/* Nested AriesWidgets with hardware-accelerated CSS animations */}
-                    {gridState.nestedAriesWidgets.filter((w) => w.nestId === nest.id).map((widget) => (
-                      <div
-                        key={widget.id}
-                        className={`absolute group select-none aries-widget-card ${
-                          dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
-                        } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
-                          pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
-                        }`}
-                        style={{
-                          left: widget.x,
-                          top: widget.y,
-                          width: widget.w,
-                          height: widget.h,
-                          willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
-                        }}
-                      >
-                        {/* Resize Handles */}
-                        {getResizeHandles(widget.id, "widget")}
-
-                        {/* Drag Handle */}
-                        <div
-                          className="absolute top-0 left-0 right-0 h-6 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/20 backdrop-blur-sm rounded-t-md flex items-center justify-between px-1"
-                          onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
-                        >
-                          <div className="flex items-center gap-1">
-                            <GripVertical className="h-2 w-2 text-white" />
-                            <span className="text-xs text-white font-medium">{widget.title}</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 text-white hover:text-red-400"
-                            onClick={() => removeAriesWidget(widget.id)}
-                          >
-                            <X className="h-2 w-2" />
-                          </Button>
-                        </div>
-
-                        <AriesModWidget
-                          widget={widget}
-                          onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
-                          className="w-full h-full rounded-md overflow-hidden"
-                        />
-                      </div>
-                    ))}
-
-                    {/* Empty nest state */}
-                    {totalWidgets === 0 && (
-                      <div className="absolute inset-4 flex flex-col items-center justify-center text-center border-2 border-dashed border-muted-foreground/20 rounded">
-                        <p className="text-xs text-muted-foreground mb-1">Drop widgets here</p>
-                        <p className="text-xs text-muted-foreground/60">Widgets can overflow - nest will scroll</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-
-          {/* Main Grid Widgets with hardware-accelerated animations */}
-          {gridState.mainWidgets.map((widget) => (
-            <Card
-              key={widget.id}
-              className={`absolute group bg-card/80 backdrop-blur border-border/50 hover:border-border transition-all duration-200 select-none aries-widget-card ${
-                dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
-              } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
-                pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
-              }`}
-              style={{
-                left: widget.x,
-                top: widget.y,
-                width: widget.w,
-                height: widget.h,
-                cursor: dragState.draggedId === widget.id ? "grabbing" : "default",
-                willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
-              }}
-            >
-              {/* Resize Handles */}
-              {getResizeHandles(widget.id, "widget")}
-
-              <CardHeader
-                className="pb-2 cursor-grab active:cursor-grabbing"
-                onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="h-3 w-3 text-muted-foreground" />
-                    <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
-                    <Badge variant="secondary" className="text-xs font-mono opacity-0 group-hover:opacity-100">
-                      {widget.id.split("-").pop()}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
-                    >
-                      <Hash className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
-                    >
-                      <Settings className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive hover:text-destructive"
-                      onClick={() => removeWidget(widget.id)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 h-full overflow-hidden">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline" className="text-xs">
-                    {widget.type}
-                  </Badge>
-                  <div className="text-xs text-muted-foreground">
-                    {widget.w}×{widget.h}
-                  </div>
-                </div>
-                <div className="text-lg font-mono text-center">{widget.content}</div>
-              </CardContent>
-            </Card>
+              onRemove={() => removeNestContainer(nest.id)}
+              onWidgetMouseDown={handleMouseDown}
+              onWidgetRemove={removeWidget}
+              onAriesWidgetUpdate={updateAriesWidget}
+              onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
+              getResizeHandles={getResizeHandles}
+            />
           ))}
 
-          {/* Main Grid AriesWidgets with hardware-accelerated animations */}
+          {/* Main Grid Widgets */}
+          {gridState.mainWidgets.map((widget) => (
+            <GridWidget
+                        key={widget.id}
+                          widget={widget}
+              isDragging={dragState.draggedId === widget.id}
+              isResizing={resizeState.resizedId === widget.id}
+              isPushed={pushedWidgets.has(widget.id)}
+              onMouseDown={handleMouseDown}
+              onRemove={removeWidget}
+              onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
+              getResizeHandles={getResizeHandles}
+            />
+          ))}
+
+          {/* Main Grid AriesWidgets */}
           {gridState.mainAriesWidgets.map((widget) => (
-            <div
+            <GridWidget
               key={widget.id}
-              className={`absolute group select-none aries-widget-card ${
-                dragState.draggedId === widget.id ? "aries-widget-dragging aries-widget-smooth-drag" : ""
-              } ${resizeState.resizedId === widget.id ? "aries-widget-resizing" : ""} ${
-                pushedWidgets.has(widget.id) ? "aries-widget-pushed" : ""
-              }`}
-              style={{
-                left: widget.x,
-                top: widget.y,
-                width: widget.w,
-                height: widget.h,
-                cursor: dragState.draggedId === widget.id ? "grabbing" : "default",
-                willChange: dragState.draggedId === widget.id || resizeState.resizedId === widget.id ? 'transform' : 'auto',
-              }}
-            >
-              {/* Resize Handles */}
-              {getResizeHandles(widget.id, "widget")}
-
-              {/* Drag Handle */}
-              <div
-                className="absolute top-0 left-0 right-0 h-8 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/20 backdrop-blur-sm rounded-t-md flex items-center justify-between px-2"
-                onMouseDown={(e) => handleMouseDown(e, widget.id, "widget")}
-              >
-                <div className="flex items-center gap-1">
-                  <GripVertical className="h-3 w-3 text-white" />
-                  <span className="text-xs text-white font-medium">{widget.title}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 text-white hover:text-red-400"
-                  onClick={() => removeAriesWidget(widget.id)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-
-              <AriesModWidget
                 widget={widget}
-                onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
-                className="w-full h-full rounded-md overflow-hidden"
-              />
-            </div>
+              isDragging={dragState.draggedId === widget.id}
+              isResizing={resizeState.resizedId === widget.id}
+              isPushed={pushedWidgets.has(widget.id)}
+              onMouseDown={handleMouseDown}
+              onRemove={removeAriesWidget}
+              onUpdate={updateAriesWidget}
+              getResizeHandles={getResizeHandles}
+            />
           ))}
         </div>
       </div>
