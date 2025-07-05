@@ -1,120 +1,191 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+"use client"
 
-interface GridItem {
-  id: string
-  x: number
-  y: number
-  w: number
-  h: number
+import { useMemo, useCallback } from 'react'
+import type { GridState } from '@/components/grid/types'
+
+interface VirtualGridConfig {
+  bufferSize?: number // Extra buffer around viewport in pixels
+  minRenderDistance?: number // Minimum distance before culling
+  maxRenderCount?: number // Maximum widgets to render at once
 }
 
-interface ViewportBounds {
-  left: number
-  top: number
-  right: number
-  bottom: number
+interface VirtualGridResult {
+  visibleMainWidgets: any[]
+  visibleMainAriesWidgets: any[]
+  visibleNestContainers: any[]
+  visibleNestedWidgets: any[]
+  visibleNestedAriesWidgets: any[]
+  totalWidgets: number
+  renderedWidgets: number
+  culledWidgets: number
+  isVirtualizationActive: boolean
 }
 
-interface VirtualGridOptions {
-  containerWidth: number
-  containerHeight: number
-  viewport: { x: number; y: number; zoom: number }
-  buffer?: number // Extra space around viewport to render
-}
+export function useVirtualGrid(
+  gridState: GridState,
+  viewport: { x: number; y: number; zoom: number },
+  containerSize: { width: number; height: number },
+  config: VirtualGridConfig = {}
+): VirtualGridResult {
+  const {
+    bufferSize = 200,
+    minRenderDistance = 100,
+    maxRenderCount = 100
+  } = config
 
-export function useVirtualGrid<T extends GridItem>(
-  items: T[],
-  options: VirtualGridOptions
-) {
-  const { containerWidth, containerHeight, viewport, buffer = 200 } = options
+  // Calculate visible viewport bounds with buffer
+  const viewportBounds = useMemo(() => {
+    const buffer = bufferSize / viewport.zoom
+    
+    return {
+      left: -viewport.x - buffer,
+      right: (-viewport.x + containerSize.width / viewport.zoom) + buffer,
+      top: -viewport.y - buffer,
+      bottom: (-viewport.y + containerSize.height / viewport.zoom) + buffer
+    }
+  }, [viewport, containerSize, bufferSize])
 
-  // Calculate visible bounds with buffer
-  const visibleBounds = useMemo<ViewportBounds>(() => {
-    const left = -viewport.x - buffer
-    const top = -viewport.y - buffer
-    const right = left + containerWidth / viewport.zoom + buffer * 2
-    const bottom = top + containerHeight / viewport.zoom + buffer * 2
+  // Check if an item is visible within the viewport
+  const isItemVisible = useCallback((item: { x: number; y: number; w: number; h: number }) => {
+    return !(
+      item.x + item.w < viewportBounds.left ||
+      item.x > viewportBounds.right ||
+      item.y + item.h < viewportBounds.top ||
+      item.y > viewportBounds.bottom
+    )
+  }, [viewportBounds])
 
-    return { left, top, right, bottom }
-  }, [viewport.x, viewport.y, viewport.zoom, containerWidth, containerHeight, buffer])
+  // Calculate distance from viewport center for priority rendering
+  const getDistanceFromViewportCenter = useCallback((item: { x: number; y: number; w: number; h: number }) => {
+    const viewportCenterX = -viewport.x + (containerSize.width / viewport.zoom) / 2
+    const viewportCenterY = -viewport.y + (containerSize.height / viewport.zoom) / 2
+    
+    const itemCenterX = item.x + item.w / 2
+    const itemCenterY = item.y + item.h / 2
+    
+    return Math.sqrt(
+      Math.pow(itemCenterX - viewportCenterX, 2) + 
+      Math.pow(itemCenterY - viewportCenterY, 2)
+    )
+  }, [viewport, containerSize])
 
-  // Filter items that are within visible bounds
-  const visibleItems = useMemo(() => {
-    return items.filter(item => {
-      const itemRight = item.x + item.w
-      const itemBottom = item.y + item.h
+  // Virtual grid calculation
+  const virtualGrid = useMemo(() => {
+    const totalWidgets = 
+      gridState.mainWidgets.length + 
+      gridState.mainAriesWidgets.length + 
+      gridState.nestContainers.length +
+      gridState.nestedWidgets.length +
+      gridState.nestedAriesWidgets.length
 
-      return (
-        item.x < visibleBounds.right &&
-        itemRight > visibleBounds.left &&
-        item.y < visibleBounds.bottom &&
-        itemBottom > visibleBounds.top
-      )
-    })
-  }, [items, visibleBounds])
-
-  // Spatial partitioning for collision detection
-  const spatialGrid = useMemo(() => {
-    const cellSize = 200 // Grid cell size for spatial partitioning
-    const grid = new Map<string, T[]>()
-
-    items.forEach(item => {
-      const startX = Math.floor(item.x / cellSize)
-      const startY = Math.floor(item.y / cellSize)
-      const endX = Math.floor((item.x + item.w) / cellSize)
-      const endY = Math.floor((item.y + item.h) / cellSize)
-
-      for (let x = startX; x <= endX; x++) {
-        for (let y = startY; y <= endY; y++) {
-          const key = `${x},${y}`
-          if (!grid.has(key)) {
-            grid.set(key, [])
-          }
-          grid.get(key)!.push(item)
-        }
-      }
-    })
-
-    return grid
-  }, [items])
-
-  // Fast collision detection using spatial partitioning
-  const getCollisions = useCallback((item: GridItem) => {
-    const cellSize = 200
-    const startX = Math.floor(item.x / cellSize)
-    const startY = Math.floor(item.y / cellSize)
-    const endX = Math.floor((item.x + item.w) / cellSize)
-    const endY = Math.floor((item.y + item.h) / cellSize)
-
-    const potentialCollisions = new Set<T>()
-
-    for (let x = startX; x <= endX; x++) {
-      for (let y = startY; y <= endY; y++) {
-        const key = `${x},${y}`
-        const cellItems = spatialGrid.get(key)
-        if (cellItems) {
-          cellItems.forEach(cellItem => potentialCollisions.add(cellItem))
-        }
+    // If total widgets is small, don't virtualize
+    if (totalWidgets <= 50) {
+      return {
+        visibleMainWidgets: gridState.mainWidgets,
+        visibleMainAriesWidgets: gridState.mainAriesWidgets,
+        visibleNestContainers: gridState.nestContainers,
+        visibleNestedWidgets: gridState.nestedWidgets,
+        visibleNestedAriesWidgets: gridState.nestedAriesWidgets,
+        totalWidgets,
+        renderedWidgets: totalWidgets,
+        culledWidgets: 0,
+        isVirtualizationActive: false
       }
     }
 
-    return Array.from(potentialCollisions).filter(other => {
-      if (other.id === item.id) return false
-      
-      return (
-        item.x < other.x + other.w &&
-        item.x + item.w > other.x &&
-        item.y < other.y + other.h &&
-        item.y + item.h > other.y
-      )
-    })
-  }, [spatialGrid])
+    // Filter main widgets by visibility
+    const visibleMainWidgets = gridState.mainWidgets.filter(isItemVisible)
+    const visibleMainAriesWidgets = gridState.mainAriesWidgets.filter(isItemVisible)
+    
+    // Filter nest containers by visibility
+    const visibleNestContainers = gridState.nestContainers.filter(isItemVisible)
+    
+    // For nested widgets, check if their parent nest is visible
+    const visibleNestIds = new Set(visibleNestContainers.map(nest => nest.id))
+    
+    const visibleNestedWidgets = gridState.nestedWidgets.filter(widget => 
+      visibleNestIds.has(widget.nestId)
+    )
+    
+    const visibleNestedAriesWidgets = gridState.nestedAriesWidgets.filter(widget => 
+      visibleNestIds.has(widget.nestId)
+    )
 
-  return {
-    visibleItems,
-    visibleBounds,
-    getCollisions,
-    totalItems: items.length,
-    visibleCount: visibleItems.length
-  }
+    // If we still have too many widgets, prioritize by distance
+    const allVisibleItems = [
+      ...visibleMainWidgets,
+      ...visibleMainAriesWidgets,
+      ...visibleNestContainers
+    ]
+
+    let finalVisibleItems = allVisibleItems
+    
+    if (allVisibleItems.length > maxRenderCount) {
+      // Sort by distance from viewport center and take the closest ones
+      finalVisibleItems = allVisibleItems
+        .map(item => ({
+          ...item,
+          distance: getDistanceFromViewportCenter(item)
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, maxRenderCount)
+    }
+
+    // Separate back into categories
+    const finalMainWidgets = finalVisibleItems.filter(item => 
+      gridState.mainWidgets.some(w => w.id === item.id)
+    )
+    const finalMainAriesWidgets = finalVisibleItems.filter(item => 
+      gridState.mainAriesWidgets.some(w => w.id === item.id)
+    )
+    const finalNestContainers = finalVisibleItems.filter(item => 
+      gridState.nestContainers.some(n => n.id === item.id)
+    )
+
+    const renderedWidgets = 
+      finalMainWidgets.length + 
+      finalMainAriesWidgets.length + 
+      finalNestContainers.length +
+      visibleNestedWidgets.length +
+      visibleNestedAriesWidgets.length
+
+    return {
+      visibleMainWidgets: finalMainWidgets,
+      visibleMainAriesWidgets: finalMainAriesWidgets,
+      visibleNestContainers: finalNestContainers,
+      visibleNestedWidgets,
+      visibleNestedAriesWidgets,
+      totalWidgets,
+      renderedWidgets,
+      culledWidgets: totalWidgets - renderedWidgets,
+      isVirtualizationActive: true
+    }
+  }, [
+    gridState,
+    isItemVisible,
+    getDistanceFromViewportCenter,
+    maxRenderCount
+  ])
+
+  return virtualGrid
+}
+
+// Hook for getting virtual grid statistics
+export function useVirtualGridStats(virtualGrid: VirtualGridResult) {
+  return useMemo(() => {
+    const cullingPercentage = virtualGrid.totalWidgets > 0 
+      ? Math.round((virtualGrid.culledWidgets / virtualGrid.totalWidgets) * 100)
+      : 0
+
+    const performanceGain = virtualGrid.isVirtualizationActive
+      ? `${cullingPercentage}% culled`
+      : 'No virtualization'
+
+    return {
+      cullingPercentage,
+      performanceGain,
+      memoryReduction: virtualGrid.culledWidgets * 0.1, // Estimated KB saved per widget
+      renderingLoad: virtualGrid.renderedWidgets / Math.max(virtualGrid.totalWidgets, 1)
+    }
+  }, [virtualGrid])
 } 

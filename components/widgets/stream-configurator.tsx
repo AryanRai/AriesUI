@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useComms } from '@/components/comms-context'
+import { useAvailableStreams } from '@/hooks/use-comms-stream'
 
 interface StreamMapping {
   id: string
@@ -36,6 +37,7 @@ export function StreamConfigurator({
   onClose 
 }: StreamConfiguratorProps) {
   const { state } = useComms()
+  const { availableStreams, isConnected } = useAvailableStreams()
   const [mappings, setMappings] = useState<StreamMapping[]>(currentMappings)
   const [newMapping, setNewMapping] = useState<Partial<StreamMapping>>({
     multiplier: 1,
@@ -44,28 +46,28 @@ export function StreamConfigurator({
     enabled: true
   })
 
-  // Get available streams from connected modules
-  const availableStreams = React.useMemo(() => {
-    const streams: { id: string; name: string; unit?: string; datatype: string }[] = []
-    
-    state.connectedModules?.forEach((module, moduleId) => {
-      Object.entries(module.streams || {}).forEach(([streamId, stream]) => {
-        streams.push({
-          id: `${moduleId}.${streamId}`,
-          name: stream.name || `Stream ${streamId}`,
-          unit: stream.unit,
-          datatype: stream.datatype
-        })
-      })
+  // Format available streams for display
+  const formattedStreams = React.useMemo(() => {
+    return availableStreams.map(streamId => {
+      // Better stream name formatting
+      const parts = streamId.split('.')
+      const streamName = parts.length > 1 
+        ? `${parts[0]} - ${parts.slice(1).join('.')}`  // "module1 - temperature"
+        : streamId
+      
+      return {
+        id: streamId,
+        name: streamName,
+        unit: '',
+        datatype: 'float'
+      }
     })
-    
-    return streams
-  }, [state.connectedModules])
+  }, [availableStreams])
 
   const addMapping = () => {
     if (!newMapping.streamId) return
 
-    const stream = availableStreams.find(s => s.id === newMapping.streamId)
+    const stream = formattedStreams.find(s => s.id === newMapping.streamId)
     if (!stream) return
 
     const mapping: StreamMapping = {
@@ -233,7 +235,7 @@ export function StreamConfigurator({
                   <SelectValue placeholder="Choose a hardware stream" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableStreams.map((stream) => (
+                  {formattedStreams.map((stream) => (
                     <SelectItem key={stream.id} value={stream.id}>
                       <div className="flex items-center gap-2">
                         <span>{stream.name}</span>
@@ -311,7 +313,7 @@ export function StreamConfigurator({
         {/* Connection Status */}
         <div className="text-sm text-muted-foreground">
           <p>Connection Status: {state.connectionStatus}</p>
-          <p>Available Streams: {availableStreams.length}</p>
+          <p>Available Streams: {formattedStreams.length}</p>
           <p>Connected Modules: {state.connectedModules?.size || 0}</p>
         </div>
       </CardContent>

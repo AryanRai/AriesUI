@@ -18,6 +18,9 @@ import { FloatingToolbar } from "@/components/floating-toolbar-merged"
 import { EnhancedSensorWidget } from "@/components/widgets/enhanced-sensor-widget"
 import { HardwareAcceleratedWidget } from "@/components/widgets/hardware-accelerated-widget"
 import { commsClient } from "@/lib/comms-stream-client"
+import { MovableDebugPanel } from "@/components/debug/movable-debug-panel"
+import { GridContainer } from "@/components/grid/grid-container"
+// import { useVirtualGrid, useVirtualGridStats } from "@/hooks/use-virtual-grid"
 
 // Import new grid components
 import { GridWidget } from "@/components/grid/GridWidget"
@@ -147,6 +150,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [isDebugPanelVisible, setIsDebugPanelVisible] = useLocalStorage("aries-show-debug-panel", true)
   const [hardwareConnectionStatus, setHardwareConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
+  const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
   
   // Track if grid state has been initialized to avoid triggering unsaved changes on initial load
   const isGridStateInitialized = useRef(false)
@@ -155,6 +159,33 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const [stateHistory, setStateHistory] = useState<Array<{ gridState: GridStateType; viewport: { x: number; y: number; zoom: number } }>>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const maxHistorySize = 50
+
+  // Virtual grid for performance optimization (temporarily disabled)
+  // const virtualGrid = useVirtualGrid(gridState, viewport, containerSize, {
+  //   bufferSize: 300,
+  //   maxRenderCount: 150
+  // })
+  // const virtualGridStats = useVirtualGridStats(virtualGrid)
+  
+  // Temporary fallback for virtual grid
+  const virtualGrid = {
+    visibleMainWidgets: gridState.mainWidgets,
+    visibleMainAriesWidgets: gridState.mainAriesWidgets,
+    visibleNestContainers: gridState.nestContainers,
+    visibleNestedWidgets: gridState.nestedWidgets,
+    visibleNestedAriesWidgets: gridState.nestedAriesWidgets,
+    totalWidgets: gridState.mainWidgets.length + gridState.mainAriesWidgets.length + gridState.nestContainers.length + gridState.nestedWidgets.length + gridState.nestedAriesWidgets.length,
+    renderedWidgets: gridState.mainWidgets.length + gridState.mainAriesWidgets.length + gridState.nestContainers.length + gridState.nestedWidgets.length + gridState.nestedAriesWidgets.length,
+    culledWidgets: 0,
+    isVirtualizationActive: false
+  }
+  
+  const virtualGridStats = {
+    cullingPercentage: 0,
+    performanceGain: 'No virtualization',
+    memoryReduction: 0,
+    renderingLoad: 1
+  }
 
   const handleToolbarMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -1702,12 +1733,28 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }, [dragState, resizeState, isPanning, lastPanPoint, viewport, gridState, updateGridState, dispatch, isDraggingToolbar, isDraggingZoomToolbar, toolbarDragStart, zoomToolbarDragStart, setActionsToolbarPosition, setZoomToolbarPosition, lastMouseMoveTime, throttleInterval])
 
-  // Add wheel event listener
+  // Add wheel event listener and track container size
   useEffect(() => {
     const container = containerRef.current
     if (container) {
       container.addEventListener("wheel", handleWheel, { passive: false })
-      return () => container.removeEventListener("wheel", handleWheel)
+      
+      // Track container size for virtual grid
+      const resizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          setContainerSize({
+            width: entry.contentRect.width,
+            height: entry.contentRect.height
+          })
+        }
+      })
+      
+      resizeObserver.observe(container)
+      
+      return () => {
+        container.removeEventListener("wheel", handleWheel)
+        resizeObserver.disconnect()
+      }
     }
   }, [handleWheel])
 
@@ -1890,46 +1937,18 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-background to-background/80">
       
-      {/* Enhanced Performance Debug Panel */}
-      {isDebugPanelVisible && (
-        <div className="absolute top-4 left-4 z-50 bg-black/90 text-green-400 p-3 rounded font-mono text-xs border border-green-500/30">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-green-300 font-bold">⚡ HARDWARE ACCELERATION ACTIVE</span>
-            <Button
-              onClick={() => setIsDebugPanelVisible(false)}
-              size="sm"
-              variant="ghost"
-              className="h-4 w-4 p-0 text-red-400 hover:text-red-300"
-              title="Hide debug panel (Ctrl+D)"
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-          <div>Viewport: {viewport.x.toFixed(0)}, {viewport.y.toFixed(0)}, {(viewport.zoom * 100).toFixed(0)}%</div>
-          <div>Widgets: {gridState.mainWidgets.length} | Nests: {gridState.nestContainers.length}</div>
-          <div>AriesWidgets: {gridState.mainAriesWidgets.length}</div>
-          <div>Enhanced Sensors: {gridState.mainWidgets.filter(w => w.type === 'enhanced-sensor').length}</div>
-          <div>Status: {dragState.isDragging ? 'DRAGGING' : isPanning ? 'PANNING' : 'READY'}</div>
-          <div className="text-cyan-400 mt-1">GPU Layers: ENABLED | RAF: ACTIVE</div>
-          <div className={`${hardwareConnectionStatus === 'connected' ? 'text-green-400' : 'text-red-400'}`}>
-            Hardware: {hardwareConnectionStatus.toUpperCase()}
-          </div>
-          <div>Auto-save: {isAutoSaveEnabled ? 'ON' : 'OFF'} | Unsaved: {hasUnsavedChanges ? 'YES' : 'NO'}</div>
-        </div>
-      )}
-      
-      {/* Debug Panel Toggle Button (when hidden) */}
-      {!isDebugPanelVisible && (
-        <Button
-          onClick={() => setIsDebugPanelVisible(true)}
-          size="sm"
-          variant="ghost"
-          className="absolute top-4 left-4 z-50 h-6 w-6 p-0 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50"
-          title="Show debug panel (Ctrl+D)"
-        >
-          <Terminal className="h-3 w-3 text-red-400" />
-        </Button>
-      )}
+      {/* Movable Debug Panel */}
+      <MovableDebugPanel
+        isVisible={isDebugPanelVisible}
+        onToggleVisibility={setIsDebugPanelVisible}
+        viewport={viewport}
+        gridState={gridState}
+        dragState={dragState}
+        isPanning={isPanning}
+        hardwareConnectionStatus={hardwareConnectionStatus}
+        isAutoSaveEnabled={isAutoSaveEnabled}
+        hasUnsavedChanges={hasUnsavedChanges}
+      />
       
       {/* Unified Floating Toolbar */}
       <FloatingToolbar
@@ -2031,75 +2050,121 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         </div>
       )}
 
-      {/* Hardware-Accelerated Grid Container */}
+      {/* Hardware-Accelerated Grid Container with Virtual Rendering */}
       <div
         ref={containerRef}
-        className={`absolute inset-0 cursor-${isPanning ? "grabbing" : "grab"} ${
-          dropState.isDragOver && !dropState.targetNestId ? "border-primary/50 bg-primary/5 border-2 border-dashed" : ""
-        } ${
-          dragState.isDragging ? "aries-grid-smooth-drag" : ""
-        }`}
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)
-          `,
-          backgroundSize: `${gridState.gridSize * viewport.zoom}px ${gridState.gridSize * viewport.zoom}px`,
-          backgroundPosition: `${viewport.x * viewport.zoom}px ${viewport.y * viewport.zoom}px`,
-          willChange: 'transform, background-position',
-          transform: 'translate3d(0, 0, 0)', // Force hardware layer
-        }}
+        className="absolute inset-0"
         onMouseDown={handlePanStart}
-        onDragOver={(e) => handleDragOver(e)}
-        onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDrop(e)}
       >
-        {/* Hardware-Accelerated Viewport Transform Container */}
+        {/* Temporarily revert to inline grid rendering to fix resize issues */}
         <div
-          className={dragState.isDragging || resizeState.isResizing ? "aries-grid-faded" : ""}
+          className={`absolute inset-0 cursor-${isPanning ? "grabbing" : "grab"} ${
+            dropState.isDragOver && !dropState.targetNestId ? "border-primary/50 bg-primary/5 border-2 border-dashed" : ""
+          } ${
+            dragState.isDragging ? "aries-grid-smooth-drag" : ""
+          }`}
           style={{
-            transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.zoom})`,
-            transformOrigin: "0 0",
-            width: "100%",
-            height: "100%",
-            position: "relative",
-            willChange: 'transform',
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)
+            `,
+            backgroundSize: `${gridState.gridSize * viewport.zoom}px ${gridState.gridSize * viewport.zoom}px`,
+            backgroundPosition: `${viewport.x * viewport.zoom}px ${viewport.y * viewport.zoom}px`,
+            willChange: 'transform, background-position',
+            transform: 'translate3d(0, 0, 0)', // Force hardware layer
           }}
+          onDragOver={(e) => handleDragOver(e)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e)}
         >
-          {/* Nest Containers */}
-          {gridState.nestContainers.map((nest) => (
-            <NestContainer
+          {/* Hardware-Accelerated Viewport Transform Container */}
+          <div
+            className={dragState.isDragging || resizeState.isResizing ? "aries-grid-faded" : ""}
+            style={{
+              transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.zoom})`,
+              transformOrigin: "0 0",
+              width: "100%",
+              height: "100%",
+              position: "relative",
+              willChange: 'transform',
+            }}
+          >
+            {/* Use virtual grid results for performance */}
+            {virtualGrid.visibleNestContainers.map((nest) => (
+              <NestContainer
                 key={nest.id}
-              nest={nest}
-              nestedWidgets={gridState.nestedWidgets}
-              nestedAriesWidgets={gridState.nestedAriesWidgets}
-              isDragging={dragState.draggedId === nest.id}
-              isResizing={resizeState.resizedId === nest.id}
-              dragOverNest={dragOverNest}
-              dropState={dropState}
-              pushedWidgets={pushedWidgets}
-              dragState={dragState}
-              resizeState={resizeState}
-              onMouseDown={(e) => handleMouseDown(e, nest.id, "nest")}
+                nest={nest}
+                nestedWidgets={virtualGrid.visibleNestedWidgets}
+                nestedAriesWidgets={virtualGrid.visibleNestedAriesWidgets}
+                isDragging={dragState.draggedId === nest.id}
+                isResizing={resizeState.resizedId === nest.id}
+                dragOverNest={dragOverNest}
+                dropState={dropState}
+                pushedWidgets={pushedWidgets}
+                dragState={dragState}
+                resizeState={resizeState}
+                onMouseDown={(e) => handleMouseDown(e, nest.id, "nest")}
                 onMouseEnter={() => setIsHoveringOverNest(true)}
                 onMouseLeave={() => setIsHoveringOverNest(false)}
                 onDragOver={(e) => handleDragOver(e, nest.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, nest.id)}
-              onRemove={() => removeNestContainer(nest.id)}
-              onWidgetMouseDown={handleMouseDown}
-              onWidgetRemove={removeWidget}
-              onAriesWidgetUpdate={updateAriesWidget}
-              onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
-              getResizeHandles={getResizeHandles}
-            />
-          ))}
+                onRemove={() => removeNestContainer(nest.id)}
+                onWidgetMouseDown={handleMouseDown}
+                onWidgetRemove={removeWidget}
+                onAriesWidgetUpdate={updateAriesWidget}
+                onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
+                getResizeHandles={getResizeHandles}
+              />
+            ))}
 
-          {/* Hardware-Accelerated Main Grid Widgets */}
-          {gridState.mainWidgets.map((widget) => (
-            widget.type === "enhanced-sensor" ? (
+            {/* Hardware-Accelerated Main Grid Widgets */}
+            {virtualGrid.visibleMainWidgets.map((widget) => (
+              widget.type === "enhanced-sensor" ? (
+                <HardwareAcceleratedWidget
+                  key={widget.id}
+                  id={widget.id}
+                  x={widget.x}
+                  y={widget.y}
+                  width={widget.w}
+                  height={widget.h}
+                  isDragging={dragState.draggedId === widget.id}
+                  isResizing={resizeState.resizedId === widget.id}
+                  isPushed={pushedWidgets.has(widget.id)}
+                  onMouseDown={handleMouseDown}
+                  onRemove={removeWidget}
+                >
+                  <EnhancedSensorWidget
+                    widgetId={widget.id}
+                    title={widget.title}
+                    sensorType="generic"
+                    streamMappings={[]}
+                    onStreamMappingsChange={() => {}}
+                    className="w-full h-full"
+                    showTrend={true}
+                    precision={2}
+                  />
+                  {getResizeHandles(widget.id, "widget")}
+                </HardwareAcceleratedWidget>
+              ) : (
+                <GridWidget
+                  key={widget.id}
+                  widget={widget}
+                  isDragging={dragState.draggedId === widget.id}
+                  isResizing={resizeState.resizedId === widget.id}
+                  isPushed={pushedWidgets.has(widget.id)}
+                  onMouseDown={handleMouseDown}
+                  onRemove={removeWidget}
+                  onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
+                  getResizeHandles={getResizeHandles}
+                />
+              )
+            ))}
+
+            {/* Hardware-Accelerated Main Grid AriesWidgets */}
+            {virtualGrid.visibleMainAriesWidgets.map((widget) => (
               <HardwareAcceleratedWidget
-                        key={widget.id}
+                key={widget.id}
                 id={widget.id}
                 x={widget.x}
                 y={widget.y}
@@ -2109,73 +2174,32 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 isResizing={resizeState.resizedId === widget.id}
                 isPushed={pushedWidgets.has(widget.id)}
                 onMouseDown={handleMouseDown}
-                onRemove={removeWidget}
+                onRemove={removeAriesWidget}
               >
                 <EnhancedSensorWidget
                   widgetId={widget.id}
                   title={widget.title}
-                  sensorType="generic"
+                  sensorType="temperature"
                   streamMappings={[]}
-                  onStreamMappingsChange={() => {}}
+                  onStreamMappingsChange={(mappings) => updateAriesWidget(widget.id, { streamMappings: mappings } as any)}
                   className="w-full h-full"
                   showTrend={true}
-                  precision={2}
+                  precision={1}
+                  thresholds={{
+                    warning: { min: 0, max: 50 },
+                    critical: { min: -10, max: 70 }
+                  }}
                 />
-                        {getResizeHandles(widget.id, "widget")}
+                {getResizeHandles(widget.id, "widget")}
               </HardwareAcceleratedWidget>
-            ) : (
-              <GridWidget
-                key={widget.id}
-                          widget={widget}
-                isDragging={dragState.draggedId === widget.id}
-                isResizing={resizeState.resizedId === widget.id}
-                isPushed={pushedWidgets.has(widget.id)}
-                onMouseDown={handleMouseDown}
-                onRemove={removeWidget}
-                onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
-                getResizeHandles={getResizeHandles}
-              />
-            )
-          ))}
-
-          {/* Hardware-Accelerated Main Grid AriesWidgets */}
-          {gridState.mainAriesWidgets.map((widget) => (
-            <HardwareAcceleratedWidget
-              key={widget.id}
-              id={widget.id}
-              x={widget.x}
-              y={widget.y}
-              width={widget.w}
-              height={widget.h}
-              isDragging={dragState.draggedId === widget.id}
-              isResizing={resizeState.resizedId === widget.id}
-              isPushed={pushedWidgets.has(widget.id)}
-              onMouseDown={handleMouseDown}
-              onRemove={removeAriesWidget}
-            >
-              <EnhancedSensorWidget
-                widgetId={widget.id}
-                title={widget.title}
-                sensorType="temperature"
-                streamMappings={[]}
-                onStreamMappingsChange={(mappings) => updateAriesWidget(widget.id, { streamMappings: mappings } as any)}
-                className="w-full h-full"
-                showTrend={true}
-                precision={1}
-                thresholds={{
-                  warning: { min: 0, max: 50 },
-                  critical: { min: -10, max: 70 }
-                }}
-              />
-              {getResizeHandles(widget.id, "widget")}
-            </HardwareAcceleratedWidget>
-          ))}
-                </div>
-              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Performance Status Bar */}
       <div className="absolute bottom-4 right-4 z-50 bg-black/80 text-green-400 px-3 py-1 rounded text-xs font-mono">
-        ⚡ Hardware Acceleration: ACTIVE | Enhanced Widgets: {gridState.mainWidgets.filter(w => w.type === 'enhanced-sensor').length}/{gridState.mainWidgets.length + gridState.mainAriesWidgets.length}
+        ⚡ Hardware Acceleration: ACTIVE | Virtual Grid: {virtualGridStats.performanceGain} | Rendered: {virtualGrid.renderedWidgets}/{virtualGrid.totalWidgets}
       </div>
     </div>
   )

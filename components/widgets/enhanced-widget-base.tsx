@@ -5,7 +5,8 @@ import { Settings, Zap, ZapOff, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { StreamConfigurator } from './stream-configurator'
 import { useComms } from '@/components/comms-context'
 
@@ -163,6 +164,9 @@ export function EnhancedWidgetBase({
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <VisuallyHidden>
+                <DialogTitle>Hardware Stream Configuration</DialogTitle>
+              </VisuallyHidden>
               <StreamConfigurator
                 widgetId={widgetId}
                 currentMappings={streamMappings}
