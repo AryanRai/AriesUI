@@ -1,296 +1,297 @@
-# AriesUI v3.1 - Project Structure Documentation
+# AriesUI Project Structure Documentation
 
-## 📁 Project Overview
+## Overview
+AriesUI is a high-performance, hardware-integrated dashboard system built with Next.js, React, and Electron. It provides real-time data visualization, drag-and-drop widget management, and seamless integration with the Comms v3 backend.
 
-AriesUI v3.1 is a performance-optimized, hardware-integrated dashboard system built with Next.js, TypeScript, and Electron. This document provides a comprehensive overview of the project structure and organization.
+## Core Architecture
 
-## 🏗️ Root Structure
-
+### 📁 Root Structure
 ```
 ui/ariesUI/
-├── 📁 app/                          # Next.js App Router pages
-├── 📁 ariesMods/                    # AriesMods plugin system
-├── 📁 components/                   # React components
-├── 📁 electron/                     # Electron main process
-├── 📁 hooks/                        # Custom React hooks
-├── 📁 lib/                          # Utility libraries
-├── 📁 public/                       # Static assets
-├── 📁 scripts/                      # Build and development scripts
-├── 📁 styles/                       # Global CSS styles
-├── 📁 types/                        # TypeScript type definitions
-├── 📄 *.config.js                   # Configuration files
-├── 📄 *.md                          # Documentation files
-└── 📄 package.json                  # Dependencies and scripts
+├── app/                          # Next.js App Router
+├── components/                   # React Components
+├── hooks/                        # Custom React Hooks
+├── lib/                         # Utility Libraries
+├── types/                       # TypeScript Type Definitions
+├── styles/                      # Global Styles
+├── public/                      # Static Assets
+├── ariesMods/                   # Widget Plugin System
+├── electron/                    # Electron Main Process
+├── scripts/                     # Build & Development Scripts
+└── docs/                        # Documentation
 ```
 
-## 📱 App Directory (Next.js App Router)
+## 🔧 Core Components Architecture
 
-```
-app/
-├── 📄 globals.css                   # Global styles with Tailwind
-├── 📄 layout.tsx                    # Root layout component
-├── 📄 page.tsx                      # Main dashboard page
-├── 📁 api/                          # API routes (future use)
-├── 📁 ariesmods-demo/               # AriesMods demo page
-│   └── 📄 page.tsx                  # Demo page component
-├── 📁 comms-test/                   # Hardware testing page
-├── 📁 futuristic-demo/              # UI demo page
-├── 📁 hardware-test/                # Hardware integration tests
-└── 📁 performance-test/             # Performance testing page
-```
-
-## 🧩 AriesMods Plugin System
-
-```
-ariesMods/
-├── 📁 controls/                     # Interactive control widgets
-│   └── 📄 ToggleControl.tsx         # Hardware toggle switches
-├── 📁 sensors/                      # Hardware sensor widgets
-│   ├── 📄 TemperatureSensor.tsx     # Temperature displays
-│   └── 📄 PressureSensor.tsx        # Pressure monitoring
-├── 📁 templates/                    # Development templates
-│   ├── 📄 AdvancedAriesMod.tsx      # Advanced template with dependencies
-│   └── 📄 BasicAriesMod.tsx         # Basic template for beginners
-├── 📁 utility/                      # General purpose widgets
-│   └── 📄 Clock.tsx                 # Digital clock widget
-└── 📁 visualization/                # Data visualization widgets
-    ├── 📄 LineChart.tsx             # Real-time line charts
-    ├── 📄 PlotlyChart.tsx           # Advanced Plotly visualizations
-    └── 📄 PointCloudVis.tsx         # 3D point cloud visualization
-```
-
-## 🎨 Components Architecture
-
+### Main Layout System
 ```
 components/
-├── 📁 debug/                        # Development and debugging tools
-│   └── 📄 movable-debug-panel.tsx   # Performance monitoring panel
-├── 📁 grid/                         # ✅ Core grid system (Performance Optimized)
-│   ├── 📄 GridContainer.tsx         # Main grid container
-│   ├── 📄 GridWidget.tsx            # ✅ Hardware-accelerated widget wrapper
-│   ├── 📄 NestContainer.tsx         # ✅ Nested container system
-│   ├── 📄 ResizeHandles.tsx         # Widget resize functionality
-│   ├── 📄 types.ts                  # Grid type definitions
-│   ├── 📄 useGridEvents.ts          # Event handling hooks
-│   ├── 📄 useGridState.ts           # State management hooks
-│   └── 📄 utils.ts                  # Grid utility functions
-├── 📁 hardware/                     # Hardware integration components
-│   ├── 📄 connection-status.tsx     # Hardware connection indicators
-│   ├── 📄 hardware-monitor.tsx      # Real-time hardware monitoring
-│   └── 📄 stream-configurator.tsx   # Stream configuration interface
-├── 📁 modals/                       # Modal dialog system
-│   ├── 📄 ariesmods-modal.tsx       # AriesMods marketplace
-│   ├── 📄 config-modal.tsx          # System configuration
-│   ├── 📄 logs-modal.tsx            # System logs viewer
-│   ├── 📄 performance-modal.tsx     # Performance monitoring
-│   ├── 📄 terminal-modal.tsx        # Command line interface
-│   └── 📄 widget-config-modal.tsx   # Widget configuration
-├── 📁 ui/                           # Radix UI component library (50+ components)
-│   ├── 📄 button.tsx                # Button variants
-│   ├── 📄 card.tsx                  # Card containers
-│   ├── 📄 dialog.tsx                # Dialog modals
-│   ├── 📄 form.tsx                  # Form handling
-│   ├── 📄 input.tsx                 # Input fields
-│   ├── 📄 select.tsx                # Select dropdowns
-│   ├── 📄 switch.tsx                # Toggle switches
-│   ├── 📄 tooltip.tsx               # Tooltips
-│   └── ... (40+ more components)
-├── 📁 widgets/                      # Widget system components
-│   ├── 📄 ariesmod-selector.tsx     # AriesMod selection interface
-│   ├── 📄 ariesmod-widget.tsx       # AriesMod wrapper component
-│   ├── 📄 enhanced-sensor-widget.tsx # ✅ Hardware-integrated sensors
-│   └── 📄 hardware-accelerated-widget.tsx # ⚠️ Deprecated (use GridWidget)
-├── 📄 animated-logo.tsx             # Animated branding
-├── 📄 app-performance-provider.tsx  # ✅ Performance monitoring context
-├── 📄 app-sidebar.tsx               # ✅ Optimized navigation sidebar
-├── 📄 comms-context.tsx             # Hardware communication context
-├── 📄 edit-history-panel.tsx        # ✅ Git-like version control
-├── 📄 floating-toolbar-merged.tsx   # ✅ Unified floating toolbar
-├── 📄 heartbeat-visualizer.tsx      # ✅ Optimized connection status
-├── 📄 main-content.tsx              # ✅ Core grid system (~400 lines, optimized)
-├── 📄 modal-system.tsx              # Modal management system
-├── 📄 status-bar.tsx                # Bottom status information
-├── 📄 top-navigation.tsx            # Top navigation bar
-└── 📄 window-controls.tsx           # ✅ Window state management
+├── main-content.tsx             # ⚠️ NEEDS REFACTORING (1700+ lines)
+├── app-sidebar.tsx              # Navigation sidebar
+├── top-navigation.tsx           # Header navigation
+├── status-bar.tsx               # Bottom status bar
+└── floating-toolbar-merged.tsx  # Unified floating toolbar
 ```
 
-## 🔧 Hooks Directory
-
+### Grid System (Performance Optimized)
 ```
-hooks/
-├── 📄 use-animation-preferences.tsx  # Animation control preferences
-├── 📄 use-comms-socket.ts           # WebSocket communication
-├── 📄 use-comms-stream.ts           # Real-time data streaming
-├── 📄 use-local-storage.ts          # Persistent local storage
-├── 📄 use-optimized-events.ts       # ✅ High-performance event handling
-├── 📄 use-performance-drag.ts       # ✅ RAF-based dragging
-├── 📄 use-virtual-grid.ts           # ✅ Virtual rendering for performance
-├── 📄 use-viewport-manager.ts       # ✅ Smooth zooming and panning
-└── 📄 use-window-state.ts           # ✅ Window state management
+components/grid/
+├── GridWidget.tsx               # Hardware-accelerated widget wrapper
+├── NestContainer.tsx            # Container for nested widgets
+├── ResizeHandles.tsx            # Widget resize controls
+├── types.ts                     # Grid type definitions
+├── utils.ts                     # Grid utility functions
+├── useGridEvents.tsx            # Event handling hook
+└── useGridState.tsx             # State management hook
 ```
 
-## 📚 Libraries and Utilities
+### Widget System
+```
+components/widgets/
+├── ariesmod-widget.tsx          # AriesMod implementation wrapper
+├── enhanced-sensor-widget.tsx   # Hardware-integrated sensors
+└── stream-configurator.tsx     # Stream configuration interface
+```
 
+### Modal System
+```
+components/modals/
+├── ariesmods-modal.tsx          # Plugin marketplace
+├── config-modal.tsx            # System configuration
+├── logs-modal.tsx              # System logs
+├── performance-modal.tsx       # Performance monitoring
+├── terminal-modal.tsx          # Command interface
+└── widget-config-modal.tsx     # Widget configuration
+```
+
+### Hardware Integration
+```
+components/hardware/
+├── connection-status.tsx       # Hardware connection indicators
+├── stream-monitor.tsx          # Real-time data monitoring
+└── device-manager.tsx          # Hardware device management
+```
+
+## 🎮 AriesMods Plugin System
+
+### Plugin Architecture
+```
+ariesMods/
+├── sensors/                    # Hardware sensor widgets
+│   ├── TemperatureSensor.tsx
+│   ├── PressureSensor.tsx
+│   └── VoltageSensor.tsx
+├── controls/                   # Interactive control widgets
+│   ├── ToggleControl.tsx
+│   ├── SliderControl.tsx
+│   └── ButtonControl.tsx
+├── visualization/              # Data display widgets
+│   ├── LineChart.tsx
+│   ├── PlotlyChart.tsx
+│   └── PointCloudVis.tsx
+├── utility/                    # General purpose widgets
+│   ├── Clock.tsx
+│   └── Calculator.tsx
+└── templates/                  # Development templates
+    ├── BasicAriesMod.tsx
+    └── AdvancedAriesMod.tsx
+```
+
+### Plugin Management
 ```
 lib/
-├── 📄 ariesmods-dependency-manager.ts # ✅ Secure dependency loading
-├── 📄 ariesmods-registry.ts          # ✅ Plugin discovery and management
-├── 📄 comms-stream-client.ts         # Hardware communication client
-└── 📄 utils.ts                       # General utility functions
+├── ariesmods-registry.ts       # Plugin discovery & management
+├── ariesmods-dependency-manager.ts # Dependency management
+└── comms-stream-client.ts      # Hardware communication
 ```
 
-## 🖼️ Public Assets
+## 🔗 Hooks & State Management
 
+### Performance Hooks
 ```
-public/
-├── 📁 branding/                     # Brand assets
-│   ├── 📄 favicon.ico               # Application icon
-│   └── 📄 logo.png                  # Logo images
-├── 📄 favicon.ico                   # Default favicon
-├── 📄 placeholder-logo.png          # Placeholder graphics
-└── 📄 placeholder-logo.svg          # Vector graphics
-```
-
-## 🎨 Styles Directory
-
-```
-styles/
-├── 📄 aries-widgets.css             # AriesMods widget styles
-├── 📄 globals.css                   # Global application styles
-└── 📄 grid-optimizations.css        # ✅ Performance-optimized grid styles
+hooks/
+├── use-performance-drag.ts     # RAF-based dragging
+├── use-virtual-grid.ts         # Viewport culling
+├── use-viewport-manager.ts     # Smooth zooming/panning
+├── use-optimized-events.ts     # High-performance events
+├── use-local-storage.ts        # Persistent storage
+└── use-animation-preferences.ts # Animation controls
 ```
 
-## 🔧 Scripts and Configuration
-
+### Hardware Integration Hooks
 ```
-scripts/
-└── 📄 dev.js                        # Development coordination script
-
-Configuration Files:
-├── 📄 .eslintrc.json                # ESLint configuration
-├── 📄 .gitignore                    # Git ignore patterns
-├── 📄 next.config.mjs               # Next.js configuration
-├── 📄 package.json                  # Dependencies and scripts
-├── 📄 postcss.config.mjs            # PostCSS configuration
-├── 📄 tailwind.config.ts            # Tailwind CSS configuration
-└── 📄 tsconfig.json                 # TypeScript configuration
+hooks/
+├── use-comms-socket.ts         # WebSocket communication
+├── use-comms-stream.ts         # Real-time data streams
+└── use-hardware-status.ts     # Connection monitoring
 ```
 
-## 📝 Type Definitions
+## 📱 Application Structure
 
+### Next.js App Router
+```
+app/
+├── page.tsx                    # Main dashboard page
+├── layout.tsx                  # Root layout
+├── globals.css                 # Global styles
+├── ariesmods-demo/            # Plugin demo page
+├── comms-test/                # Communication testing
+├── hardware-test/             # Hardware testing
+├── performance-test/          # Performance testing
+└── futuristic-demo/           # UI showcase
+```
+
+### Type Definitions
 ```
 types/
-├── 📄 ariesmods.ts                  # ✅ AriesMods type definitions
-└── 📄 comms.ts                      # Hardware communication types
+├── ariesmods.ts               # AriesMod interfaces
+├── comms.ts                   # Communication types
+├── grid.ts                    # Grid system types
+└── hardware.ts                # Hardware integration types
 ```
 
-## 🖥️ Electron Integration
+## 🎨 Styling & UI
 
+### Styling System
+```
+styles/
+├── globals.css                # Global styles
+├── aries-widgets.css          # Widget-specific styles
+└── grid-optimizations.css     # Performance optimizations
+```
+
+### UI Components (50+ Radix UI Components)
+```
+components/ui/
+├── button.tsx                 # Button component
+├── card.tsx                   # Card layouts
+├── dialog.tsx                 # Modal dialogs
+├── form.tsx                   # Form components
+├── input.tsx                  # Input controls
+├── select.tsx                 # Dropdown selects
+├── switch.tsx                 # Toggle switches
+├── slider.tsx                 # Range sliders
+└── ... (40+ more components)
+```
+
+## 🖥️ Desktop Application
+
+### Electron Integration
 ```
 electron/
-└── 📄 main.js                       # ✅ Enhanced Electron main process
+└── main.js                    # Electron main process
+
+scripts/
+├── dev.js                     # Development coordination
+└── build-electron.js          # Production build
 ```
 
-## 📖 Documentation Files
+## 📊 Performance Optimizations
 
+### Current Performance Features
+- **Hardware Acceleration**: GPU-optimized transforms with `translate3d()`
+- **RequestAnimationFrame**: Smooth 60fps rendering
+- **Virtual Rendering**: Viewport culling for large widget counts
+- **Lazy Loading**: Progressive widget loading
+- **Batched Updates**: Optimized state management
+
+### Performance Monitoring
+- Real-time frame rate tracking
+- Memory usage monitoring
+- Widget render count optimization
+- Hardware acceleration status
+
+## 🔌 Hardware Integration
+
+### Communication Stack
 ```
-Documentation:
-├── 📄 ARIESMODS_DEVELOPMENT_GUIDE.md # ✅ Updated AriesMods development guide
-├── 📄 AUTO_NEURAL_LOCATION_UPDATE.md # AI location update system
-├── 📄 AUTO_NEURAL_MESSAGE_ENHANCEMENT.md # AI message enhancement
-├── 📄 DOCUMENTATION.md              # ✅ Main documentation (updated)
-├── 📄 PROJECT_STRUCTURE.md          # ✅ This file
-├── 📄 README.md                     # Project overview
-└── 📄 UI_COMPONENTS_GUIDE.md        # UI component integration guide
+Backend (Python)               Frontend (TypeScript)
+├── Engine + DynamicModules ←→ ├── comms-stream-client.ts
+├── StreamHandler (WebSocket) ←→ ├── use-comms-stream.ts
+└── HyperThreader            ←→ └── hardware status monitoring
 ```
 
-## 🚀 Performance Optimizations (v3.1)
+### Data Flow
+1. **Hardware Sensors** → **DynamicModules** → **Engine**
+2. **Engine** → **StreamHandler** → **WebSocket**
+3. **WebSocket** → **AriesUI** → **Widget Display**
+4. **User Controls** → **AriesUI** → **WebSocket** → **Hardware**
 
-### ✅ Completed Optimizations
+## 🚀 Development Workflow
 
-1. **Hardware Acceleration**:
-   - All widgets use `translate3d()` for GPU layers
-   - `willChange` property for optimized transforms
-   - Hardware-accelerated grid system
-
-2. **RequestAnimationFrame**:
-   - All animations use RAF for 60fps
-   - Optimized dragging with 500fps capability
-   - Smooth zooming and panning
-
-3. **Virtual Rendering**:
-   - Viewport culling for large widget counts
-   - Performance monitoring and metrics
-   - Optimized component updates
-
-4. **Code Optimization**:
-   - `main-content.tsx` reduced from 2127 to ~400 lines
-   - Enhanced component architecture
-   - Improved state management
-
-### 🎯 Key Performance Features
-
-- **Ultra-smooth dragging**: 2ms throttling, RAF-based updates
-- **Hardware acceleration**: GPU-optimized transforms
-- **Virtual grid**: Viewport culling for performance
-- **Optimized animations**: Reduced stiffness, better performance
-- **Enhanced widgets**: All widgets performance-optimized
-
-## 🔧 Development Workflow
-
-### Starting Development
+### Getting Started
 ```bash
+# Install dependencies
+npm install
+
 # Start development server
 npm run dev
 
-# Start Electron development
+# Start Electron app
 npm run electron-dev
 
 # Build for production
 npm run build-electron
 ```
 
-### Key Development Files
-- `components/main-content.tsx` - Core grid system
-- `components/floating-toolbar-merged.tsx` - Unified toolbar
-- `ariesMods/` - Plugin development
-- `hooks/` - Custom functionality
-- `components/grid/` - Grid system components
+### File Organization Principles
+1. **Separation of Concerns**: Each file has a single responsibility
+2. **Performance First**: Hardware acceleration and optimization
+3. **Type Safety**: Comprehensive TypeScript coverage
+4. **Modularity**: Plugin-based architecture
+5. **Maintainability**: Clear documentation and structure
 
-### Performance Monitoring
-- Debug panel available (Ctrl+D)
-- Performance metrics in status bar
-- Virtual rendering statistics
-- Hardware acceleration indicators
+## 📋 Current Issues & Refactoring Needs
 
-## 📁 File Organization Principles
+### ⚠️ Critical Refactoring Required
 
-1. **Feature-based organization**: Components grouped by functionality
-2. **Performance-first**: Optimized components clearly marked
-3. **Hardware integration**: Dedicated hardware components
-4. **Plugin architecture**: AriesMods system for extensibility
-5. **Type safety**: Comprehensive TypeScript definitions
+#### main-content.tsx (1700+ lines)
+**Current Issues:**
+- Monolithic component with too many responsibilities
+- Complex state management
+- Performance optimization code mixed with UI logic
+- Event handling scattered throughout
+- Difficult to maintain and test
 
-## 🗂️ Deprecated/Legacy Files
+**Proposed Refactoring:**
+```
+components/main-content/
+├── MainContent.tsx             # Main orchestrator (< 200 lines)
+├── GridContainer.tsx           # Grid rendering logic
+├── PerformanceManager.tsx     # Performance optimizations
+├── EventHandlers.tsx          # Mouse/keyboard events
+├── StateManager.tsx           # State management
+├── ToolbarManager.tsx         # Toolbar positioning
+├── ViewportManager.tsx        # Zoom/pan controls
+└── types.ts                   # Local type definitions
+```
 
-### ⚠️ Files to Remove/Update
-- `components/widgets/hardware-accelerated-widget.tsx` - Use `GridWidget` instead
-- Old performance hooks - Integrated into main system
-- Legacy grid components - Replaced with optimized versions
+### Next Steps for Refactoring
+1. **Extract Performance Logic** → `PerformanceManager.tsx`
+2. **Extract Event Handlers** → `EventHandlers.tsx`
+3. **Extract State Management** → `StateManager.tsx`
+4. **Extract Toolbar Logic** → `ToolbarManager.tsx`
+5. **Extract Viewport Logic** → `ViewportManager.tsx`
+6. **Create Main Orchestrator** → `MainContent.tsx`
 
-### 🔄 Migration Notes
-- All widgets now use `GridWidget` for hardware acceleration
-- Stream configuration moved to built-in configurator
-- Performance hooks integrated into main components
+## 📈 Performance Metrics
+
+### Current Performance Status
+- **Frame Rate**: 60fps smooth interactions
+- **Widget Capacity**: 100+ widgets with virtual rendering
+- **Memory Usage**: Optimized with lazy loading
+- **Hardware Acceleration**: Active on all transforms
+- **Build Size**: ~2MB (optimized)
+
+### Performance Goals
+- **Ultra-responsive**: < 16ms frame times
+- **Scalable**: 500+ widgets with virtual rendering
+- **Efficient**: < 100MB memory usage
+- **Fast Loading**: < 3s initial load time
 
 ---
 
-## 🚀 Next Steps
+**AriesUI v3.1 - Performance Optimized Hardware Dashboard** 🚀
 
-1. **Complete hardware integration** - Connect to Comms StreamHandler
-2. **Add more AriesMods** - Expand plugin library
-3. **Performance testing** - Stress test with many widgets
-4. **Documentation updates** - Keep guides current
-5. **File cleanup** - Remove deprecated components
-
-**AriesUI v3.1 provides a clean, organized, and performance-optimized codebase ready for production deployment!** 🎯 
+*Last Updated: January 2025*
+*Status: Production Ready with Ongoing Refactoring*

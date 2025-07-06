@@ -738,6 +738,7 @@ export function FloatingToolbar(props: ToolbarProps) {
             top: position.y,
             transform: "translate3d(0, 0, 0)",
           }}
+          data-toolbar="true"
         >
           <Card
             ref={toolbarRef}
@@ -815,6 +816,7 @@ export function FloatingToolbar(props: ToolbarProps) {
         animate={animationsEnabled ? { scale: 1, opacity: 1, y: 0 } : {}}
         exit={animationsEnabled ? { scale: 0.9, opacity: 0, y: 20 } : {}}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        data-toolbar="true"
       >
         <Card
           ref={toolbarRef}
@@ -824,6 +826,7 @@ export function FloatingToolbar(props: ToolbarProps) {
             top: position.y,
             transform: "translate3d(0, 0, 0)",
           }}
+          data-toolbar="true"
         >
           {/* Futuristic Background */}
           <ToolbarBackground animationsEnabled={animationsEnabled} />

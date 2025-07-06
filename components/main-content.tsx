@@ -1516,6 +1516,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      // Don't interfere with toolbar dragging - check if target is part of toolbar
+      const target = e.target as HTMLElement
+      if (target.closest('[data-toolbar="true"]') || target.closest('.fixed.z-50')) {
+        return // Let toolbar handle its own dragging
+      }
+      
       const now = performance.now()
       // Reduce throttling for widgets, eliminate for nests for instant response
       if (dragState.draggedType === "widget" && now - lastMouseMoveTime < throttleInterval) {
