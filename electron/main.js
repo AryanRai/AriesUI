@@ -609,6 +609,55 @@ app.whenReady().then(() => {
   const menu = Menu.buildFromTemplate(menuTemplate)
   Menu.setApplicationMenu(menu)
 
+  // Window state management IPC handlers
+  ipcMain.handle('get-window-state', () => {
+    if (mainWindow) {
+      return {
+        isFullScreen: mainWindow.isFullScreen(),
+        isMaximized: mainWindow.isMaximized(),
+        isMinimized: mainWindow.isMinimized(),
+        bounds: mainWindow.getBounds()
+      }
+    }
+    return null
+  })
+
+  ipcMain.on('toggle-fullscreen', () => {
+    if (mainWindow) {
+      mainWindow.setFullScreen(!mainWindow.isFullScreen())
+    }
+  })
+
+  ipcMain.on('toggle-maximize', () => {
+    if (mainWindow) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize()
+      } else {
+        mainWindow.maximize()
+      }
+    }
+  })
+
+  ipcMain.on('minimize-window', () => {
+    if (mainWindow) {
+      mainWindow.minimize()
+    }
+  })
+
+  ipcMain.on('restore-window', () => {
+    if (mainWindow) {
+      if (mainWindow.isFullScreen()) {
+        mainWindow.setFullScreen(false)
+      }
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize()
+      }
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+    }
+  })
+
   // Handle app activation (macOS)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

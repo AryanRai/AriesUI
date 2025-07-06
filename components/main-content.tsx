@@ -177,7 +177,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   // Optimized widget update batching
   const batchedUpdates = useRef<Map<string, any>>(new Map())
-  const updateBatchTimeoutRef = useRef<NodeJS.Timeout>()
+  const updateBatchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Enhanced virtual grid with better performance
   const virtualGrid = useMemo(() => {
@@ -961,27 +961,46 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       return false
     }
 
-    // For AriesMods widgets, only allow dragging from the drag handle
+    // For AriesMods widgets, allow dragging from drag handle, header, or grip areas
     if (itemType === "widget") {
       const isAriesWidget = gridState.mainAriesWidgets.some(w => w.id === itemId) || 
                            gridState.nestedAriesWidgets.some(w => w.id === itemId)
       
       if (isAriesWidget) {
-        // Check if clicking on the drag handle
-        const isDragHandle = target.closest('.drag-handle') || 
-                           target.classList.contains('drag-handle') ||
-                           target.getAttribute('data-drag-handle') === 'true'
+        // Check if clicking on draggable areas for AriesMod widgets
+        const isDragArea = target.closest('.cursor-grab') || 
+                          target.classList.contains('cursor-grab') ||
+                          target.closest('[data-drag-handle]') ||
+                          target.getAttribute('data-drag-handle') === 'true' ||
+                          target.closest('.drag-handle') ||
+                          target.classList.contains('drag-handle') ||
+                          // Allow dragging from GripVertical icon
+                          (target.tagName === 'svg' && target.getAttribute('data-lucide') === 'grip-vertical') ||
+                          // Allow dragging from parent of GripVertical
+                          target.querySelector('svg[data-lucide="grip-vertical"]') ||
+                          // Allow dragging from CardHeader areas
+                          (target.closest('.cursor-grab') && !target.closest('button'))
         
-        if (!isDragHandle) {
-          console.log("AriesMod widget: Not clicking on drag handle, preventing drag")
+        if (!isDragArea) {
+          // Check if clicking on interactive elements within AriesMod
+          if (isInteractiveElement(target)) {
+            console.log("AriesMod widget: Clicked on interactive element, preventing drag")
+            return
+          }
+          console.log("AriesMod widget: Not clicking on drag area, preventing drag")
           return
         }
         
-        console.log("AriesMod widget: Drag handle clicked, allowing drag")
+        console.log("AriesMod widget: Drag area clicked, allowing drag")
       } else {
-        // For regular widgets, check for interactive elements
-        if (isInteractiveElement(target)) {
-          console.log("Clicked on interactive element, preventing drag:", target)
+        // For regular widgets, allow dragging from header but prevent from interactive elements
+        const isDragArea = target.closest('.cursor-grab') || 
+                          target.classList.contains('cursor-grab') ||
+                          (target.tagName === 'svg' && target.getAttribute('data-lucide') === 'grip-vertical') ||
+                          target.querySelector('svg[data-lucide="grip-vertical"]')
+        
+        if (!isDragArea && isInteractiveElement(target)) {
+          console.log("Regular widget: Clicked on interactive element, preventing drag:", target)
           return
         }
       }
@@ -1127,12 +1146,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         // Pinch gesture - very fine control
         zoomDelta = -e.deltaY * 0.01
       } else if (isTrackpad) {
-        // Trackpad - smooth, continuous zooming
-        zoomDelta = -e.deltaY * 0.005
-        
-        // Add momentum for trackpad
-        const velocityDelta = -e.deltaY * 0.002
-        setZoomVelocity(prev => prev + velocityDelta)
+        // Trackpad - smooth, continuous zooming (FIXED: removed momentum)
+        zoomDelta = -e.deltaY * 0.003 // Reduced sensitivity and removed momentum
       } else {
         // Mouse wheel - discrete steps but smoother than before
         zoomDelta = e.deltaY > 0 ? -0.1 : 0.1
@@ -1154,7 +1169,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       })
     } else {
       // Enhanced smooth panning
-      const panSpeed = 1.2
+      const panSpeed = 1.0 // Reduced from 1.2 for smoother trackpad panning
       const deltaX = e.deltaX * panSpeed
       const deltaY = e.deltaY * panSpeed
       

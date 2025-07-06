@@ -113,15 +113,15 @@ const HeartbeatVisualizer = () => {
         <Wrapper 
           className="flex items-center gap-2 text-xs text-muted-foreground font-mono cursor-pointer hover:bg-[rgba(var(--theme-primary),0.1)] px-3 py-2 rounded-lg transition-all theme-outline-primary bg-background/50 backdrop-blur-sm shadow-sm"
           {...(animationsEnabled ? {
-            whileHover: { scale: 1.02 },
-            whileTap: { scale: 0.98 },
-            transition: { type: "spring", stiffness: 400, damping: 25 }
+            whileHover: { scale: 1.01 }, // Reduced from 1.02
+            whileTap: { scale: 0.99 }, // Reduced from 0.98
+            transition: { type: "spring", stiffness: 200, damping: 20 } // Reduced from 400, 25
           } : {})}
         >
           <MotionDiv
             {...(animationsEnabled ? {
-              animate: { scale: [1, 1.2, 1] },
-              transition: { duration: 1, repeat: Infinity, ease: "easeInOut" }
+              animate: { scale: [1, 1.1, 1] }, // Reduced from 1.2
+              transition: { duration: 2, repeat: Infinity, ease: "easeInOut" } // Increased duration from 1
             } : {})}
             className={cn(
               "transition-colors",
@@ -147,13 +147,13 @@ const HeartbeatVisualizer = () => {
                 )} 
                 {...(animationsEnabled ? {
                   animate: isConnected ? { 
-                    scale: [1, 1.2, 1],
-                    opacity: [0.7, 1, 0.7] 
+                    scale: [1, 1.1, 1], // Reduced from 1.2
+                    opacity: [0.8, 1, 0.8] // Increased min opacity from 0.7
                   } : {
-                    scale: [1, 1.1, 1],
-                    opacity: [0.5, 0.8, 0.5]
+                    scale: [1, 1.05, 1], // Reduced from 1.1
+                    opacity: [0.6, 0.8, 0.6] // Increased min opacity from 0.5
                   },
-                  transition: { duration: 1.5, repeat: Infinity }
+                  transition: { duration: 2, repeat: Infinity } // Increased from 1.5
                 } : {})}
               />
               <span className="text-xs text-[rgb(var(--theme-primary))]">
@@ -177,8 +177,8 @@ const HeartbeatVisualizer = () => {
                   <div className="flex items-center gap-1">
                     <MotionDiv
                       {...(animationsEnabled && stage.status === 'connected' ? {
-                        animate: { rotate: [0, 5, 0, -5, 0] },
-                        transition: { duration: 2, repeat: Infinity, delay: index * 0.3 }
+                        animate: { rotate: [0, 3, 0, -3, 0] }, // Reduced from 5, -5
+                        transition: { duration: 3, repeat: Infinity, delay: index * 0.5 } // Increased duration and delay
                       } : {})}
                     >
                       {stage.icon}
@@ -213,10 +213,10 @@ const HeartbeatVisualizer = () => {
                   <MotionDiv
                     {...(animationsEnabled ? {
                       animate: { 
-                        opacity: [0.3, 1, 0.3],
-                        x: [0, 2, 0] 
+                        opacity: [0.4, 1, 0.4], // Increased min opacity from 0.3
+                        x: [0, 1, 0] // Reduced from 2
                       },
-                      transition: { duration: 1.5, repeat: Infinity, ease: 'linear', delay: index * 0.2 }
+                      transition: { duration: 2, repeat: Infinity, ease: 'linear', delay: index * 0.3 } // Increased duration and delay
                     } : {})}
                   >
                     <ArrowIcon className="h-4 w-4 text-[rgb(var(--theme-primary))]" />
@@ -257,9 +257,9 @@ const HeartbeatVisualizer = () => {
           </MotionDiv>
           <MotionDiv
             {...(animationsEnabled ? {
-              whileHover: { scale: 1.1, rotate: 180 },
-              whileTap: { scale: 0.9 },
-              transition: { type: "spring", stiffness: 400, damping: 25 }
+              whileHover: { scale: 1.05, rotate: 90 }, // Reduced scale and rotation
+              whileTap: { scale: 0.95 }, // Reduced from 0.9
+              transition: { type: "spring", stiffness: 200, damping: 20 } // Reduced from 400, 25
             } : {})}
           >
             <Button

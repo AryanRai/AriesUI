@@ -75,10 +75,11 @@ const RegularWidget = memo<{
       <CardHeader
         className="pb-2 cursor-grab active:cursor-grabbing"
         onMouseDown={handleMouseDown}
+        data-drag-handle="true"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <GripVertical className="h-3 w-3 text-muted-foreground" />
+            <GripVertical className="h-3 w-3 text-muted-foreground" data-drag-handle="true" />
             <EditableTitle
               title={widget.title}
               onTitleChange={handleTitleChange}
@@ -186,9 +187,10 @@ const AriesWidgetComponent = memo<{
       <div
         className={`absolute top-0 left-0 right-0 ${isNested ? 'h-6' : 'h-8'} cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/20 backdrop-blur-sm rounded-t-md flex items-center justify-between ${isNested ? 'px-1' : 'px-2'}`}
         onMouseDown={handleMouseDown}
+        data-drag-handle="true"
       >
         <div className="flex items-center gap-1">
-          <GripVertical className={`${isNested ? 'h-2 w-2' : 'h-3 w-3'} text-white`} />
+          <GripVertical className={`${isNested ? 'h-2 w-2' : 'h-3 w-3'} text-white`} data-drag-handle="true" />
           <EditableTitle
             title={widget.title}
             onTitleChange={handleTitleChange}

@@ -83,7 +83,7 @@ const FuturisticBackground = ({ animationsEnabled }: { animationsEnabled: boolea
           x: [-100, 400],
         }}
         transition={{
-          duration: 4,
+          duration: 6, // Increased from 4 for smoother animation
           repeat: Infinity,
           ease: "linear",
         }}
@@ -94,7 +94,7 @@ const FuturisticBackground = ({ animationsEnabled }: { animationsEnabled: boolea
           x: [400, -100],
         }}
         transition={{
-          duration: 5,
+          duration: 8, // Increased from 5 for smoother animation
           repeat: Infinity,
           ease: "linear",
           delay: 2,
@@ -102,22 +102,22 @@ const FuturisticBackground = ({ animationsEnabled }: { animationsEnabled: boolea
       />
       
       {/* Floating particles - reduced and monochrome */}
-      {[...Array(3)].map((_, i) => (
+      {[...Array(2)].map((_, i) => ( // Reduced from 3 to 2 particles for better performance
         <motion.div
           key={i}
           className="absolute w-0.5 h-0.5 bg-[rgba(var(--theme-primary),0.2)] rounded-full"
           animate={{
             y: [-10, -80],
-            opacity: [0, 0.5, 0],
+            opacity: [0, 0.3, 0], // Reduced max opacity from 0.5 to 0.3
           }}
           transition={{
-            duration: 4,
+            duration: 6, // Increased from 4 for smoother animation
             repeat: Infinity,
-            delay: i * 1.5,
+            delay: i * 2, // Increased from 1.5 for less frequent animations
             ease: "easeOut",
           }}
           style={{
-            left: `${20 + i * 30}%`,
+            left: `${30 + i * 40}%`, // Adjusted spacing
             bottom: 0,
           }}
         />
@@ -216,9 +216,9 @@ export function AppSidebar() {
       opacity: 1,
       transition: {
         type: "spring" as const,
-        stiffness: 400,
-        damping: 40,
-        staggerChildren: 0.1,
+        stiffness: 200, // Reduced from 400 for smoother performance
+        damping: 30, // Reduced from 40
+        staggerChildren: 0.05, // Reduced from 0.1 for faster stagger
       }
     },
     exit: {
@@ -226,17 +226,17 @@ export function AppSidebar() {
       opacity: 0,
       transition: {
         type: "spring" as const,
-        stiffness: 400,
-        damping: 40,
+        stiffness: 300, // Reduced from 400
+        damping: 30, // Reduced from 40
       }
     }
   }
 
   const itemVariants = {
     hidden: { 
-      x: -20, 
+      x: -10, // Reduced from -20 for subtler animation
       opacity: 0,
-      scale: 0.9,
+      scale: 0.95, // Reduced from 0.9 for subtler scaling
     },
     visible: { 
       x: 0, 
@@ -244,8 +244,8 @@ export function AppSidebar() {
       scale: 1,
       transition: {
         type: "spring" as const,
-        stiffness: 400,
-        damping: 25,
+        stiffness: 250, // Reduced from 400
+        damping: 20, // Reduced from 25
       }
     }
   }

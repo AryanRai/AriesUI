@@ -29,12 +29,19 @@ import {
   Check,
   AlertCircle,
   History,
+  Monitor,
+  Maximize,
+  Minimize,
+  Square,
+  Fullscreen,
 } from "lucide-react"
 import { useComms } from "@/components/comms-context"
 import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useWindowState } from "@/hooks/use-window-state"
 import { cn } from "@/lib/utils"
 import { EditHistoryPanel } from "@/components/edit-history-panel"
+import WindowControls from "@/components/window-controls"
 
 // Import the GridState type from main-content to ensure consistency
 interface MainGridWidget {
@@ -157,6 +164,10 @@ const AVAILABLE_ACTIONS = {
   create: { id: "create", icon: Plus, label: "Create", variant: "outline" as const },
   browse: { id: "browse", icon: FolderOpen, label: "Browse", variant: "outline" as const },
   history: { id: "history", icon: History, label: "Edit History", variant: "outline" as const },
+  minimize: { id: "minimize", icon: Minimize2, label: "Minimize", variant: "outline" as const },
+  maximize: { id: "maximize", icon: Maximize2, label: "Maximize", variant: "outline" as const },
+  fullscreen: { id: "fullscreen", icon: Fullscreen, label: "Fullscreen", variant: "outline" as const },
+  windowControls: { id: "windowControls", icon: Monitor, label: "Window Controls", variant: "outline" as const },
 } as const
 
 type ActionId = keyof typeof AVAILABLE_ACTIONS
@@ -215,6 +226,13 @@ const TOOLBAR_SECTIONS: ToolbarSection[] = [
     id: "tools",
     label: "Tools",
     actions: ["debug", "settings"],
+    collapsible: true,
+    defaultOpen: false,
+  },
+  {
+    id: "window",
+    label: "Window",
+    actions: ["minimize", "maximize", "fullscreen", "windowControls"],
     collapsible: true,
     defaultOpen: false,
   },
@@ -334,23 +352,24 @@ const ToolbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }
 }
 
 export function FloatingToolbar(props: ToolbarProps) {
-  const { dispatch } = useComms()
   const { animationsEnabled } = useAnimationPreferences()
-  const [position, setPosition] = useState({ x: 20, y: 100 })
+  const { dispatch } = useComms()
+  const { windowState, toggleFullscreen, toggleMaximize, minimize: minimizeWindow } = useWindowState()
+  
+  // Component state
+  const [isMinimized, setIsMinimized] = useLocalStorage("toolbar-minimized", false)
+  const [isHistoryPanelVisible, setIsHistoryPanelVisible] = useState(false)
+  const [isCustomizing, setIsCustomizing] = useState(false)
+  const [quickActions, setQuickActions] = useLocalStorage<ActionId[]>("toolbar-quick-actions", ["save", "undo", "redo", "export", "import"])
+  const [expandedSections, setExpandedSections] = useLocalStorage<string[]>("toolbar-expanded-sections", ["save", "file", "history"])
+  const [position, setPosition] = useLocalStorage("toolbar-position", { x: 50, y: 50 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [isMinimized, setIsMinimized] = useState(false)
-  const [expandedSections, setExpandedSections] = useState<string[]>(
-    TOOLBAR_SECTIONS.filter(s => s.defaultOpen).map(s => s.id)
-  )
-  const [quickActions, setQuickActions] = useLocalStorage<ActionId[]>("toolbar-quick-actions", ["save", "auto", "undo", "redo"])
-  const [isCustomizing, setIsCustomizing] = useState(false)
+  const [showSnapPreview, setShowSnapPreview] = useState(false)
+  const [snapPreviewPosition, setSnapPreviewPosition] = useState({ x: 0, y: 0, label: "" })
   const [canScroll, setCanScroll] = useState(false)
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
-  const [isHistoryPanelVisible, setIsHistoryPanelVisible] = useState(false)
   const [currentSnapZone, setCurrentSnapZone] = useState<string | null>(null)
-  const [showSnapPreview, setShowSnapPreview] = useState(false)
-  const [snapPreviewPosition, setSnapPreviewPosition] = useState({ x: 0, y: 0 })
   const toolbarRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -426,7 +445,7 @@ export function FloatingToolbar(props: ToolbarProps) {
         
         if (snapResult.snapped) {
           setShowSnapPreview(true)
-          setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y })
+          setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y, label: snapResult.snapZone || "" })
           setCurrentSnapZone(snapResult.snapZone)
         } else {
           setShowSnapPreview(false)
@@ -507,7 +526,7 @@ export function FloatingToolbar(props: ToolbarProps) {
       content.removeEventListener('scroll', handleScroll)
       resizeObserver.disconnect()
     }
-  }, [handleScroll, isCustomizing, expandedSections, isAutoSaveEnabled])
+  }, [handleScroll, isMinimized, expandedSections, isAutoSaveEnabled])
 
   // Action handlers
   const createActionHandler = useCallback((actionId: ActionId) => {
@@ -540,10 +559,29 @@ export function FloatingToolbar(props: ToolbarProps) {
         return () => dispatch({ type: "ADD_LOG", payload: "Browse functionality placeholder" })
       case "history":
         return () => setIsHistoryPanelVisible(!isHistoryPanelVisible)
+      case "minimize":
+        return () => setIsMinimized(true)
+      case "maximize":
+        return () => setIsMinimized(false)
+      case "fullscreen":
+        return () => {
+          if (typeof document !== 'undefined') {
+            if (document.fullscreenElement) {
+              document.exitFullscreen()
+            } else {
+              document.documentElement.requestFullscreen()
+            }
+          }
+        }
+      case "windowControls":
+        return () => {
+          // This action is handled by the WindowControls component
+          // No direct dispatch needed here, as WindowControls manages its own state
+        }
       default:
         return () => dispatch({ type: "ADD_LOG", payload: `Action ${actionId} triggered` })
     }
-  }, [saveGridState, isAutoSaveEnabled, setIsAutoSaveEnabled, undo, redo, exportGridState, addWidget, addNestContainer, setIsDebugPanelVisible, isDebugPanelVisible, isHistoryPanelVisible, setIsHistoryPanelVisible, dispatch])
+  }, [saveGridState, isAutoSaveEnabled, setIsAutoSaveEnabled, undo, redo, exportGridState, addWidget, addNestContainer, setIsDebugPanelVisible, isDebugPanelVisible, isHistoryPanelVisible, setIsHistoryPanelVisible, dispatch, isMinimized, setIsMinimized])
 
   const getActionProps = useCallback((actionId: ActionId) => {
     const baseAction = AVAILABLE_ACTIONS[actionId]
@@ -582,10 +620,25 @@ export function FloatingToolbar(props: ToolbarProps) {
         props.isActive = isHistoryPanelVisible
         props.badge = stateHistory.length > 0 ? stateHistory.length.toString() : undefined
         break
+      case "minimize":
+        props.variant = isMinimized ? "default" : "outline"
+        props.isActive = isMinimized
+        break
+      case "maximize":
+        props.variant = isMinimized ? "default" : "outline"
+        props.isActive = !isMinimized
+        break
+      case "fullscreen":
+        props.variant = typeof document !== 'undefined' && !!document.fullscreenElement ? "default" : "outline"
+        props.isActive = typeof document !== 'undefined' && !!document.fullscreenElement
+        break
+      case "windowControls":
+        // This action does not have a direct state to track, so no isActive or badge
+        break
     }
 
     return props
-  }, [hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus, historyIndex, stateHistory, isDebugPanelVisible, isHistoryPanelVisible])
+  }, [hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus, historyIndex, stateHistory, isDebugPanelVisible, isHistoryPanelVisible, isMinimized])
 
   const toggleSectionExpansion = useCallback((sectionId: string) => {
     setExpandedSections(prev => 
@@ -1035,6 +1088,22 @@ export function FloatingToolbar(props: ToolbarProps) {
                 </div>
               </motion.div>
             )}
+
+            {/* Window Controls */}
+            <motion.div
+              key="window-controls"
+              initial={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+              animate={animationsEnabled ? { opacity: 1, height: "auto" } : {}}
+              exit={animationsEnabled ? { opacity: 0, height: 0 } : {}}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="px-2 py-1">
+                <div className="text-xs font-medium text-[rgb(var(--theme-secondary))] mb-1">
+                  Window
+                </div>
+                <WindowControls variant="minimal" className="justify-center" />
+              </div>
+            </motion.div>
 
             {/* Scroll padding for last item visibility */}
             <div className="h-2" />
