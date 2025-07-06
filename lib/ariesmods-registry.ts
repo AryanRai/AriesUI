@@ -44,6 +44,23 @@ export class AriesModsRegistry {
       const { PointCloudVisMod } = await import('@/ariesMods/visualization/PointCloudVis')
       const { ClockMod } = await import('@/ariesMods/utility/Clock')
       
+      // Import new comprehensive AriesMods
+      const { DataTableMod } = await import('@/ariesMods/utility/DataTable')
+      const { DiagnosticsMod } = await import('@/ariesMods/utility/Diagnostics')
+      const { RawMessagesMod } = await import('@/ariesMods/utility/RawMessages')
+      const { Scene3DMod } = await import('@/ariesMods/visualization/Scene3D')
+      const { FrequencySpectrumMod } = await import('@/ariesMods/visualization/FrequencySpectrum')
+      const { StateMachineVisMod } = await import('@/ariesMods/visualization/StateMachineVis')
+      const { MapsWidgetMod } = await import('@/ariesMods/visualization/MapsWidget')
+      const { ImageCameraMod } = await import('@/ariesMods/visualization/ImageCamera')
+      const { PlotChartMod } = await import('@/ariesMods/visualization/PlotChart')
+      const { PublishControlMod } = await import('@/ariesMods/controls/PublishControl')
+      const { RobotControlsMod } = await import('@/ariesMods/controls/RobotControls')
+      const { SpringDamperMod } = await import('@/ariesMods/physics/SpringDamper')
+      const { FluidSimulationMod } = await import('@/ariesMods/physics/FluidSimulation')
+      const { LatexPhysicsMod } = await import('@/ariesMods/physics/LatexPhysics')
+      
+      // Register existing mods
       this.registerMod(TemperatureSensorMod)
       this.registerMod(GenericSensorMod)
       this.registerMod(ToggleControlMod)
@@ -51,6 +68,22 @@ export class AriesModsRegistry {
       this.registerMod(PlotlyChartMod)
       this.registerMod(PointCloudVisMod)
       this.registerMod(ClockMod)
+      
+      // Register new comprehensive AriesMods
+      this.registerMod(DataTableMod)
+      this.registerMod(DiagnosticsMod)
+      this.registerMod(RawMessagesMod)
+      this.registerMod(Scene3DMod)
+      this.registerMod(FrequencySpectrumMod)
+      this.registerMod(StateMachineVisMod)
+      this.registerMod(MapsWidgetMod)
+      this.registerMod(ImageCameraMod)
+      this.registerMod(PlotChartMod)
+      this.registerMod(PublishControlMod)
+      this.registerMod(RobotControlsMod)
+      this.registerMod(SpringDamperMod)
+      this.registerMod(FluidSimulationMod)
+      this.registerMod(LatexPhysicsMod)
     } catch (error) {
       console.warn('Some built-in AriesMods failed to load:', error)
     }

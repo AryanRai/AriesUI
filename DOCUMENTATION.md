@@ -375,15 +375,31 @@ export default AdvancedChart
 - **ToggleControl.tsx** - On/off switches with hardware feedback
 - **SliderControl.tsx** - Range controls with real-time updates
 - **ButtonControl.tsx** - Command buttons with confirmation
+- **PublishControl.tsx** - Send commands to robots/hardware with safety features
+- **RobotControls.tsx** - Comprehensive robot control with movement, arm control, and mission planning
 
 #### Visualization (ariesMods/visualization/)
 - **LineChart.tsx** - Time-series data visualization
 - **PlotlyChart.tsx** - Advanced plotting with Plotly.js
 - **PointCloudVis.tsx** - 3D point cloud visualization
+- **Scene3D.tsx** - Three.js 3D scene visualization with sensor overlay
+- **FrequencySpectrum.tsx** - Real-time FFT visualization and spectrum analysis
+- **StateMachineVis.tsx** - Robot/system state machine visualization with transitions
+- **MapsWidget.tsx** - GPS maps with location data, routes, and navigation
+- **ImageCamera.tsx** - Live camera feeds with overlay support and recording
+- **PlotChart.tsx** - Enhanced plotting with mathematical functions (MATLAB-style)
 
 #### Utility (ariesMods/utility/)
 - **Clock.tsx** - Digital clock with time zones
 - **Calculator.tsx** - Basic calculator widget
+- **DataTable.tsx** - Full-featured data table with sorting, filtering, and export
+- **Diagnostics.tsx** - System health monitoring with CPU/memory/network status
+- **RawMessages.tsx** - Debug and inspect raw messages with filtering and search
+
+#### Physics (ariesMods/physics/)
+- **SpringDamper.tsx** - Interactive spring-mass-damper system simulation
+- **FluidSimulation.tsx** - Fluid dynamics simulation with particle systems
+- **LatexPhysics.tsx** - LaTeX equation rendering with physics formula library
 
 ### Plugin Registry
 ```typescript

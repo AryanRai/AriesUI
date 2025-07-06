@@ -407,6 +407,42 @@ const RobustAriesMod: React.FC<AriesModProps> = ({ data, config }) => {
 }
 ```
 
+## Widget Categories & Examples
+
+### High Priority Widgets (v3.1)
+
+The following comprehensive widgets have been implemented with hardware integration and performance optimization:
+
+#### Visualization Widgets
+- **FrequencySpectrum.tsx** - Real-time FFT visualization with configurable parameters, peak detection, and canvas-based rendering
+- **Scene3D.tsx** - Three.js integration framework with sensor overlays, robot pose visualization, and point cloud support
+- **StateMachineVis.tsx** - Interactive state machine visualization with transition animations and status indicators
+- **MapsWidget.tsx** - GPS maps widget with location tracking, route planning, and multiple map providers
+- **ImageCamera.tsx** - Live camera feed widget with overlay support, frame controls, and recording capabilities
+- **PlotChart.tsx** - Enhanced plotting widget with mathematical functions, time-series data, and MATLAB-style visualization
+
+#### Utility Widgets
+- **DataTable.tsx** - Full-featured table with sorting, filtering, pagination, export functionality, and real-time data display
+- **Diagnostics.tsx** - System health monitoring with CPU/memory/network status, diagnostic message aggregation, and module tracking
+- **RawMessages.tsx** - Debug and inspect raw messages with filtering, search, real-time monitoring, and message export
+
+#### Control Widgets
+- **PublishControl.tsx** - Send commands to robots/hardware with customizable controls, safety features, and command history
+- **RobotControls.tsx** - Comprehensive robot control interface with movement, arm control, mission planning, and safety features
+
+#### Physics Widgets
+- **SpringDamper.tsx** - Interactive spring-mass-damper physics simulation with real-time parameter control and visualization
+- **FluidSimulation.tsx** - Fluid dynamics simulation with particle systems, flow fields, and interactive controls
+- **LatexPhysics.tsx** - LaTeX equation rendering tool with comprehensive physics formula library and custom equation support
+
+### Performance Features (All Widgets)
+- Hardware acceleration optimization
+- Responsive design with compact mode handling  
+- Real-time data integration capabilities
+- Dummy data generation for testing
+- Configuration validation
+- Integration with Comms v3.0 backend streams
+
 ## Examples
 
 ### 1. Hardware Temperature Sensor
