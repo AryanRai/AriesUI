@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react'
+import React, { useRef, useMemo, useEffect, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Points, Point } from '@react-three/drei'
 import * as THREE from 'three'
@@ -56,27 +56,70 @@ const PointCloud: React.FC<{ data: PointCloudVisData }> = ({ data }) => {
   )
 }
 
-export const PointCloudVis: React.FC<AriesModProps> = ({ data, onConfigChange, onDataRequest }) => {
+export const PointCloudVis: React.FC<AriesModProps> = ({ data, width, height, onConfigChange, onDataRequest }) => {
   const visData = data as PointCloudVisData | null
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerSize, setContainerSize] = useState({ width: width || 400, height: height || 300 })
+
+  // Update container size when widget is resized
+  useEffect(() => {
+    if (width && height) {
+      setContainerSize({ width, height })
+    }
+  }, [width, height])
+
+  // Handle container resize with ResizeObserver for better responsiveness
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width: observedWidth, height: observedHeight } = entry.contentRect
+        setContainerSize({ 
+          width: observedWidth || width || 400, 
+          height: observedHeight || height || 300 
+        })
+      }
+    })
+
+    resizeObserver.observe(container)
+    
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [width, height])
 
   if (!visData || !visData.points || visData.points.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+      <div 
+        ref={containerRef}
+        className="w-full h-full flex items-center justify-center bg-gray-900 text-white"
+        style={{ width: containerSize.width, height: containerSize.height }}
+      >
         No point data available
       </div>
     )
   }
 
   return (
+    <div 
+      ref={containerRef}
+      className="w-full h-full"
+      style={{ width: containerSize.width, height: containerSize.height }}
+    >
     <Canvas
       camera={{ position: [0, 0, 5], fov: 50 }}
       className="w-full h-full bg-gray-900"
+        style={{ width: containerSize.width, height: containerSize.height }}
+        resize={{ scroll: false, debounce: { scroll: 50, resize: 0 } }}
     >
       <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} />
       <PointCloud data={visData} />
       <OrbitControls />
     </Canvas>
+    </div>
   )
 }
 

@@ -28,11 +28,13 @@ import {
   X,
   Check,
   AlertCircle,
+  History,
 } from "lucide-react"
 import { useComms } from "@/components/comms-context"
 import { useAnimationPreferences } from "@/hooks/use-animation-preferences"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { cn } from "@/lib/utils"
+import { EditHistoryPanel } from "@/components/edit-history-panel"
 
 // Import the GridState type from main-content to ensure consistency
 interface MainGridWidget {
@@ -114,6 +116,7 @@ interface ToolbarProps {
   addNestContainer: () => void
   setIsDebugPanelVisible: (visible: boolean) => void
   isDebugPanelVisible: boolean
+  onNavigateToHistory?: (index: number) => void
 }
 
 // Quick action configuration for minimized view
@@ -153,6 +156,7 @@ const AVAILABLE_ACTIONS = {
   destroy: { id: "destroy", icon: Trash2, label: "Destroy", variant: "destructive" as const },
   create: { id: "create", icon: Plus, label: "Create", variant: "outline" as const },
   browse: { id: "browse", icon: FolderOpen, label: "Browse", variant: "outline" as const },
+  history: { id: "history", icon: History, label: "Edit History", variant: "outline" as const },
 } as const
 
 type ActionId = keyof typeof AVAILABLE_ACTIONS
@@ -182,7 +186,7 @@ const TOOLBAR_SECTIONS: ToolbarSection[] = [
   {
     id: "history",
     label: "History",
-    actions: ["undo", "redo"],
+    actions: ["undo", "redo", "history"],
     collapsible: true,
     defaultOpen: true,
   },
@@ -270,6 +274,7 @@ export function FloatingToolbar(props: ToolbarProps) {
   const [isCustomizing, setIsCustomizing] = useState(false)
   const [canScroll, setCanScroll] = useState(false)
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
+  const [isHistoryPanelVisible, setIsHistoryPanelVisible] = useState(false)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -295,7 +300,16 @@ export function FloatingToolbar(props: ToolbarProps) {
     addNestContainer,
     setIsDebugPanelVisible,
     isDebugPanelVisible,
+    onNavigateToHistory,
   } = props
+
+  // Handle navigation to specific history entry
+  const handleNavigateToHistory = useCallback((index: number) => {
+    if (onNavigateToHistory) {
+      onNavigateToHistory(index)
+    }
+    setIsHistoryPanelVisible(false) // Close panel after navigation
+  }, [onNavigateToHistory])
 
   // File input ref for import functionality
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -422,10 +436,12 @@ export function FloatingToolbar(props: ToolbarProps) {
         return () => dispatch({ type: "ADD_LOG", payload: "Create functionality placeholder" })
       case "browse":
         return () => dispatch({ type: "ADD_LOG", payload: "Browse functionality placeholder" })
+      case "history":
+        return () => setIsHistoryPanelVisible(!isHistoryPanelVisible)
       default:
         return () => dispatch({ type: "ADD_LOG", payload: `Action ${actionId} triggered` })
     }
-  }, [saveGridState, isAutoSaveEnabled, setIsAutoSaveEnabled, undo, redo, exportGridState, addWidget, addNestContainer, setIsDebugPanelVisible, isDebugPanelVisible, dispatch])
+  }, [saveGridState, isAutoSaveEnabled, setIsAutoSaveEnabled, undo, redo, exportGridState, addWidget, addNestContainer, setIsDebugPanelVisible, isDebugPanelVisible, isHistoryPanelVisible, setIsHistoryPanelVisible, dispatch])
 
   const getActionProps = useCallback((actionId: ActionId) => {
     const baseAction = AVAILABLE_ACTIONS[actionId]
@@ -459,10 +475,15 @@ export function FloatingToolbar(props: ToolbarProps) {
         props.variant = isDebugPanelVisible ? "default" : "outline"
         props.isActive = isDebugPanelVisible
         break
+      case "history":
+        props.variant = isHistoryPanelVisible ? "default" : "outline"
+        props.isActive = isHistoryPanelVisible
+        props.badge = stateHistory.length > 0 ? stateHistory.length.toString() : undefined
+        break
     }
 
     return props
-  }, [hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus, historyIndex, stateHistory, isDebugPanelVisible])
+  }, [hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus, historyIndex, stateHistory, isDebugPanelVisible, isHistoryPanelVisible])
 
   const toggleSectionExpansion = useCallback((sectionId: string) => {
     setExpandedSections(prev => 
@@ -936,6 +957,37 @@ export function FloatingToolbar(props: ToolbarProps) {
           />
         </Card>
       </motion.div>
+
+      {/* Edit History Panel */}
+      {isHistoryPanelVisible && (
+        <motion.div
+          key="edit-history-panel"
+          initial={animationsEnabled ? { scale: 0.9, opacity: 0, x: 20 } : {}}
+          animate={animationsEnabled ? { scale: 1, opacity: 1, x: 0 } : {}}
+          exit={animationsEnabled ? { scale: 0.9, opacity: 0, x: 20 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="fixed z-50"
+          style={{
+            left: position.x + 320 + 10, // Position to the right of the toolbar
+            top: position.y,
+            maxHeight: '80vh',
+            width: '400px'
+          }}
+        >
+          <EditHistoryPanel
+            stateHistory={stateHistory}
+            historyIndex={historyIndex}
+            onNavigateToHistory={handleNavigateToHistory}
+            onUndo={undo}
+            onRedo={redo}
+            onClearHistory={() => {
+              // Could add clear history functionality here
+              dispatch({ type: "ADD_LOG", payload: "Clear history functionality not implemented yet" })
+            }}
+            className="h-full"
+          />
+        </motion.div>
+      )}
 
       {/* Hidden file input for import */}
       <input

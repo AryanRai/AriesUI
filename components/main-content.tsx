@@ -361,6 +361,20 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }, [historyIndex, stateHistory, dispatch])
 
+  // Navigate to specific history entry
+  const navigateToHistory = useCallback((index: number) => {
+    if (index >= 0 && index < stateHistory.length) {
+      const historyItem = stateHistory[index]
+      if (historyItem) {
+        setGridState(historyItem.gridState)
+        setViewport(historyItem.viewport)
+        setHistoryIndex(index)
+        setHasUnsavedChanges(true)
+        dispatch({ type: "ADD_LOG", payload: `Navigated to history entry ${index + 1}` })
+      }
+    }
+  }, [stateHistory, dispatch])
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -855,7 +869,42 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }
 
-  // Handle wheel zoom with improved trackpad support
+  // Enhanced wheel handling for smooth zooming like Miro
+  const [zoomVelocity, setZoomVelocity] = useState(0)
+  const [lastWheelTime, setLastWheelTime] = useState(0)
+  const zoomAnimationRef = useRef<number | null>(null)
+
+  // Smooth zoom animation with momentum
+  useEffect(() => {
+    if (Math.abs(zoomVelocity) > 0.001) {
+      const animate = () => {
+        setZoomVelocity(prev => {
+          const newVelocity = prev * 0.85 // Friction/damping
+          
+          if (Math.abs(newVelocity) > 0.001) {
+            setViewport(current => ({
+              ...current,
+              zoom: Math.max(0.05, Math.min(10, current.zoom * (1 + newVelocity)))
+            }))
+            zoomAnimationRef.current = requestAnimationFrame(animate)
+            return newVelocity
+          } else {
+            zoomAnimationRef.current = null
+            return 0
+          }
+        })
+      }
+      
+      zoomAnimationRef.current = requestAnimationFrame(animate)
+    }
+
+    return () => {
+      if (zoomAnimationRef.current) {
+        cancelAnimationFrame(zoomAnimationRef.current)
+      }
+    }
+  }, [zoomVelocity])
+
   const handleWheel = useCallback((e: WheelEvent) => {
     // If hovering over a nest, do not handle wheel events on main grid
     if (isHoveringOverNest) {
@@ -865,29 +914,69 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     if (e.ctrlKey) {
       e.preventDefault()
       
-      // Improved zoom handling for trackpad vs mouse wheel
+      const currentTime = Date.now()
+      const timeDelta = currentTime - lastWheelTime
+      setLastWheelTime(currentTime)
+
+      // Enhanced trackpad vs mouse wheel detection
+      const isTrackpad = Math.abs(e.deltaY) < 50 && timeDelta < 50
+      const isPinch = e.ctrlKey && Math.abs(e.deltaY) < 10
+      
+      // Get mouse position for zoom-to-cursor
+      const containerRect = containerRef.current?.getBoundingClientRect()
+      if (!containerRect) return
+
+      const mouseX = e.clientX - containerRect.left
+      const mouseY = e.clientY - containerRect.top
+      
+      // Convert to world coordinates before zoom
+      const worldX = mouseX / viewport.zoom - viewport.x
+      const worldY = mouseY / viewport.zoom - viewport.y
+
       let zoomDelta: number
-      if (Math.abs(e.deltaY) < 50) {
-        // Likely trackpad - smaller, more granular steps
-        zoomDelta = e.deltaY > 0 ? 0.95 : 1.05
+      
+      if (isPinch) {
+        // Pinch gesture - very fine control
+        zoomDelta = -e.deltaY * 0.01
+      } else if (isTrackpad) {
+        // Trackpad - smooth, continuous zooming
+        zoomDelta = -e.deltaY * 0.005
+        
+        // Add momentum for trackpad
+        const velocityDelta = -e.deltaY * 0.002
+        setZoomVelocity(prev => prev + velocityDelta)
       } else {
-        // Likely mouse wheel - larger steps
-        zoomDelta = e.deltaY > 0 ? 0.85 : 1.15
+        // Mouse wheel - discrete steps but smoother than before
+        zoomDelta = e.deltaY > 0 ? -0.1 : 0.1
       }
+      
+      setViewport((prev) => {
+        const newZoom = Math.max(0.05, Math.min(10, prev.zoom * (1 + zoomDelta)))
+        const zoomRatio = newZoom / prev.zoom
+        
+        // Zoom towards cursor position
+        const newX = worldX - mouseX / newZoom
+        const newY = worldY - mouseY / newZoom
+        
+        return {
+          x: newX,
+          y: newY,
+          zoom: newZoom
+        }
+      })
+    } else {
+      // Enhanced smooth panning
+      const panSpeed = 1.2
+      const deltaX = e.deltaX * panSpeed
+      const deltaY = e.deltaY * panSpeed
       
       setViewport((prev) => ({
         ...prev,
-        zoom: Math.max(0.1, Math.min(3, prev.zoom * zoomDelta)),
-      }))
-    } else {
-      // Scroll to pan
-      setViewport((prev) => ({
-        ...prev,
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY,
+        x: prev.x - deltaX / prev.zoom,
+        y: prev.y - deltaY / prev.zoom,
       }))
     }
-  }, [isHoveringOverNest])
+  }, [isHoveringOverNest, lastWheelTime, viewport.zoom])
 
   /**
    * Handle resize mouse down for widgets and nests
@@ -2180,6 +2269,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         addNestContainer={addNestContainer}
         setIsDebugPanelVisible={setIsDebugPanelVisible}
         isDebugPanelVisible={isDebugPanelVisible}
+        onNavigateToHistory={navigateToHistory}
       />
       
 
@@ -2331,8 +2421,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             {/* Hardware-Accelerated Main Grid Widgets */}
             {virtualGrid.visibleMainWidgets.map((widget) => (
               <GridWidget
-                key={widget.id}
-                widget={widget}
+                        key={widget.id}
+                          widget={widget}
                 isDragging={dragState.draggedId === widget.id}
                 isResizing={resizeState.resizedId === widget.id}
                 isPushed={pushedWidgets.has(widget.id)}
@@ -2359,11 +2449,11 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 onRemove={removeAriesWidget}
                 getResizeHandles={getResizeHandles}
               >
-                <AriesModWidget
-                  widget={widget}
-                  onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
+              <AriesModWidget
+                widget={widget}
+                onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
                   className="w-full h-full"
-                />
+              />
               </HardwareAcceleratedWidget>
           ))}
         </div>
