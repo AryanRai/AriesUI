@@ -251,10 +251,14 @@ export const EventHandlers: React.FC<EventHandlersProps> = ({
       setViewport((prev) => {
         const newZoom = Math.max(0.05, Math.min(10, prev.zoom * (1 + zoomDelta)))
         
-        // Fixed zoom-to-cursor calculation to prevent oscillation
-        const zoomRatio = newZoom / prev.zoom
-        const newX = prev.x + (mouseX / prev.zoom) * (1 - zoomRatio)
-        const newY = prev.y + (mouseY / prev.zoom) * (1 - zoomRatio)
+        // CORRECT zoom-to-cursor calculation:
+        // 1. Convert mouse position to world coordinates BEFORE zoom
+        const worldPointX = (mouseX / prev.zoom) - prev.x
+        const worldPointY = (mouseY / prev.zoom) - prev.y
+        
+        // 2. Calculate new viewport position so the same world point appears under cursor AFTER zoom
+        const newX = (mouseX / newZoom) - worldPointX
+        const newY = (mouseY / newZoom) - worldPointY
         
         return {
           x: newX,
