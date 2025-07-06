@@ -16,7 +16,6 @@ import { FloatingToolbar } from "@/components/floating-toolbar-merged"
 
 // Import enhanced hardware components
 import { EnhancedSensorWidget } from "@/components/widgets/enhanced-sensor-widget"
-import { HardwareAcceleratedWidget } from "@/components/widgets/hardware-accelerated-widget"
 import { commsClient } from "@/lib/comms-stream-client"
 import { MovableDebugPanel } from "@/components/debug/movable-debug-panel"
 import { GridContainer } from "@/components/grid/grid-container"
@@ -146,6 +145,23 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const [isViewportInfoVisible, setIsViewportInfoVisible] = useLocalStorage("aries-show-viewport-info", true)
   const [actionsToolbarPosition, setActionsToolbarPosition] = useLocalStorage("aries-actions-toolbar-pos", { top: 80, right: 20 })
   const [zoomToolbarPosition, setZoomToolbarPosition] = useLocalStorage("aries-zoom-toolbar-pos", { top: 80, left: 200 })
+  
+  // Reset all toolbar positions to default
+  const resetToolbarPositions = useCallback(() => {
+    // Reset unified toolbar position
+    localStorage.setItem("toolbar-position", JSON.stringify({ x: 50, y: 50 }))
+    
+    // Reset actions toolbar position
+    setActionsToolbarPosition({ top: 80, right: 20 })
+    
+    // Reset zoom toolbar position
+    setZoomToolbarPosition({ top: 80, left: 200 })
+    
+    // Dispatch event to notify other components (like FloatingToolbar)
+    window.dispatchEvent(new CustomEvent("resetToolbarPositions"))
+    
+    dispatch({ type: "ADD_LOG", payload: "All toolbar positions reset to default" })
+  }, [setActionsToolbarPosition, setZoomToolbarPosition, dispatch])
   const [isDraggingToolbar, setIsDraggingToolbar] = useState(false)
   const [isDraggingZoomToolbar, setIsDraggingZoomToolbar] = useState(false)
   const [toolbarDragStart, setToolbarDragStart] = useState({ x: 0, y: 0, top: 0, right: 0 })
@@ -1495,14 +1511,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
   // Hardware-accelerated mouse movement with RequestAnimationFrame
   const [lastMouseMoveTime, setLastMouseMoveTime] = useState(0)
-  const throttleInterval = 4 // 4ms throttle for ultra-responsive dragging (240fps)
+  const throttleInterval = 2 // Reduced from 4ms to 2ms for ultra-responsive dragging (500fps)
   const rafRef = useRef<number | null>(null)
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const now = Date.now()
-      // Skip throttling for nest dragging - instant response
-      if (dragState.draggedType !== "nest" && now - lastMouseMoveTime < throttleInterval) {
+      const now = performance.now()
+      // Reduce throttling for widgets, eliminate for nests for instant response
+      if (dragState.draggedType === "widget" && now - lastMouseMoveTime < throttleInterval) {
         return // Skip this frame to maintain performance for widgets only
       }
       setLastMouseMoveTime(now)
@@ -1561,16 +1577,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
       // Handle dragging with push physics
       if (dragState.isDragging && dragState.draggedId) {
-        // SMOOTH DRAGGING: Use raw coordinates during drag - NO GRID SNAPPING
+        // ULTRA-SMOOTH DRAGGING: Use raw coordinates during drag - NO GRID SNAPPING
         const rawX = worldX - dragState.offset.x
         const rawY = worldY - dragState.offset.y
         // Store both raw (smooth) and snapped positions
         const smoothX = rawX  // No grid snapping during drag
         const smoothY = rawY  // No grid snapping during drag
-        const snapX = Math.round(rawX / gridSize) * gridSize  // For drop positioning
-        const snapY = Math.round(rawY / gridSize) * gridSize  // For drop positioning
 
-        // Hardware-accelerated nest movement - direct update with RAF
+        // Enhanced hardware-accelerated nest movement - direct update with improved RAF
         if (dragState.draggedType === "nest") {
           // Check if nest is hovering over another nest for visual feedback
           const currentNest = gridState.nestContainers.find((n) => n.id === dragState.draggedId)
@@ -1596,26 +1610,27 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
             setDragOverNest(hoverNest)
           }
           
-          // Cancel previous RAF to prevent stacking
+          // Enhanced RAF implementation for ultra-smooth nest dragging
           if (rafRef.current) {
             cancelAnimationFrame(rafRef.current)
           }
           
-          // Schedule update for next frame
+          // Schedule immediate update for next frame with improved performance
           rafRef.current = requestAnimationFrame(() => {
-          updateGridState((prev) => ({
-            ...prev,
-            nestContainers: prev.nestContainers.map((nest) => 
-              nest.id === dragState.draggedId 
-                ? { ...nest, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
-                : nest
-            ),
-          }))
+            updateGridState((prev) => ({
+              ...prev,
+              nestContainers: prev.nestContainers.map((nest) => 
+                nest.id === dragState.draggedId 
+                  ? { ...nest, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                  : nest
+              ),
+            }))
+            rafRef.current = null // Clear reference immediately
           })
           return // Early return to avoid any other processing
         }
 
-        // Get the dragged widget for push physics
+        // Enhanced widget dragging with improved smoothness
         let draggedWidget: any = null
 
         if (dragState.draggedType === "widget") {
@@ -1643,21 +1658,28 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               }
               setDragOverNest(hoverNest)
               
-              // If hovering over a nest, disable push physics and use smooth movement
+              // Enhanced RAF for widget dragging when hovering over nest
               if (hoverNest) {
-                updateGridState((prev) => ({
-                  ...prev,
-                  mainWidgets: prev.mainWidgets.map((widget) =>
-                    widget.id === dragState.draggedId
-                      ? { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
-                      : widget
-                  ),
-                  mainAriesWidgets: prev.mainAriesWidgets.map((widget) =>
-                    widget.id === dragState.draggedId
-                      ? { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
-                      : widget
-                  ),
-                }))
+                if (rafRef.current) {
+                  cancelAnimationFrame(rafRef.current)
+                }
+                
+                rafRef.current = requestAnimationFrame(() => {
+                  updateGridState((prev) => ({
+                    ...prev,
+                    mainWidgets: prev.mainWidgets.map((widget) =>
+                      widget.id === dragState.draggedId
+                        ? { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                        : widget
+                    ),
+                    mainAriesWidgets: prev.mainAriesWidgets.map((widget) =>
+                      widget.id === dragState.draggedId
+                        ? { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                        : widget
+                    ),
+                  }))
+                  rafRef.current = null
+                })
                 return // Skip push physics entirely when hovering over a nest
               }
 
@@ -1683,37 +1705,44 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
               // Clear pushed widgets after animation
               setTimeout(() => setPushedWidgets(new Set()), 200)
 
-              // Update state with smooth coordinates for dragged widget and pushed widgets
-              updateGridState((prev) => ({
-                ...prev,
-                mainWidgets: prev.mainWidgets.map((widget) => {
-                  if (widget.id === dragState.draggedId) {
-                    return { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
-                  }
-                  const pushedWidget = pushedMainWidgets.find((p) => p.id === widget.id)
-                  if (pushedWidget && pushedWidget.pushed) {
-                    return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
-                  }
-                  return widget
-                }),
-                mainAriesWidgets: prev.mainAriesWidgets.map((widget) => {
-                  if (widget.id === dragState.draggedId) {
-                    return { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
-                  }
-                  const pushedWidget = pushedMainAriesWidgets.find((p) => p.id === widget.id)
-                  if (pushedWidget && pushedWidget.pushed) {
-                    return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
-                  }
-                  return widget
-                }),
-                nestContainers: prev.nestContainers.map((nest) => {
-                  const pushedNest = pushedNests.find((p) => p.id === nest.id)
-                  if (pushedNest && pushedNest.pushed) {
-                    return { ...nest, x: pushedNest.x, y: pushedNest.y, updatedAt: new Date().toISOString() }
-                  }
-                  return nest
-                }),
-              }))
+              // Enhanced RAF for widget dragging with push physics
+              if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current)
+              }
+              
+              rafRef.current = requestAnimationFrame(() => {
+                updateGridState((prev) => ({
+                  ...prev,
+                  mainWidgets: prev.mainWidgets.map((widget) => {
+                    if (widget.id === dragState.draggedId) {
+                      return { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                    }
+                    const pushedWidget = pushedMainWidgets.find((p) => p.id === widget.id)
+                    if (pushedWidget && pushedWidget.pushed) {
+                      return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                    }
+                    return widget
+                  }),
+                  mainAriesWidgets: prev.mainAriesWidgets.map((widget) => {
+                    if (widget.id === dragState.draggedId) {
+                      return { ...widget, x: smoothX, y: smoothY, updatedAt: new Date().toISOString() }
+                    }
+                    const pushedWidget = pushedMainAriesWidgets.find((p) => p.id === widget.id)
+                    if (pushedWidget && pushedWidget.pushed) {
+                      return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                    }
+                    return widget
+                  }),
+                  nestContainers: prev.nestContainers.map((nest) => {
+                    const pushedNest = pushedNests.find((p) => p.id === nest.id)
+                    if (pushedNest && pushedNest.pushed) {
+                      return { ...nest, x: pushedNest.x, y: pushedNest.y, updatedAt: new Date().toISOString() }
+                    }
+                    return nest
+                  }),
+                }))
+                rafRef.current = null
+              })
             }
           } else if (dragState.sourceContainer === "nest" && dragState.sourceNestId) {
             const nest = gridState.nestContainers.find((n) => n.id === dragState.sourceNestId)
@@ -1750,29 +1779,37 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
                 // Clear pushed widgets after animation
                 setTimeout(() => setPushedWidgets(new Set()), 200)
 
-                updateGridState((prev) => ({
-                  ...prev,
-                  nestedWidgets: prev.nestedWidgets.map((widget) => {
-                    if (widget.id === dragState.draggedId) {
-                      return { ...widget, x: relativeX, y: relativeY, updatedAt: new Date().toISOString() }
-                    }
-                    const pushedWidget = pushedNestedWidgets.find((p) => p.id === widget.id)
-                    if (pushedWidget && pushedWidget.pushed) {
-                      return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
-                    }
-                    return widget
-                  }),
-                  nestedAriesWidgets: prev.nestedAriesWidgets.map((widget) => {
-                    if (widget.id === dragState.draggedId) {
-                      return { ...widget, x: relativeX, y: relativeY, updatedAt: new Date().toISOString() }
-                    }
-                    const pushedWidget = pushedNestedAriesWidgets.find((p) => p.id === widget.id)
-                    if (pushedWidget && pushedWidget.pushed) {
-                      return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
-                    }
-                    return widget
-                  }),
-                }))
+                // Enhanced RAF for nested widget dragging
+                if (rafRef.current) {
+                  cancelAnimationFrame(rafRef.current)
+                }
+                
+                rafRef.current = requestAnimationFrame(() => {
+                  updateGridState((prev) => ({
+                    ...prev,
+                    nestedWidgets: prev.nestedWidgets.map((widget) => {
+                      if (widget.id === dragState.draggedId) {
+                        return { ...widget, x: relativeX, y: relativeY, updatedAt: new Date().toISOString() }
+                      }
+                      const pushedWidget = pushedNestedWidgets.find((p) => p.id === widget.id)
+                      if (pushedWidget && pushedWidget.pushed) {
+                        return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                      }
+                      return widget
+                    }),
+                    nestedAriesWidgets: prev.nestedAriesWidgets.map((widget) => {
+                      if (widget.id === dragState.draggedId) {
+                        return { ...widget, x: relativeX, y: relativeY, updatedAt: new Date().toISOString() }
+                      }
+                      const pushedWidget = pushedNestedAriesWidgets.find((p) => p.id === widget.id)
+                      if (pushedWidget && pushedWidget.pushed) {
+                        return { ...widget, x: pushedWidget.x, y: pushedWidget.y, updatedAt: new Date().toISOString() }
+                      }
+                      return widget
+                    }),
+                  }))
+                  rafRef.current = null
+                })
               }
             }
           }
@@ -2534,6 +2571,15 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
           title={isViewportInfoVisible ? "Hide Viewport Info" : "Show Viewport Info"}
         >
           {isViewportInfoVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={resetToolbarPositions}
+          title="Reset all toolbar positions to default"
+        >
+          <span className="text-xs">⌘</span>
         </Button>
       </div>
 

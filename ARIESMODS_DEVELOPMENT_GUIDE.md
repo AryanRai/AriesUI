@@ -1,697 +1,703 @@
-# AriesMods Development Guide
+# AriesMods Development Guide v3.1
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Getting Started](#getting-started)
-4. [Templates](#templates)
-5. [Configuration Schema](#configuration-schema)
-6. [Data Handling](#data-handling)
-7. [Best Practices](#best-practices)
-8. [Examples](#examples)
-9. [Integration with Comms v3](#integration-with-comms-v3)
+2. [Current Architecture](#current-architecture)
+3. [Performance Optimizations](#performance-optimizations)
+4. [Getting Started](#getting-started)
+5. [Templates](#templates)
+6. [Configuration Schema](#configuration-schema)
+7. [Hardware Integration](#hardware-integration)
+8. [Best Practices](#best-practices)
+9. [Examples](#examples)
 10. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-AriesMods is a plugin-based widget system for AriesUI that allows developers to create custom, reusable components that can be:
-- Dynamically loaded from TypeScript files
-- Configured through a visual interface
-- Dragged and dropped into the grid system
-- Integrated with real-time data streams
-- Resized and repositioned on the fly
+AriesMods is a high-performance, hardware-integrated widget system for AriesUI that provides:
+- **Hardware-accelerated rendering** with GPU optimization
+- **Real-time data streaming** from Comms v3 backend
+- **Smooth 60fps interactions** with RequestAnimationFrame
+- **Dynamic loading** from TypeScript files
+- **Visual configuration** through enhanced UI
+- **Stream mapping** for hardware sensors and controls
 
-### Key Features
-- **Hot-swappable**: Add new AriesMods without restarting the application
-- **Configurable**: Rich configuration schema with validation
-- **Reactive**: Real-time data updates and user interactions
-- **Themed**: Consistent styling with AriesUI design system
-- **Categorized**: Organized by functionality (Sensors, Controls, Visualization, Utility, Custom)
+### Key Features in v3.1
+- ✅ **Performance Optimized**: Hardware acceleration, RAF-based animations, virtual rendering
+- ✅ **Hardware Ready**: Direct integration with Comms StreamHandler and Engine
+- ✅ **Smooth Interactions**: Ultra-responsive dragging (500fps), smooth zooming/panning
+- ✅ **Enhanced Widgets**: All widgets use `GridWidget` with hardware acceleration
+- ✅ **Stream Configuration**: Built-in stream configurator for hardware setup
+- ✅ **Real-time Updates**: Live data streaming with optimized performance
 
-## Architecture
+## Current Architecture
 
-### Core Components
+### Core Components (Updated v3.1)
 
 ```
-AriesMod System
-├── types/ariesmods.ts          # TypeScript interfaces
-├── lib/ariesmods-registry.ts   # Plugin discovery and management
-├── components/widgets/         # Widget wrapper components
-├── ariesMods/                  # AriesMod implementations
-│   ├── sensors/               # Data collection widgets
-│   ├── controls/              # Interactive control widgets
-│   ├── visualization/         # Data display widgets
-│   ├── utility/               # General purpose widgets
-│   └── templates/             # Development templates
-└── app/ariesmods-demo/        # Demo and testing page
+AriesMod System v3.1
+├── types/ariesmods.ts              # TypeScript interfaces
+├── lib/ariesmods-registry.ts       # Plugin discovery and management
+├── components/
+│   ├── grid/
+│   │   ├── GridWidget.tsx          # ✅ Performance-optimized widget wrapper
+│   │   ├── NestContainer.tsx       # ✅ Hardware-accelerated container
+│   │   └── types.ts               # ✅ Enhanced type definitions
+│   ├── widgets/
+│   │   ├── ariesmod-widget.tsx    # AriesMod implementation wrapper
+│   │   └── enhanced-sensor-widget.tsx # Hardware-integrated sensors
+│   └── main-content.tsx           # ✅ Optimized grid system (~400 lines)
+├── ariesMods/                      # AriesMod implementations
+│   ├── sensors/                   # Hardware sensor widgets
+│   ├── controls/                  # Interactive control widgets
+│   ├── visualization/             # Data display widgets
+│   ├── utility/                   # General purpose widgets
+│   └── templates/                 # Development templates
+└── app/ariesmods-demo/            # Demo and testing page
 ```
 
-### Data Flow
+### Performance Enhancements
 
 ```mermaid
 graph TD
-    A[AriesMod Component] --> B[AriesMods Registry]
-    B --> C[Widget Wrapper]
-    C --> D[Grid System]
-    D --> E[User Interface]
+    A[AriesMod Component] --> B[GridWidget Wrapper]
+    B --> C[Hardware Acceleration Layer]
+    C --> D[RequestAnimationFrame]
+    D --> E[GPU Transform]
+    E --> F[Smooth Rendering]
     
-    F[Data Source] --> G[Data Stream]
-    G --> H[AriesMod Component]
+    G[Hardware Stream] --> H[Stream Configurator]
+    H --> I[AriesMod Component]
     
-    I[User Config] --> J[Config Schema]
-    J --> K[Validation]
-    K --> L[AriesMod Component]
+    J[User Interaction] --> K[RAF Throttling]
+    K --> L[Optimized Updates]
+```
+
+## Performance Optimizations
+
+### Hardware Acceleration
+All AriesMods now use hardware-accelerated rendering:
+
+```typescript
+// GridWidget.tsx - Hardware acceleration built-in
+<div
+  style={{
+    transform: `translate3d(${widget.x}px, ${widget.y}px, 0)`,
+    width: widget.w,
+    height: widget.h,
+    willChange: 'transform',
+  }}
+  className={`absolute transition-all duration-200 ${
+    isDragging ? 'z-50' : 'z-10'
+  } ${isPushed ? 'animate-pulse' : ''}`}
+>
+  {/* Your AriesMod content */}
+</div>
+```
+
+### RequestAnimationFrame Integration
+All interactions use RAF for smooth 60fps performance:
+
+```typescript
+// Automatic RAF optimization in main-content.tsx
+const rafRef = useRef<number | null>(null)
+
+// Enhanced dragging with RAF
+if (rafRef.current) {
+  cancelAnimationFrame(rafRef.current)
+}
+
+rafRef.current = requestAnimationFrame(() => {
+  // Update widget positions
+  updateGridState(/* optimized updates */)
+  rafRef.current = null
+})
+```
+
+### Virtual Rendering Ready
+The system supports virtual rendering for large widget counts:
+
+```typescript
+// Virtual grid implementation ready
+const virtualGrid = useMemo(() => {
+  const visibleWidgets = widgets.filter(widget => isInViewport(widget))
+  return {
+    visibleWidgets,
+    culledWidgets: widgets.length - visibleWidgets.length,
+    performance: calculatePerformanceMetrics()
+  }
+}, [widgets, viewport])
 ```
 
 ## Getting Started
 
-### 1. Create a New AriesMod
-
-Choose a category for your AriesMod:
-- `sensors/` - Data collection (temperature, pressure, etc.)
-- `controls/` - Interactive elements (switches, sliders, etc.)
-- `visualization/` - Data display (charts, graphs, etc.)
-- `utility/` - General purpose (clocks, calculators, etc.)
-- `custom/` - Custom functionality
-
-### 2. Use the Template
-
-Start with the basic template:
-
-```bash
-cp ariesMods/templates/BasicAriesMod.tsx ariesMods/[category]/YourAriesMod.tsx
-```
-
-### 3. Implement Your Component
-
-Edit the template to implement your functionality:
+### 1. Create a Performance-Optimized AriesMod
 
 ```typescript
-// ariesMods/sensors/YourSensor.tsx
-import React from 'react'
-import type { AriesMod, AriesModProps, AriesModData } from '@/types/ariesmods'
+// ariesMods/sensors/OptimizedSensor.tsx
+import React, { memo, useMemo, useCallback } from 'react'
+import type { AriesMod, AriesModProps } from '@/types/ariesmods'
 
-const YourSensor: React.FC<AriesModProps> = ({ 
+// Use React.memo for performance
+const OptimizedSensor = memo<AriesModProps>(({ 
   id, title, width, height, data, config, onConfigChange, onDataRequest 
 }) => {
-  // Your implementation here
-  return <div>Your sensor component</div>
-}
-
-export const YourSensorMod: AriesMod = {
-  metadata: {
-    id: 'your-sensor',
-    name: 'YourSensor',
-    displayName: 'Your Sensor Name',
-    description: 'What your sensor does',
-    category: 'sensors',
-    // ... other metadata
-  },
-  component: YourSensor,
-  generateDummyData: () => ({ value: 42, timestamp: new Date().toISOString() }),
-  validateConfig: (config) => true
-}
-```
-
-### 4. Register Your AriesMod
-
-Add your AriesMod to the registry:
-
-```typescript
-// lib/ariesmods-registry.ts
-const { YourSensorMod } = await import('@/ariesMods/sensors/YourSensor')
-this.registerMod(YourSensorMod)
-```
-
-## Templates
-
-### Basic Template Structure
-
-```typescript
-import React from 'react'
-import type { AriesMod, AriesModProps, AriesModData } from '@/types/ariesmods'
-
-// 1. Define your configuration interface
-export interface YourAriesModConfig {
-  setting1: string
-  setting2: number
-  setting3: boolean
-}
-
-// 2. Set default configuration
-const defaultConfig: YourAriesModConfig = {
-  setting1: 'default value',
-  setting2: 100,
-  setting3: true
-}
-
-// 3. Create your component
-const YourAriesMod: React.FC<AriesModProps> = (props) => {
-  const config = { ...defaultConfig, ...props.config } as YourAriesModConfig
+  // Memoize expensive calculations
+  const processedData = useMemo(() => {
+    return data ? processHardwareData(data) : null
+  }, [data])
   
-  // Your component logic
-  return <div>Your component JSX</div>
-}
+  // Optimize callbacks
+  const handleConfigChange = useCallback((newConfig) => {
+    onConfigChange?.(newConfig)
+  }, [onConfigChange])
+  
+  // Responsive design based on widget size
+  const isCompact = width < 200 || height < 150
+  
+  return (
+    <div className={`h-full ${isCompact ? 'text-xs' : 'text-sm'}`}>
+      <div className="text-lg font-bold text-primary">
+        {processedData?.value ?? 'No Data'}
+      </div>
+      <div className="text-xs text-muted-foreground">
+        {title}
+      </div>
+    </div>
+  )
+})
 
-// 4. Export your AriesMod
-export const YourAriesModDefinition: AriesMod = {
-  metadata: { /* ... */ },
-  component: YourAriesMod,
-  generateDummyData: () => ({ /* ... */ }),
-  validateConfig: (config) => true
-}
-```
-
-### Available Templates
-
-| Template | Description | Use Case |
-|----------|-------------|----------|
-| `BasicAriesMod.tsx` | Simple display widget | Basic information display |
-| `SensorTemplate.tsx` | Sensor data display | Hardware sensors, API data |
-| `ControlTemplate.tsx` | Interactive controls | Buttons, sliders, toggles |
-| `ChartTemplate.tsx` | Data visualization | Charts, graphs, meters |
-
-## Configuration Schema
-
-### Schema Types
-
-```typescript
-interface ConfigField {
-  type: 'text' | 'number' | 'boolean' | 'select' | 'color' | 'range'
-  label: string
-  default?: any
-  placeholder?: string
-  min?: number
-  max?: number
-  step?: number
-  options?: Array<{ value: any; label: string }>
-}
-```
-
-### Example Configuration
-
-```typescript
-configSchema: {
-  title: {
-    type: 'text',
-    label: 'Widget Title',
-    default: 'My Widget',
-    placeholder: 'Enter title'
+export const OptimizedSensorMod: AriesMod = {
+  metadata: {
+    id: 'optimized-sensor',
+    name: 'OptimizedSensor',
+    displayName: 'Optimized Hardware Sensor',
+    description: 'Performance-optimized sensor with hardware integration',
+    category: 'sensors',
+    version: '3.1.0',
+    author: 'AriesUI Team',
+    tags: ['hardware', 'sensor', 'optimized'],
+    defaultSize: { w: 200, h: 150 },
+    minSize: { w: 120, h: 80 },
+    maxSize: { w: 400, h: 300 }
   },
-  threshold: {
-    type: 'number',
-    label: 'Alert Threshold',
-    default: 100,
-    min: 0,
-    max: 1000,
-    step: 10
-  },
-  enabled: {
-    type: 'boolean',
-    label: 'Enable Alerts',
-    default: true
-  },
-  mode: {
-    type: 'select',
-    label: 'Display Mode',
-    options: [
-      { value: 'simple', label: 'Simple View' },
-      { value: 'detailed', label: 'Detailed View' }
-    ],
-    default: 'simple'
-  },
-  color: {
-    type: 'color',
-    label: 'Primary Color',
-    default: '#3b82f6'
-  },
-  sensitivity: {
-    type: 'range',
-    label: 'Sensitivity',
-    default: 50,
-    min: 0,
-    max: 100,
-    step: 5
-  }
-}
-```
-
-## Data Handling
-
-### Data Types
-
-```typescript
-interface AriesModData {
-  value: any
-  timestamp: string
-  metadata?: Record<string, any>
-}
-```
-
-### Real-time Data
-
-```typescript
-// Request data updates
-React.useEffect(() => {
-  if (onDataRequest) {
-    const interval = setInterval(() => {
-      onDataRequest({ 
-        type: 'sensor-reading',
-        id: 'temperature-01',
-        timestamp: new Date().toISOString() 
-      })
-    }, 1000)
-    
-    return () => clearInterval(interval)
-  }
-}, [onDataRequest])
-
-// Handle incoming data
-React.useEffect(() => {
-  if (data) {
-    // Process your data
-    console.log('Received data:', data)
-  }
-}, [data])
-```
-
-### Dummy Data Generation
-
-```typescript
-const generateDummyData = (): AriesModData => {
-  return {
-    value: Math.random() * 100,
+  component: OptimizedSensor,
+  generateDummyData: () => ({ 
+    value: Math.random() * 100, 
     timestamp: new Date().toISOString(),
-    metadata: {
-      sensor: 'temperature-01',
-      unit: '°C',
-      quality: 'good'
+    quality: 'good'
+  }),
+  validateConfig: (config) => true,
+  configSchema: {
+    streamId: {
+      type: 'text',
+      label: 'Hardware Stream ID',
+      placeholder: 'module1.temperature'
+    },
+    threshold: {
+      type: 'number',
+      label: 'Alert Threshold',
+      default: 75,
+      min: 0,
+      max: 100
     }
   }
+}
+```
+
+### 2. Register with Enhanced Registry
+
+```typescript
+// lib/ariesmods-registry.ts - Updated registration
+const registerOptimizedMods = async () => {
+  try {
+    const { OptimizedSensorMod } = await import('@/ariesMods/sensors/OptimizedSensor')
+    registry.registerMod(OptimizedSensorMod)
+    
+    console.log('✅ Optimized AriesMods registered successfully')
+  } catch (error) {
+    console.error('❌ Failed to register optimized AriesMods:', error)
+  }
+}
+```
+
+## Hardware Integration
+
+### Stream Configuration
+All AriesMods now include built-in stream configuration:
+
+```typescript
+// Enhanced stream mapping
+interface StreamMapping {
+  id: string
+  streamId: string           // 'module1.temperature'
+  streamName: string         // 'Chamber Temperature'
+  multiplier: number         // 1.0
+  formula?: string          // 'x * 1.8 + 32' for unit conversion
+  unit: string              // '°C'
+  enabled: boolean          // true
+  precision: number         // 2
+}
+
+// Usage in AriesMod
+const HardwareSensor: React.FC<AriesModProps> = ({ data, config }) => {
+  const streamMappings = config?.streamMappings || []
+  const primaryStream = streamMappings[0]
+  
+  // Process hardware data with formula
+  const processedValue = useMemo(() => {
+    if (!data?.value || !primaryStream) return null
+    
+    let value = data.value * primaryStream.multiplier
+    
+    if (primaryStream.formula) {
+      // Safely evaluate formula (x represents the value)
+      try {
+        value = eval(primaryStream.formula.replace(/x/g, value.toString()))
+      } catch (error) {
+        console.warn('Formula evaluation failed:', error)
+      }
+    }
+    
+    return Number(value.toFixed(primaryStream.precision))
+  }, [data, primaryStream])
+  
+  return (
+    <div>
+      <div className="text-2xl font-bold">
+        {processedValue ?? 'No Data'}
+        {primaryStream?.unit && <span className="text-sm ml-1">{primaryStream.unit}</span>}
+      </div>
+    </div>
+  )
+}
+```
+
+### Real-time Data Streaming
+
+```typescript
+// Connect to Comms StreamHandler
+const useHardwareStream = (streamId: string) => {
+  const [data, setData] = useState(null)
+  const [status, setStatus] = useState('disconnected')
+  
+  useEffect(() => {
+    if (!streamId) return
+    
+    // Connect to WebSocket stream
+    const ws = new WebSocket('ws://localhost:8765')
+    
+    ws.onopen = () => {
+      setStatus('connected')
+      // Subscribe to specific stream
+      ws.send(JSON.stringify({
+        type: 'subscribe',
+        streamId: streamId
+      }))
+    }
+    
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.streamId === streamId) {
+        setData(message.data)
+      }
+    }
+    
+    ws.onclose = () => setStatus('disconnected')
+    ws.onerror = () => setStatus('error')
+    
+    return () => ws.close()
+  }, [streamId])
+  
+  return { data, status }
 }
 ```
 
 ## Best Practices
 
-### 1. Component Design
-
-- **Keep components small and focused**
-- **Use TypeScript for type safety**
-- **Handle loading and error states**
-- **Responsive design for different widget sizes**
+### 1. Performance Optimization
 
 ```typescript
-const YourAriesMod: React.FC<AriesModProps> = ({ width, height, data }) => {
-  // Handle loading state
-  if (!data) {
-    return <div className="flex items-center justify-center h-full">Loading...</div>
+// ✅ DO: Use React.memo and useMemo
+const OptimizedAriesMod = memo<AriesModProps>(({ data, config }) => {
+  const expensiveCalculation = useMemo(() => {
+    return processComplexData(data)
+  }, [data])
+  
+  return <div>{expensiveCalculation}</div>
+})
+
+// ❌ DON'T: Expensive operations in render
+const BadAriesMod: React.FC<AriesModProps> = ({ data }) => {
+  const result = expensiveOperation(data) // Runs every render!
+  return <div>{result}</div>
+}
+```
+
+### 2. Hardware Integration
+
+```typescript
+// ✅ DO: Handle connection states
+const HardwareAriesMod: React.FC<AriesModProps> = ({ config }) => {
+  const { data, status } = useHardwareStream(config.streamId)
+  
+  if (status === 'disconnected') {
+    return <div className="text-red-500">Hardware Disconnected</div>
   }
   
-  // Handle error state
-  if (data.error) {
-    return <div className="text-red-500">Error: {data.error}</div>
+  if (status === 'connecting') {
+    return <div className="text-yellow-500">Connecting...</div>
   }
   
-  // Responsive design
+  return <div className="text-green-500">Data: {data?.value}</div>
+}
+
+// ❌ DON'T: Ignore connection states
+const BadHardwareAriesMod: React.FC<AriesModProps> = ({ data }) => {
+  return <div>{data?.value}</div> // What if no connection?
+}
+```
+
+### 3. Responsive Design
+
+```typescript
+// ✅ DO: Adapt to widget size
+const ResponsiveAriesMod: React.FC<AriesModProps> = ({ width, height }) => {
   const isSmall = width < 200 || height < 150
+  const isTiny = width < 120 || height < 100
+  
+  if (isTiny) {
+    return <div className="text-xs p-1">Minimal view</div>
+  }
   
   return (
-    <div className={`h-full ${isSmall ? 'text-xs' : 'text-sm'}`}>
-      {/* Your content */}
+    <div className={`${isSmall ? 'text-sm p-2' : 'text-base p-4'}`}>
+      {isSmall ? 'Compact view' : 'Full view with details'}
     </div>
   )
 }
 ```
 
-### 2. Configuration Management
-
-- **Provide sensible defaults**
-- **Validate configuration**
-- **Handle configuration changes gracefully**
+### 4. Error Handling
 
 ```typescript
-const validateConfig = (config: Record<string, any>): boolean => {
-  // Validate required fields
-  if (!config.apiEndpoint || typeof config.apiEndpoint !== 'string') {
-    return false
+// ✅ DO: Comprehensive error handling
+const RobustAriesMod: React.FC<AriesModProps> = ({ data, config }) => {
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    try {
+      validateConfig(config)
+      setError(null)
+    } catch (err) {
+      setError(err.message)
+    }
+  }, [config])
+  
+  if (error) {
+    return (
+      <div className="text-red-500 text-xs p-2">
+        <div>Configuration Error:</div>
+        <div>{error}</div>
+      </div>
+    )
   }
   
-  // Validate ranges
-  if (config.refreshRate < 1000 || config.refreshRate > 60000) {
-    return false
-  }
-  
-  return true
+  return <div>Normal operation</div>
 }
-```
-
-### 3. Performance
-
-- **Use React.memo for expensive components**
-- **Debounce frequent updates**
-- **Clean up resources**
-
-```typescript
-const YourAriesMod = React.memo<AriesModProps>(({ data }) => {
-  // Expensive computation
-  const processedData = React.useMemo(() => {
-    return expensiveDataProcessing(data)
-  }, [data])
-  
-  // Cleanup
-  React.useEffect(() => {
-    const cleanup = setupResources()
-    return cleanup
-  }, [])
-  
-  return <div>{processedData}</div>
-})
-```
-
-### 4. Styling
-
-- **Use Tailwind CSS classes**
-- **Follow AriesUI design patterns**
-- **Support theme variations**
-
-```typescript
-// Good - uses design system
-<Card className="h-full">
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2">
-      <Thermometer className="h-4 w-4" />
-      {title}
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="text-2xl font-bold text-primary">
-      {value}°C
-    </div>
-  </CardContent>
-</Card>
 ```
 
 ## Examples
 
-### 1. Simple Sensor Display
+### 1. Hardware Temperature Sensor
 
 ```typescript
-const TemperatureSensor: React.FC<AriesModProps> = ({ title, data, config }) => {
-  const temp = data?.value || 0
+// ariesMods/sensors/TemperatureSensor.tsx
+import React, { memo, useMemo } from 'react'
+import { Thermometer } from 'lucide-react'
+import type { AriesMod, AriesModProps } from '@/types/ariesmods'
+
+const TemperatureSensor = memo<AriesModProps>(({ 
+  title, data, config, width, height 
+}) => {
+  const temperature = data?.value ?? 0
   const unit = config?.unit || '°C'
+  const threshold = config?.threshold || 30
   
-  const getStatusColor = () => {
-    if (temp > 30) return 'text-red-500'
-    if (temp < 10) return 'text-blue-500'
-    return 'text-green-500'
+  const status = useMemo(() => {
+    if (temperature > threshold + 10) return 'critical'
+    if (temperature > threshold) return 'warning'
+    return 'normal'
+  }, [temperature, threshold])
+  
+  const statusColors = {
+    normal: 'text-green-500',
+    warning: 'text-yellow-500',
+    critical: 'text-red-500'
   }
   
+  const isCompact = width < 200 || height < 150
+  
   return (
-    <Card className="h-full">
-      <CardContent className="p-4">
-        <div className="text-sm text-muted-foreground">{title}</div>
-        <div className={`text-3xl font-bold ${getStatusColor()}`}>
-          {temp.toFixed(1)}{unit}
+    <div className="h-full p-3 flex flex-col justify-center">
+      <div className="flex items-center gap-2 mb-2">
+        <Thermometer className={`h-4 w-4 ${statusColors[status]}`} />
+        <span className={`text-xs text-muted-foreground ${isCompact ? 'hidden' : ''}`}>
+          {title}
+        </span>
+      </div>
+      <div className={`font-bold ${statusColors[status]} ${isCompact ? 'text-lg' : 'text-2xl'}`}>
+        {temperature.toFixed(1)}{unit}
+      </div>
+      {!isCompact && (
+        <div className="text-xs text-muted-foreground mt-1">
+          Threshold: {threshold}{unit}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
+})
+
+export const TemperatureSensorMod: AriesMod = {
+  metadata: {
+    id: 'temperature-sensor',
+    name: 'TemperatureSensor',
+    displayName: 'Temperature Sensor',
+    description: 'Hardware temperature sensor with threshold alerts',
+    category: 'sensors',
+    version: '3.1.0',
+    author: 'AriesUI Team',
+    tags: ['temperature', 'sensor', 'hardware'],
+    defaultSize: { w: 200, h: 150 },
+    minSize: { w: 120, h: 80 },
+    maxSize: { w: 300, h: 200 }
+  },
+  component: TemperatureSensor,
+  generateDummyData: () => ({
+    value: 20 + Math.random() * 30,
+    timestamp: new Date().toISOString(),
+    quality: 'good'
+  }),
+  validateConfig: (config) => {
+    return config.threshold >= 0 && config.threshold <= 100
+  },
+  configSchema: {
+    streamId: {
+      type: 'text',
+      label: 'Temperature Stream ID',
+      placeholder: 'module1.temperature'
+    },
+    unit: {
+      type: 'select',
+      label: 'Temperature Unit',
+      options: [
+        { value: '°C', label: 'Celsius' },
+        { value: '°F', label: 'Fahrenheit' },
+        { value: 'K', label: 'Kelvin' }
+      ],
+      default: '°C'
+    },
+    threshold: {
+      type: 'number',
+      label: 'Warning Threshold',
+      default: 30,
+      min: 0,
+      max: 100,
+      step: 1
+    }
+  }
 }
 ```
 
-### 2. Interactive Control
+### 2. Hardware Control Switch
 
 ```typescript
-const ToggleSwitch: React.FC<AriesModProps> = ({ title, data, onDataRequest }) => {
-  const [isOn, setIsOn] = React.useState(data?.value || false)
+// ariesMods/controls/HardwareSwitch.tsx
+import React, { memo, useState, useCallback } from 'react'
+import { Switch } from '@/components/ui/switch'
+import { Power } from 'lucide-react'
+import type { AriesMod, AriesModProps } from '@/types/ariesmods'
+
+const HardwareSwitch = memo<AriesModProps>(({ 
+  title, data, config, onDataRequest, width, height 
+}) => {
+  const [isOn, setIsOn] = useState(data?.value ?? false)
+  const [isPending, setIsPending] = useState(false)
   
-  const handleToggle = () => {
-    const newState = !isOn
+  const handleToggle = useCallback(async (newState: boolean) => {
+    setIsPending(true)
     setIsOn(newState)
     
-    if (onDataRequest) {
-      onDataRequest({
-        type: 'control-action',
-        action: 'toggle',
-        value: newState,
-        timestamp: new Date().toISOString()
-      })
+    try {
+      // Send hardware command
+      if (onDataRequest) {
+        await onDataRequest({
+          type: 'hardware-command',
+          moduleId: config?.moduleId,
+          command: 'set_output',
+          params: { 
+            channel: config?.channel || 1,
+            state: newState 
+          },
+          timestamp: new Date().toISOString()
+        })
+      }
+    } catch (error) {
+      console.error('Hardware command failed:', error)
+      setIsOn(!newState) // Revert on error
+    } finally {
+      setIsPending(false)
+    }
+  }, [config, onDataRequest])
+  
+  const isCompact = width < 150 || height < 100
+  
+  return (
+    <div className="h-full p-3 flex flex-col justify-center items-center">
+      <div className="flex items-center gap-2 mb-3">
+        <Power className={`h-4 w-4 ${isOn ? 'text-green-500' : 'text-gray-500'}`} />
+        {!isCompact && (
+          <span className="text-xs text-muted-foreground">{title}</span>
+        )}
+      </div>
+      
+      <Switch 
+        checked={isOn} 
+        onCheckedChange={handleToggle}
+        disabled={isPending}
+        className="mb-2"
+      />
+      
+      <div className={`text-xs font-medium ${isOn ? 'text-green-500' : 'text-gray-500'}`}>
+        {isPending ? 'Updating...' : isOn ? 'ON' : 'OFF'}
+      </div>
+    </div>
+  )
+})
+
+export const HardwareSwitchMod: AriesMod = {
+  metadata: {
+    id: 'hardware-switch',
+    name: 'HardwareSwitch',
+    displayName: 'Hardware Control Switch',
+    description: 'Two-way hardware control switch with feedback',
+    category: 'controls',
+    version: '3.1.0',
+    author: 'AriesUI Team',
+    tags: ['switch', 'control', 'hardware'],
+    defaultSize: { w: 150, h: 120 },
+    minSize: { w: 100, h: 80 },
+    maxSize: { w: 200, h: 150 }
+  },
+  component: HardwareSwitch,
+  generateDummyData: () => ({
+    value: Math.random() > 0.5,
+    timestamp: new Date().toISOString()
+  }),
+  validateConfig: (config) => {
+    return config.moduleId && config.channel >= 1 && config.channel <= 8
+  },
+  configSchema: {
+    moduleId: {
+      type: 'text',
+      label: 'Hardware Module ID',
+      placeholder: 'relay_module_1'
+    },
+    channel: {
+      type: 'number',
+      label: 'Output Channel',
+      default: 1,
+      min: 1,
+      max: 8,
+      step: 1
     }
   }
-  
-  return (
-    <Card className="h-full">
-      <CardContent className="p-4 text-center">
-        <div className="text-sm text-muted-foreground mb-2">{title}</div>
-        <Switch checked={isOn} onCheckedChange={handleToggle} />
-        <div className="text-xs mt-2">
-          {isOn ? 'ON' : 'OFF'}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-```
-
-### 3. Data Visualization
-
-```typescript
-const SimpleChart: React.FC<AriesModProps> = ({ title, data, width, height }) => {
-  const chartData = data?.values || []
-  
-  return (
-    <Card className="h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <LineChart width={width - 20} height={height - 60} data={chartData}>
-          <Line type="monotone" dataKey="value" stroke="#3b82f6" />
-          <XAxis dataKey="timestamp" />
-          <YAxis />
-        </LineChart>
-      </CardContent>
-    </Card>
-  )
-}
-```
-
-## External Dependencies System
-
-AriesMods support external dependencies through a secure, controlled system. This allows developers to use a combination of pre-bundled libraries (like React and Plotly.js) and dynamically-loaded CDN libraries (like D3.js and Chart.js) to build powerful, custom widgets without compromising security or performance.
-
-### Dependency Types
-
-1. **Pre-bundled (NPM)** - Libraries already included with AriesUI
-2. **CDN Dependencies** - Popular libraries loaded from trusted CDNs  
-3. **Local Dependencies** - Custom libraries uploaded by administrators
-
-### Available Pre-Approved Dependencies
-
-#### UI & Styling
-- React 19.x, Lucide React, Tailwind CSS, clsx
-
-#### Data Visualization
-- Recharts, Plotly.js, React Plotly.js
-
-#### Math & Utilities  
-- date-fns, lodash-es
-
-#### External Libraries (CDN)
-- D3.js, Chart.js, Three.js
-
-### Using Dependencies
-
-```typescript
-import { loadAriesModDependencies, createAriesModManifest } from '@/lib/ariesmods-dependency-manager'
-
-const MANIFEST = createAriesModManifest(
-  'my-mod', 'My Mod', '1.0.0', 'Author',
-  [
-    { name: 'react', version: '19.x', source: 'npm', required: true, scope: 'global' },
-    { name: 'd3', version: '7.x', source: 'cdn', required: false, scope: 'isolated' }
-  ]
-)
-
-const MyMod: React.FC<AriesModProps> = (props) => {
-  const [deps, setDeps] = useState({})
-  
-  useEffect(() => {
-    loadAriesModDependencies(MANIFEST)
-      .then(setDeps)
-      .catch(console.error)
-  }, [])
-  
-  const d3 = deps['d3']
-  // Use d3 for custom visualizations
-}
-```
-
-See the `AdvancedAriesMod.tsx` template for a complete example.
-
-## Integration with Comms v3
-
-### Connecting to Hardware
-
-```typescript
-const HardwareSensor: React.FC<AriesModProps> = ({ id, onDataRequest }) => {
-  React.useEffect(() => {
-    if (onDataRequest) {
-      // Request data from hardware module
-      onDataRequest({
-        type: 'comms-query',
-        target: 'hw_module_1',
-        command: 'get_sensor_data',
-        params: { sensor_id: id }
-      })
-    }
-  }, [id, onDataRequest])
-  
-  // Component implementation
-}
-```
-
-### WebSocket Integration
-
-```typescript
-const RealtimeSensor: React.FC<AriesModProps> = ({ data }) => {
-  const [liveData, setLiveData] = React.useState(data)
-  
-  React.useEffect(() => {
-    // Connect to StreamHandler WebSocket
-    const ws = new WebSocket('ws://localhost:8765')
-    
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data)
-      if (message.type === 'sensor-data') {
-        setLiveData(message.data)
-      }
-    }
-    
-    return () => ws.close()
-  }, [])
-  
-  return <div>Live data: {liveData?.value}</div>
 }
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Performance Issues
 
-1. **AriesMod not appearing in palette**
-   - Check registry registration
-   - Verify export name matches import
-   - Check for TypeScript errors
+1. **Slow rendering with many widgets**:
+   ```typescript
+   // Enable virtual rendering
+   const virtualGrid = useVirtualGrid(widgets, viewport)
+   ```
 
-2. **Configuration not saving**
-   - Verify configSchema structure
-   - Check validateConfig implementation
-   - Ensure onConfigChange is called
+2. **Choppy animations**:
+   ```typescript
+   // Check RAF implementation
+   useEffect(() => {
+     const rafId = requestAnimationFrame(updateFunction)
+     return () => cancelAnimationFrame(rafId)
+   }, [dependencies])
+   ```
 
-3. **Data not updating**
-   - Check onDataRequest implementation
-   - Verify data stream connection
-   - Check React dependencies
+3. **Memory leaks**:
+   ```typescript
+   // Clean up resources
+   useEffect(() => {
+     const cleanup = setupResources()
+     return cleanup // Always return cleanup function
+   }, [])
+   ```
 
-4. **Styling issues**
-   - Use Tailwind classes consistently
-   - Check responsive breakpoints
-   - Verify theme variables
+### Hardware Integration Issues
 
-### Debug Mode
+1. **Stream not connecting**:
+   - Check StreamHandler is running on `ws://localhost:8765`
+   - Verify stream ID format: `moduleId.streamName`
+   - Check WebSocket connection in browser dev tools
 
-Enable debug mode to see detailed AriesMod information:
+2. **Data not updating**:
+   - Verify subscription message format
+   - Check stream status in debug panel
+   - Ensure hardware module is active
 
-```typescript
-// In your AriesMod
-if (process.env.NODE_ENV === 'development') {
-  console.log('AriesMod Debug:', { id, title, data, config })
-}
-```
+3. **Control commands failing**:
+   - Check module ID and command format
+   - Verify hardware module supports the command
+   - Check error logs in StreamHandler
 
-### Testing
+### Configuration Issues
 
-Create a test page for your AriesMod:
+1. **Config not saving**:
+   ```typescript
+   // Ensure validateConfig returns boolean
+   validateConfig: (config) => {
+     return typeof config.value === 'number' && config.value >= 0
+   }
+   ```
 
-```typescript
-// test/YourAriesMod.test.tsx
-import { render, screen } from '@testing-library/react'
-import { YourAriesMod } from '@/ariesMods/sensors/YourAriesMod'
-
-test('renders correctly', () => {
-  render(
-    <YourAriesMod
-      id="test"
-      title="Test Sensor"
-      width={200}
-      height={150}
-      data={{ value: 42, timestamp: new Date().toISOString() }}
-      config={{}}
-    />
-  )
-  
-  expect(screen.getByText('Test Sensor')).toBeInTheDocument()
-})
-```
-
-## Advanced Topics
-
-### Dynamic Loading
-
-AriesMods can be loaded dynamically from external files:
-
-```typescript
-const loadExternalMod = async (filePath: string) => {
-  const module = await import(filePath)
-  registry.registerMod(module.default)
-}
-```
-
-### Custom Hooks
-
-Create reusable hooks for common AriesMod functionality:
-
-```typescript
-// hooks/useAriesModData.ts
-export const useAriesModData = (onDataRequest: Function, interval: number) => {
-  React.useEffect(() => {
-    if (onDataRequest) {
-      const timer = setInterval(() => {
-        onDataRequest({ timestamp: new Date().toISOString() })
-      }, interval)
-      
-      return () => clearInterval(timer)
-    }
-  }, [onDataRequest, interval])
-}
-```
-
-### Performance Optimization
-
-Use React DevTools and performance monitoring:
-
-```typescript
-const YourAriesMod = React.memo<AriesModProps>(({ data }) => {
-  // Use profiler to identify performance bottlenecks
-  return React.createElement(React.Profiler, {
-    id: 'YourAriesMod',
-    onRender: (id, phase, actualDuration) => {
-      if (actualDuration > 16) {
-        console.warn(`Slow render: ${id} took ${actualDuration}ms`)
-      }
-    }
-  }, <div>Your component</div>)
-})
-```
+2. **Schema not rendering**:
+   ```typescript
+   // Check schema format
+   configSchema: {
+     fieldName: {
+       type: 'number', // Must be valid type
+       label: 'Field Label',
+       default: 0
+     }
+   }
+   ```
 
 ---
 
-## Getting Help
+## Migration from v3.0
 
-- Check the [AriesUI Documentation](./DOCUMENTATION.md)
-- Review existing AriesMods in the `ariesMods/` directory
-- Join the development community discussions
-- Report issues through the project's issue tracker
+### Breaking Changes
+- `HardwareAcceleratedWidget` removed - use `GridWidget` instead
+- All widgets now auto-optimized with hardware acceleration
+- Stream configuration moved to built-in configurator
+- Performance hooks integrated into main system
 
-Happy coding! 🚀 
+### Migration Steps
+1. Replace `HardwareAcceleratedWidget` with direct component rendering
+2. Update stream configuration to use new schema format
+3. Add `memo` wrapper for performance optimization
+4. Update to new hardware integration patterns
+
+---
+
+**AriesMods v3.1 provides a performance-optimized, hardware-integrated widget system ready for production use with Comms v3!** 🚀 

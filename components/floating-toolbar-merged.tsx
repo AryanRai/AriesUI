@@ -528,6 +528,17 @@ export function FloatingToolbar(props: ToolbarProps) {
     }
   }, [handleScroll, isMinimized, expandedSections, isAutoSaveEnabled])
 
+  // Listen for reset toolbar positions event
+  useEffect(() => {
+    const handleResetPositions = () => {
+      setPosition({ x: 50, y: 50 })
+      setCurrentSnapZone(null)
+    }
+
+    window.addEventListener("resetToolbarPositions", handleResetPositions)
+    return () => window.removeEventListener("resetToolbarPositions", handleResetPositions)
+  }, [setPosition])
+
   // Action handlers
   const createActionHandler = useCallback((actionId: ActionId) => {
     switch (actionId) {
@@ -714,82 +725,85 @@ export function FloatingToolbar(props: ToolbarProps) {
   // If minimized, show compact version with quick actions
   if (isMinimized) {
     return (
-      <motion.div
-        key="minimized-toolbar"
-        initial={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
-        animate={animationsEnabled ? { scale: 1, opacity: 1 } : {}}
-        exit={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      >
-        <Card
-          ref={toolbarRef}
-          className="fixed z-50 bg-card/95 backdrop-blur theme-outline-primary shadow-lg select-none will-change-transform overflow-hidden"
+      <AnimatePresence>
+        <motion.div
+          key="minimized-toolbar"
+          initial={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
+          animate={animationsEnabled ? { scale: 1, opacity: 1 } : {}}
+          exit={animationsEnabled ? { scale: 0.8, opacity: 0 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="fixed z-50"
           style={{
             left: position.x,
             top: position.y,
             transform: "translate3d(0, 0, 0)",
           }}
         >
-          {/* Futuristic Background */}
-          <ToolbarBackground animationsEnabled={animationsEnabled} />
-          
-          {/* Minimized Content */}
-          <div className="relative z-10 p-1 cursor-grab active:cursor-grabbing touch-none" onMouseDown={handleMouseDown}>
-            <div className="flex items-center gap-1">
-              <motion.div
-                className="flex items-center gap-0.5"
-                animate={animationsEnabled ? { x: [0, 1, 0] } : {}}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <GripVertical className="h-2.5 w-2.5 text-[rgb(var(--theme-primary))]" />
-              </motion.div>
-
-              {/* Quick Action Buttons */}
-              {quickActions.map((actionId) => (
-                <div key={`quick-${actionId}`}>
-                  {renderActionButton(actionId, "icon", "quick")}
-                </div>
-              ))}
-
-              {/* Customize Button */}
-              <motion.div
-                key="customize-button-mini"
-                whileHover={animationsEnabled ? { scale: 1.1, rotate: 180 } : {}}
-                whileTap={animationsEnabled ? { scale: 0.9 } : {}}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border-l border-[rgba(var(--theme-primary),0.2)] transition-all"
-                  onClick={() => setIsCustomizing(!isCustomizing)}
-                  title="Customize Quick Actions"
+          <Card
+            ref={toolbarRef}
+            className="bg-card/95 backdrop-blur theme-outline-primary shadow-lg select-none will-change-transform overflow-hidden"
+          >
+            {/* Futuristic Background */}
+            <ToolbarBackground animationsEnabled={animationsEnabled} />
+            
+            {/* Minimized Content */}
+            <div className="relative z-10 p-1 cursor-grab active:cursor-grabbing touch-none" onMouseDown={handleMouseDown}>
+              <div className="flex items-center gap-1">
+                <motion.div
+                  className="flex items-center gap-0.5"
+                  animate={animationsEnabled ? { x: [0, 1, 0] } : {}}
+                  transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <Settings className="h-2.5 w-2.5" />
-                </Button>
-              </motion.div>
+                  <GripVertical className="h-2.5 w-2.5 text-[rgb(var(--theme-primary))]" />
+                </motion.div>
 
-              {/* Maximize Button */}
-              <motion.div
-                key="maximize-button-mini"
-                whileHover={animationsEnabled ? { scale: 1.1, rotate: 90 } : {}}
-                whileTap={animationsEnabled ? { scale: 0.9 } : {}}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] transition-all"
-                  onClick={() => setIsMinimized(false)}
-                  title="Expand Toolbar"
+                {/* Quick Action Buttons */}
+                {quickActions.map((actionId) => (
+                  <div key={`quick-${actionId}`}>
+                    {renderActionButton(actionId, "icon", "quick")}
+                  </div>
+                ))}
+
+                {/* Customize Button */}
+                <motion.div
+                  key="customize-button-mini"
+                  whileHover={animationsEnabled ? { scale: 1.1, rotate: 180 } : {}}
+                  whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 >
-                  <Maximize2 className="h-2.5 w-2.5" />
-                </Button>
-              </motion.div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] border-l border-[rgba(var(--theme-primary),0.2)] transition-all"
+                    onClick={() => setIsCustomizing(!isCustomizing)}
+                    title="Customize Quick Actions"
+                  >
+                    <Settings className="h-2.5 w-2.5" />
+                  </Button>
+                </motion.div>
+
+                {/* Maximize Button */}
+                <motion.div
+                  key="maximize-button-mini"
+                  whileHover={animationsEnabled ? { scale: 1.1, rotate: 90 } : {}}
+                  whileTap={animationsEnabled ? { scale: 0.9 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 hover:bg-[rgba(var(--theme-primary),0.1)] transition-all"
+                    onClick={() => setIsMinimized(false)}
+                    title="Expand Toolbar"
+                  >
+                    <Maximize2 className="h-2.5 w-2.5" />
+                  </Button>
+                </motion.div>
+              </div>
             </div>
-          </div>
-        </Card>
-      </motion.div>
+          </Card>
+        </motion.div>
+      </AnimatePresence>
     )
   }
 
