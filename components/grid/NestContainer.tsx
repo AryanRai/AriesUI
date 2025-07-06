@@ -367,26 +367,17 @@ const WidgetContainer = memo<WidgetContainerProps>(({
 
       {/* AriesWidget nested widgets - Fixed to use proper AriesModWidget rendering */}
       {nestAriesWidgets.map((widget) => (
-        <HardwareAcceleratedWidget
+        <GridWidget
           key={widget.id}
-          id={widget.id}
-          x={widget.x}
-          y={widget.y}
-          width={widget.w}
-          height={widget.h}
+          widget={widget}
           isDragging={dragState.draggedId === widget.id}
           isResizing={resizeState.resizedId === widget.id}
           isPushed={pushedWidgets.has(widget.id)}
-          onMouseDown={(e) => onWidgetMouseDown(e, widget.id, "widget")}
+          onMouseDown={onWidgetMouseDown}
           onRemove={onAriesWidgetUpdate ? () => onAriesWidgetUpdate(widget.id, { deleted: true }) : onWidgetRemove}
+          onUpdate={onAriesWidgetUpdate ? (updates) => onAriesWidgetUpdate(widget.id, updates) : undefined}
           getResizeHandles={getResizeHandles}
-        >
-          <AriesModWidget
-            widget={widget}
-            onUpdate={(updates) => onAriesWidgetUpdate(widget.id, updates)}
-            className="w-full h-full"
-          />
-        </HardwareAcceleratedWidget>
+        />
       ))}
     </div>
   )

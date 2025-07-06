@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -96,12 +96,15 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     sourceContainer: "main" | "nest" | null
     sourceNestId?: string
     offset: { x: number; y: number }
+    lastUpdateTime: number
+    animationFrameId?: number
   }>({
     isDragging: false,
     draggedId: null,
     draggedType: null,
     sourceContainer: null,
     offset: { x: 0, y: 0 },
+    lastUpdateTime: 0,
   })
 
   const [resizeState, setResizeState] = useState<{
@@ -112,6 +115,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     startPos: { x: number; y: number }
     startSize: { w: number; h: number }
     startPosition: { x: number; y: number }
+    lastUpdateTime: number
+    animationFrameId?: number
   }>({
     isResizing: false,
     resizedId: null,
@@ -120,6 +125,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     startPos: { x: 0, y: 0 },
     startSize: { w: 0, h: 0 },
     startPosition: { x: 0, y: 0 },
+    lastUpdateTime: 0,
   })
 
   const [dropState, setDropState] = useState<{
@@ -160,32 +166,213 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const maxHistorySize = 50
 
-  // Virtual grid for performance optimization (temporarily disabled)
-  // const virtualGrid = useVirtualGrid(gridState, viewport, containerSize, {
-  //   bufferSize: 300,
-  //   maxRenderCount: 150
-  // })
-  // const virtualGridStats = useVirtualGridStats(virtualGrid)
-  
-  // Temporary fallback for virtual grid
-  const virtualGrid = {
-    visibleMainWidgets: gridState.mainWidgets,
-    visibleMainAriesWidgets: gridState.mainAriesWidgets,
-    visibleNestContainers: gridState.nestContainers,
-    visibleNestedWidgets: gridState.nestedWidgets,
-    visibleNestedAriesWidgets: gridState.nestedAriesWidgets,
-    totalWidgets: gridState.mainWidgets.length + gridState.mainAriesWidgets.length + gridState.nestContainers.length + gridState.nestedWidgets.length + gridState.nestedAriesWidgets.length,
-    renderedWidgets: gridState.mainWidgets.length + gridState.mainAriesWidgets.length + gridState.nestContainers.length + gridState.nestedWidgets.length + gridState.nestedAriesWidgets.length,
-    culledWidgets: 0,
-    isVirtualizationActive: false
-  }
-  
-  const virtualGridStats = {
-    cullingPercentage: 0,
-    performanceGain: 'No virtualization',
-    memoryReduction: 0,
-    renderingLoad: 1
-  }
+  // Performance monitoring refs
+  const performanceMetrics = useRef({
+    frameCount: 0,
+    lastFrameTime: 0,
+    avgFrameTime: 16.67, // Target 60fps
+    dragOperations: 0,
+    resizeOperations: 0,
+  })
+
+  // Optimized widget update batching
+  const batchedUpdates = useRef<Map<string, any>>(new Map())
+  const updateBatchTimeoutRef = useRef<NodeJS.Timeout>()
+
+  // Enhanced virtual grid with better performance
+  const virtualGrid = useMemo(() => {
+    const bufferSize = 300
+    const viewportBounds = {
+      left: -viewport.x - bufferSize,
+      top: -viewport.y - bufferSize,
+      right: -viewport.x + containerSize.width / viewport.zoom + bufferSize,
+      bottom: -viewport.y + containerSize.height / viewport.zoom + bufferSize,
+    }
+
+    const isVisible = (item: { x: number; y: number; w: number; h: number }) => {
+      return (
+        item.x < viewportBounds.right &&
+        item.x + item.w > viewportBounds.left &&
+        item.y < viewportBounds.bottom &&
+        item.y + item.h > viewportBounds.top
+      )
+    }
+
+    // Always render dragged/resized items regardless of visibility
+    const isDraggedOrResized = (id: string) => 
+      dragState.draggedId === id || resizeState.resizedId === id
+
+    const visibleMainWidgets = gridState.mainWidgets.filter(
+      widget => isVisible(widget) || isDraggedOrResized(widget.id)
+    )
+    const visibleMainAriesWidgets = gridState.mainAriesWidgets.filter(
+      widget => isVisible(widget) || isDraggedOrResized(widget.id)
+    )
+    const visibleNestContainers = gridState.nestContainers.filter(
+      nest => isVisible(nest) || isDraggedOrResized(nest.id)
+    )
+
+    // For nested items, include all if parent nest is visible
+    const visibleNestedWidgets = gridState.nestedWidgets.filter(widget => {
+      const parentNest = gridState.nestContainers.find(nest => nest.id === widget.nestId)
+      return parentNest && (isVisible(parentNest) || isDraggedOrResized(widget.id))
+    })
+    const visibleNestedAriesWidgets = gridState.nestedAriesWidgets.filter(widget => {
+      const parentNest = gridState.nestContainers.find(nest => nest.id === widget.nestId)
+      return parentNest && (isVisible(parentNest) || isDraggedOrResized(widget.id))
+    })
+
+    const totalItems = gridState.mainWidgets.length + gridState.mainAriesWidgets.length + 
+                     gridState.nestContainers.length + gridState.nestedWidgets.length + 
+                     gridState.nestedAriesWidgets.length
+    const renderedItems = visibleMainWidgets.length + visibleMainAriesWidgets.length + 
+                         visibleNestContainers.length + visibleNestedWidgets.length + 
+                         visibleNestedAriesWidgets.length
+    const culledItems = totalItems - renderedItems
+
+    return {
+      visibleMainWidgets,
+      visibleMainAriesWidgets,
+      visibleNestContainers,
+      visibleNestedWidgets,
+      visibleNestedAriesWidgets,
+      totalWidgets: totalItems,
+      renderedWidgets: renderedItems,
+      culledWidgets: culledItems,
+      isVirtualizationActive: culledItems > 0,
+      cullingPercentage: totalItems > 0 ? (culledItems / totalItems) * 100 : 0,
+    }
+  }, [gridState, viewport, containerSize, dragState.draggedId, resizeState.resizedId])
+
+  // Optimized batched widget updates
+  const batchWidgetUpdate = useCallback((widgetId: string, updates: any) => {
+    batchedUpdates.current.set(widgetId, { ...batchedUpdates.current.get(widgetId), ...updates })
+    
+    if (updateBatchTimeoutRef.current) {
+      clearTimeout(updateBatchTimeoutRef.current)
+    }
+    
+    updateBatchTimeoutRef.current = setTimeout(() => {
+      const updates = new Map(batchedUpdates.current)
+      batchedUpdates.current.clear()
+      
+      if (updates.size > 0) {
+        setGridState(prev => {
+          const newState = { ...prev }
+          
+          updates.forEach((update, widgetId) => {
+            // Update main widgets
+            newState.mainWidgets = newState.mainWidgets.map(widget =>
+              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
+            )
+            // Update main Aries widgets
+            newState.mainAriesWidgets = newState.mainAriesWidgets.map(widget =>
+              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
+            )
+            // Update nested widgets
+            newState.nestedWidgets = newState.nestedWidgets.map(widget =>
+              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
+            )
+            // Update nested Aries widgets
+            newState.nestedAriesWidgets = newState.nestedAriesWidgets.map(widget =>
+              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
+            )
+            // Update nest containers
+            newState.nestContainers = newState.nestContainers.map(nest =>
+              nest.id === widgetId ? { ...nest, ...update, updatedAt: new Date().toISOString() } : nest
+            )
+          })
+          
+          return newState
+        })
+      }
+    }, 16) // Batch updates every 16ms (60fps)
+  }, [setGridState])
+
+  // Performance-optimized frame rate monitoring
+  const updatePerformanceMetrics = useCallback(() => {
+    const now = performance.now()
+    const frameTime = now - performanceMetrics.current.lastFrameTime
+    performanceMetrics.current.lastFrameTime = now
+    performanceMetrics.current.frameCount++
+    
+    // Exponential moving average for smooth frame time tracking
+    performanceMetrics.current.avgFrameTime = 
+      performanceMetrics.current.avgFrameTime * 0.9 + frameTime * 0.1
+  }, [])
+
+  // Optimized mouse move handler with requestAnimationFrame
+  const optimizedMouseMove = useCallback((e: MouseEvent, updateCallback: () => void) => {
+    const now = performance.now()
+    
+    // Throttle updates to 60fps max
+    if (now - performanceMetrics.current.lastFrameTime < 16.67) {
+      return
+    }
+    
+    // Update performance metrics
+    const frameTime = now - performanceMetrics.current.lastFrameTime
+    performanceMetrics.current.lastFrameTime = now
+    performanceMetrics.current.frameCount++
+    performanceMetrics.current.avgFrameTime = 
+      performanceMetrics.current.avgFrameTime * 0.9 + frameTime * 0.1
+    
+    // Use requestAnimationFrame for smooth updates
+    if (dragState.animationFrameId) {
+      cancelAnimationFrame(dragState.animationFrameId)
+    }
+    
+    const frameId = requestAnimationFrame(() => {
+      updateCallback()
+      setDragState(prev => ({ ...prev, animationFrameId: undefined }))
+    })
+    
+    setDragState(prev => ({ ...prev, animationFrameId: frameId }))
+  }, [dragState.animationFrameId])
+
+  // Optimized resize move handler
+  const optimizedResizeMove = useCallback((e: MouseEvent, updateCallback: () => void) => {
+    const now = performance.now()
+    
+    // Throttle updates to 60fps max
+    if (now - performanceMetrics.current.lastFrameTime < 16.67) {
+      return
+    }
+    
+    // Update performance metrics
+    const frameTime = now - performanceMetrics.current.lastFrameTime
+    performanceMetrics.current.lastFrameTime = now
+    performanceMetrics.current.frameCount++
+    performanceMetrics.current.avgFrameTime = 
+      performanceMetrics.current.avgFrameTime * 0.9 + frameTime * 0.1
+    
+    // Use requestAnimationFrame for smooth updates
+    if (resizeState.animationFrameId) {
+      cancelAnimationFrame(resizeState.animationFrameId)
+    }
+    
+    const frameId = requestAnimationFrame(() => {
+      updateCallback()
+      setResizeState(prev => ({ ...prev, animationFrameId: undefined }))
+    })
+    
+    setResizeState(prev => ({ ...prev, animationFrameId: frameId }))
+  }, [resizeState.animationFrameId])
+
+  // Cleanup animation frames on unmount
+  useEffect(() => {
+    return () => {
+      if (dragState.animationFrameId) {
+        cancelAnimationFrame(dragState.animationFrameId)
+      }
+      if (resizeState.animationFrameId) {
+        cancelAnimationFrame(resizeState.animationFrameId)
+      }
+      if (updateBatchTimeoutRef.current) {
+        clearTimeout(updateBatchTimeoutRef.current)
+      }
+    }
+  }, [dragState.animationFrameId, resizeState.animationFrameId])
 
   const handleToolbarMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -853,6 +1040,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         x: worldMouseX - item.x,
         y: worldMouseY - item.y,
       },
+      lastUpdateTime: Date.now(),
     })
   }
 
@@ -1034,6 +1222,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       startPos: { x: worldMouseX, y: worldMouseY },
       startSize: { w: item.w, h: item.h },
       startPosition: { x: item.x, y: item.y },
+      lastUpdateTime: Date.now(),
     })
   }
 
@@ -1988,6 +2177,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         draggedType: null,
         sourceContainer: null,
         offset: { x: 0, y: 0 },
+        lastUpdateTime: Date.now(),
       })
 
       setResizeState({
@@ -1998,6 +2188,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         startPos: { x: 0, y: 0 },
         startSize: { w: 0, h: 0 },
         startPosition: { x: 0, y: 0 },
+        lastUpdateTime: Date.now(),
       })
 
       setIsPanning(false)
@@ -2435,34 +2626,25 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
             {/* Hardware-Accelerated Main Grid AriesWidgets */}
             {virtualGrid.visibleMainAriesWidgets.map((widget) => (
-              <HardwareAcceleratedWidget
-              key={widget.id}
-                id={widget.id}
-                x={widget.x}
-                y={widget.y}
-                width={widget.w}
-                height={widget.h}
+              <GridWidget
+                key={widget.id}
+                widget={widget}
                 isDragging={dragState.draggedId === widget.id}
                 isResizing={resizeState.resizedId === widget.id}
                 isPushed={pushedWidgets.has(widget.id)}
                 onMouseDown={handleMouseDown}
                 onRemove={removeAriesWidget}
+                onUpdate={updateAriesWidget}
                 getResizeHandles={getResizeHandles}
-              >
-              <AriesModWidget
-                widget={widget}
-                onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
-                  className="w-full h-full"
               />
-              </HardwareAcceleratedWidget>
-          ))}
+            ))}
         </div>
         </div>
       </div>
 
       {/* Performance Status Bar */}
       <div className="absolute bottom-4 right-4 z-50 bg-black/80 text-green-400 px-3 py-1 rounded text-xs font-mono">
-        ⚡ Hardware Acceleration: ACTIVE | Virtual Grid: {virtualGridStats.performanceGain} | Rendered: {virtualGrid.renderedWidgets}/{virtualGrid.totalWidgets}
+        ⚡ Hardware Acceleration: ACTIVE | Virtual Grid: {virtualGrid.cullingPercentage.toFixed(2)}% | Rendered: {virtualGrid.renderedWidgets}/{virtualGrid.totalWidgets}
       </div>
     </div>
   )

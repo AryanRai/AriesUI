@@ -220,6 +220,79 @@ const TOOLBAR_SECTIONS: ToolbarSection[] = [
   },
 ]
 
+// Snap zones configuration
+const SNAP_ZONES = {
+  TOP_LEFT: { x: 20, y: 20 },
+  TOP_RIGHT: { x: -20, y: 20 }, // Negative x means offset from right edge
+  BOTTOM_LEFT: { x: 20, y: -20 }, // Negative y means offset from bottom edge
+  BOTTOM_RIGHT: { x: -20, y: -20 },
+  LEFT_CENTER: { x: 20, y: 0.5 }, // 0.5 means 50% from top
+  RIGHT_CENTER: { x: -20, y: 0.5 },
+  TOP_CENTER: { x: 0.5, y: 20 }, // 0.5 means 50% from left
+  BOTTOM_CENTER: { x: 0.5, y: -20 },
+} as const
+
+const SNAP_THRESHOLD = 50 // pixels
+
+// Helper function to calculate snap position
+const calculateSnapPosition = (currentX: number, currentY: number, toolbarWidth: number, toolbarHeight: number) => {
+  const windowWidth = window.innerWidth
+  const windowHeight = window.innerHeight
+  
+  // Calculate distances to each snap zone
+  const snapDistances = Object.entries(SNAP_ZONES).map(([key, zone]) => {
+    let targetX: number
+    let targetY: number
+    
+    // Calculate target position based on zone configuration
+    if (zone.x < 0) {
+      targetX = windowWidth + zone.x - toolbarWidth // Offset from right edge
+    } else if (zone.x > 0 && zone.x < 1) {
+      targetX = (windowWidth - toolbarWidth) * zone.x // Percentage from left
+    } else {
+      targetX = zone.x // Absolute position from left
+    }
+    
+    if (zone.y < 0) {
+      targetY = windowHeight + zone.y - toolbarHeight // Offset from bottom edge
+    } else if (zone.y > 0 && zone.y < 1) {
+      targetY = (windowHeight - toolbarHeight) * zone.y // Percentage from top
+    } else {
+      targetY = zone.y // Absolute position from top
+    }
+    
+    // Calculate distance to this snap zone
+    const distance = Math.sqrt(Math.pow(currentX - targetX, 2) + Math.pow(currentY - targetY, 2))
+    
+    return {
+      key,
+      position: { x: targetX, y: targetY },
+      distance
+    }
+  })
+  
+  // Find closest snap zone
+  const closestSnap = snapDistances.reduce((closest, current) => 
+    current.distance < closest.distance ? current : closest
+  )
+  
+  // Return snap position if within threshold, otherwise return current position
+  if (closestSnap.distance < SNAP_THRESHOLD) {
+    return {
+      ...closestSnap.position,
+      snapped: true,
+      snapZone: closestSnap.key
+    }
+  }
+  
+  return {
+    x: currentX,
+    y: currentY,
+    snapped: false,
+    snapZone: null
+  }
+}
+
 // Futuristic background for floating toolbar
 const ToolbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }) => {
   if (!animationsEnabled) {
@@ -275,6 +348,9 @@ export function FloatingToolbar(props: ToolbarProps) {
   const [canScroll, setCanScroll] = useState(false)
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
   const [isHistoryPanelVisible, setIsHistoryPanelVisible] = useState(false)
+  const [currentSnapZone, setCurrentSnapZone] = useState<string | null>(null)
+  const [showSnapPreview, setShowSnapPreview] = useState(false)
+  const [snapPreviewPosition, setSnapPreviewPosition] = useState({ x: 0, y: 0 })
   const toolbarRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -345,6 +421,18 @@ export function FloatingToolbar(props: ToolbarProps) {
         const newX = Math.max(0, Math.min(window.innerWidth - toolbarRect.width, e.clientX - dragOffset.x))
         const newY = Math.max(0, Math.min(window.innerHeight - toolbarRect.height, e.clientY - dragOffset.y))
 
+        // Calculate snap position and show preview
+        const snapResult = calculateSnapPosition(newX, newY, toolbarRect.width, toolbarRect.height)
+        
+        if (snapResult.snapped) {
+          setShowSnapPreview(true)
+          setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y })
+          setCurrentSnapZone(snapResult.snapZone)
+        } else {
+          setShowSnapPreview(false)
+          setCurrentSnapZone(null)
+        }
+
         setPosition({ x: newX, y: newY })
       })
     },
@@ -352,11 +440,25 @@ export function FloatingToolbar(props: ToolbarProps) {
   )
 
   const handleMouseUp = useCallback(() => {
+    if (isDragging && toolbarRef.current) {
+      // Apply snapping when drag ends
+      const toolbarRect = toolbarRef.current.getBoundingClientRect()
+      const snapResult = calculateSnapPosition(position.x, position.y, toolbarRect.width, toolbarRect.height)
+      
+      if (snapResult.snapped) {
+        setPosition({ x: snapResult.x, y: snapResult.y })
+        setCurrentSnapZone(snapResult.snapZone)
+      } else {
+        setCurrentSnapZone(null)
+      }
+    }
+    
     setIsDragging(false)
+    setShowSnapPreview(false)
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
     }
-  }, [])
+  }, [isDragging, position])
 
   useEffect(() => {
     if (isDragging) {
@@ -986,6 +1088,41 @@ export function FloatingToolbar(props: ToolbarProps) {
             }}
             className="h-full"
           />
+        </motion.div>
+      )}
+
+      {/* Snap Preview Overlay */}
+      {showSnapPreview && (
+        <motion.div
+          key="snap-preview"
+          initial={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
+          animate={animationsEnabled ? { opacity: 1, scale: 1 } : {}}
+          exit={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="fixed z-40 pointer-events-none"
+          style={{
+            left: snapPreviewPosition.x,
+            top: snapPreviewPosition.y,
+            width: toolbarRef.current?.offsetWidth || 320,
+            height: toolbarRef.current?.offsetHeight || 200,
+          }}
+        >
+          <div className="w-full h-full border-2 border-dashed border-[rgba(var(--theme-primary),0.8)] rounded-lg bg-[rgba(var(--theme-primary),0.1)] backdrop-blur-sm">
+            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-[rgba(var(--theme-primary),0.9)] text-white text-xs rounded font-medium">
+              Snap to {currentSnapZone?.replace('_', ' ').toLowerCase()}
+            </div>
+            <motion.div
+              className="absolute inset-0 rounded-lg border-2 border-[rgba(var(--theme-primary),0.4)]"
+              animate={animationsEnabled ? {
+                borderColor: [
+                  "rgba(var(--theme-primary), 0.4)",
+                  "rgba(var(--theme-primary), 0.8)",
+                  "rgba(var(--theme-primary), 0.4)"
+                ]
+              } : {}}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
+          </div>
         </motion.div>
       )}
 
