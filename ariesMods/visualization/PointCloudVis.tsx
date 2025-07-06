@@ -124,6 +124,7 @@ export const PointCloudVis: React.FC<AriesModProps> = ({ data, width, height, on
 }
 
 export const PointCloudVisMod: AriesMod = {
+  component: PointCloudVis,
   metadata: {
     id: 'point-cloud-vis',
     name: 'PointCloudVisualizer',
@@ -133,11 +134,10 @@ export const PointCloudVisMod: AriesMod = {
     author: 'AriesUI',
     category: 'visualization',
     tags: ['3d', 'point-cloud', 'visualization', 'space'],
-    defaultSize: { w: 400, h: 300 },
-    minSize: { w: 200, h: 150 },
-    maxSize: { w: 800, h: 600 }
+    defaultWidth: 400,
+    defaultHeight: 300,
+    icon: '☁️',
   },
-  component: PointCloudVis,
   generateDummyData: () => {
     const points: [number, number, number][] = []
     const colors: [number, number, number][] = []
@@ -155,5 +155,4 @@ export const PointCloudVisMod: AriesMod = {
     // No config to validate yet
     return true
   },
-  configSchema: {}
 } 

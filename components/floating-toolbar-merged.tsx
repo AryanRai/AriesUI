@@ -362,7 +362,7 @@ export function FloatingToolbar(props: ToolbarProps) {
   const [isCustomizing, setIsCustomizing] = useState(false)
   const [quickActions, setQuickActions] = useLocalStorage<ActionId[]>("toolbar-quick-actions", ["save", "undo", "redo", "export", "import"])
   const [expandedSections, setExpandedSections] = useLocalStorage<string[]>("toolbar-expanded-sections", ["save", "file", "history"])
-  const [position, setPosition] = useLocalStorage("toolbar-position", { x: 50, y: 100 })
+  const [position, setPosition] = useLocalStorage("toolbar-position", { x: 50, y: 50 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [showSnapPreview, setShowSnapPreview] = useState(false)
@@ -531,7 +531,7 @@ export function FloatingToolbar(props: ToolbarProps) {
   // Listen for reset toolbar positions event
   useEffect(() => {
     const handleResetPositions = () => {
-      setPosition({ x: 50, y: 100 })
+      setPosition({ x: 50, y: 50 })
       setCurrentSnapZone(null)
     }
 
