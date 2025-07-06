@@ -244,21 +244,17 @@ export const EventHandlers: React.FC<EventHandlersProps> = ({
 
       const mouseX = e.clientX - containerRect.left
       const mouseY = e.clientY - containerRect.top
-      
-      // Convert to world coordinates before zoom
-      const worldX = mouseX / viewport.zoom - viewport.x
-      const worldY = mouseY / viewport.zoom - viewport.y
 
       const isTrackpad = Math.abs(e.deltaY) < 50
-      const zoomDelta = isTrackpad ? -e.deltaY * 0.003 : (e.deltaY > 0 ? -0.1 : 0.1)
+      const zoomDelta = isTrackpad ? -e.deltaY * 0.002 : (e.deltaY > 0 ? -0.08 : 0.08)
       
       setViewport((prev) => {
         const newZoom = Math.max(0.05, Math.min(10, prev.zoom * (1 + zoomDelta)))
-        const zoomRatio = newZoom / prev.zoom
         
-        // Zoom towards cursor position
-        const newX = worldX - mouseX / newZoom
-        const newY = worldY - mouseY / newZoom
+        // Fixed zoom-to-cursor calculation to prevent oscillation
+        const zoomRatio = newZoom / prev.zoom
+        const newX = prev.x + (mouseX / prev.zoom) * (1 - zoomRatio)
+        const newY = prev.y + (mouseY / prev.zoom) * (1 - zoomRatio)
         
         return {
           x: newX,

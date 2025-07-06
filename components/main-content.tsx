@@ -1142,8 +1142,8 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       setLastWheelTime(currentTime)
 
       // Enhanced trackpad vs mouse wheel detection
-      const isTrackpad = Math.abs(e.deltaY) < 50 && timeDelta < 50
-      const isPinch = e.ctrlKey && Math.abs(e.deltaY) < 10
+      const isTrackpad = Math.abs(e.deltaY) < 50 && timeDelta < 100
+      const isPinch = e.ctrlKey && Math.abs(e.deltaY) < 5
       
       // Get mouse position for zoom-to-cursor
       const containerRect = containerRef.current?.getBoundingClientRect()
@@ -1151,31 +1151,28 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
 
       const mouseX = e.clientX - containerRect.left
       const mouseY = e.clientY - containerRect.top
-      
-      // Convert to world coordinates before zoom
-      const worldX = mouseX / viewport.zoom - viewport.x
-      const worldY = mouseY / viewport.zoom - viewport.y
 
       let zoomDelta: number
       
       if (isPinch) {
         // Pinch gesture - very fine control
-        zoomDelta = -e.deltaY * 0.01
+        zoomDelta = -e.deltaY * 0.005 // Reduced from 0.01 for stability
       } else if (isTrackpad) {
-        // Trackpad - smooth, continuous zooming (FIXED: removed momentum)
-        zoomDelta = -e.deltaY * 0.003 // Reduced sensitivity and removed momentum
+        // Trackpad - smooth, continuous zooming with improved stability
+        zoomDelta = -e.deltaY * 0.002 // Further reduced from 0.003 for smoothness
       } else {
-        // Mouse wheel - discrete steps but smoother than before
-        zoomDelta = e.deltaY > 0 ? -0.1 : 0.1
+        // Mouse wheel - discrete steps
+        zoomDelta = e.deltaY > 0 ? -0.08 : 0.08 // Slightly reduced from 0.1
       }
       
       setViewport((prev) => {
         const newZoom = Math.max(0.05, Math.min(10, prev.zoom * (1 + zoomDelta)))
-        const zoomRatio = newZoom / prev.zoom
         
-        // Zoom towards cursor position
-        const newX = worldX - mouseX / newZoom
-        const newY = worldY - mouseY / newZoom
+        // Fixed zoom-to-cursor calculation to prevent oscillation
+        // Keep the world position under the cursor constant
+        const zoomRatio = newZoom / prev.zoom
+        const newX = prev.x + (mouseX / prev.zoom) * (1 - zoomRatio)
+        const newY = prev.y + (mouseY / prev.zoom) * (1 - zoomRatio)
         
         return {
           x: newX,
