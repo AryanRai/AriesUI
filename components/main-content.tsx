@@ -14,6 +14,16 @@ import type { AriesWidget, NestedAriesWidget } from "@/types/ariesmods"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { FloatingToolbar } from "@/components/floating-toolbar-merged"
 
+// Import extracted hooks and components
+import { useViewportControls } from "@/hooks/use-viewport-controls"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { usePerformanceMonitoring } from "@/hooks/use-performance-monitoring"
+import { useDragAndDrop } from "@/hooks/use-drag-and-drop"
+import { useResizeHandling } from "@/hooks/use-resize-handling"
+import { ViewportControls } from "@/components/grid/ViewportControls"
+import { PerformanceMonitor } from "@/components/grid/PerformanceMonitor"
+
 // Import enhanced hardware components
 import { EnhancedSensorWidget } from "@/components/widgets/enhanced-sensor-widget"
 import { commsClient } from "@/lib/comms-stream-client"
@@ -75,76 +85,108 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const { profiles, activeProfile } = state;
   const { animationsEnabled } = useAnimationPreferences()
 
-  // Viewport state for infinite scrolling
-  const [viewport, setViewport] = useState({
-    x: 0,
-    y: 0,
-    zoom: 1,
-  })
-
-  // Nested widgets are initialized empty - widgets can be dragged into nests
-
   const containerRef = useRef<HTMLDivElement>(null)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  
+  // Container size for virtual rendering
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
 
-  // State management for drag, resize, and drop operations
-  const [dragState, setDragState] = useState<{
-    isDragging: boolean
-    draggedId: string | null
-    draggedType: "widget" | "nest" | null
-    sourceContainer: "main" | "nest" | null
-    sourceNestId?: string
-    offset: { x: number; y: number }
-    lastUpdateTime: number
-    animationFrameId?: number
-  }>({
-    isDragging: false,
-    draggedId: null,
-    draggedType: null,
-    sourceContainer: null,
-    offset: { x: 0, y: 0 },
-    lastUpdateTime: 0,
+  // Use extracted viewport controls hook
+  const {
+    viewport,
+    setViewport,
+    isPanning,
+    setIsPanning,
+    panStart,
+    setPanStart,
+    lastPanPoint,
+    setLastPanPoint,
+    handlePanStart,
+    handleWheel,
+    resetViewport,
+  } = useViewportControls({
+    initialViewport: { x: 0, y: 0, zoom: 1 },
   })
 
-  const [resizeState, setResizeState] = useState<{
-    isResizing: boolean
-    resizedId: string | null
-    resizedType: "widget" | "nest" | null
-    handle: ResizeHandle | null
-    startPos: { x: number; y: number }
-    startSize: { w: number; h: number }
-    startPosition: { x: number; y: number }
-    lastUpdateTime: number
-    animationFrameId?: number
-  }>({
-    isResizing: false,
-    resizedId: null,
-    resizedType: null,
-    handle: null,
-    startPos: { x: 0, y: 0 },
-    startSize: { w: 0, h: 0 },
-    startPosition: { x: 0, y: 0 },
-    lastUpdateTime: 0,
+  // Use extracted drag and drop hook
+  const {
+    dragState,
+    setDragState,
+    dropState,
+    setDropState,
+    dragOverNest,
+    setDragOverNest,
+    pushedWidgets,
+    setPushedWidgets,
+    isHoveringOverNest,
+    setIsHoveringOverNest,
+    handleMouseDown,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useDragAndDrop({
+    gridState,
+    setGridState,
+    viewport,
+    containerRef,
+    dispatch,
   })
 
-  const [dropState, setDropState] = useState<{
-    isDragOver: boolean
-    targetNestId: string | null
-  }>({
-    isDragOver: false,
-    targetNestId: null,
+  // Use extracted resize handling hook
+  const {
+    resizeState,
+    setResizeState,
+    getResizeHandles,
+  } = useResizeHandling({
+    gridState,
+    setGridState,
+    viewport,
+    containerRef,
   })
 
-  const [isPanning, setIsPanning] = useState(false)
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
-  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
-  const [dragOverNest, setDragOverNest] = useState<string | null>(null)
-  const [pushedWidgets, setPushedWidgets] = useState<Set<string>>(new Set())
-  const [isHoveringOverNest, setIsHoveringOverNest] = useState(false)
+  // Use extracted auto-save hook
+  const {
+    hasUnsavedChanges,
+    setHasUnsavedChanges,
+    isAutoSaveEnabled,
+    setIsAutoSaveEnabled,
+    autoSaveInterval,
+    setAutoSaveInterval,
+    autoSaveStatus,
+    lastAutoSave,
+    stateHistory,
+    historyIndex,
+    setHistoryIndex,
+    saveGridState,
+    exportGridState,
+    importGridState,
+    undo,
+    redo,
+    navigateToHistory,
+    addHistoryEntry,
+  } = useAutoSave({
+    gridState,
+    viewport,
+    commsState: state,
+    dispatch,
+    updateProfiles,
+  })
 
-  const [isViewportInfoVisible, setIsViewportInfoVisible] = useLocalStorage("aries-show-viewport-info", true)
+  // Use extracted performance monitoring hook
+  const {
+    performanceMetrics,
+    batchWidgetUpdate,
+    virtualGrid,
+    rafRef,
+    clearRAF,
+  } = usePerformanceMonitoring({
+    gridState,
+    viewport,
+    containerSize,
+    draggedId: dragState.draggedId,
+    resizedId: resizeState.resizedId,
+  })
+
   const [actionsToolbarPosition, setActionsToolbarPosition] = useLocalStorage("aries-actions-toolbar-pos", { top: 80, right: 20 })
-  const [zoomToolbarPosition, setZoomToolbarPosition] = useLocalStorage("aries-zoom-toolbar-pos", { top: 80, left: 200 })
   
   // Reset all toolbar positions to default
   const resetToolbarPositions = useCallback(() => {
@@ -166,229 +208,22 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   const [isDraggingZoomToolbar, setIsDraggingZoomToolbar] = useState(false)
   const [toolbarDragStart, setToolbarDragStart] = useState({ x: 0, y: 0, top: 0, right: 0 })
   const [zoomToolbarDragStart, setZoomToolbarDragStart] = useState({ x: 0, y: 0, top: 0, left: 0 })
-  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useLocalStorage("aries-auto-save-enabled", true)
-  const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage("aries-auto-save-interval", 30000) // 30 seconds default
-  const [lastAutoSave, setLastAutoSave] = useState<string | null>(null)
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [isDebugPanelVisible, setIsDebugPanelVisible] = useLocalStorage("aries-show-debug-panel", true)
   const [hardwareConnectionStatus, setHardwareConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
-  const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
   
   // Track if grid state has been initialized to avoid triggering unsaved changes on initial load
   const isGridStateInitialized = useRef(false)
-  
-  // State history for undo/redo functionality
-  const [stateHistory, setStateHistory] = useState<Array<{ gridState: GridStateType; viewport: { x: number; y: number; zoom: number } }>>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
   const maxHistorySize = 50
 
-  // Performance monitoring refs
-  const performanceMetrics = useRef({
-    frameCount: 0,
-    lastFrameTime: 0,
-    avgFrameTime: 16.67, // Target 60fps
-    dragOperations: 0,
-    resizeOperations: 0,
-  })
+  // Performance monitoring refs - now handled by usePerformanceMonitoring hook
 
-  // Optimized widget update batching
-  const batchedUpdates = useRef<Map<string, any>>(new Map())
-  const updateBatchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  // Enhanced virtual grid with better performance - now handled by usePerformanceMonitoring hook
 
-  // Enhanced virtual grid with better performance
-  const virtualGrid = useMemo(() => {
-    const bufferSize = 300
-    const viewportBounds = {
-      left: -viewport.x - bufferSize,
-      top: -viewport.y - bufferSize,
-      right: -viewport.x + containerSize.width / viewport.zoom + bufferSize,
-      bottom: -viewport.y + containerSize.height / viewport.zoom + bufferSize,
-    }
+  // Optimized batched widget updates - now handled by usePerformanceMonitoring hook
 
-    const isVisible = (item: { x: number; y: number; w: number; h: number }) => {
-      return (
-        item.x < viewportBounds.right &&
-        item.x + item.w > viewportBounds.left &&
-        item.y < viewportBounds.bottom &&
-        item.y + item.h > viewportBounds.top
-      )
-    }
+  // Performance optimization handlers - now handled by extracted hooks
 
-    // Always render dragged/resized items regardless of visibility
-    const isDraggedOrResized = (id: string) => 
-      dragState.draggedId === id || resizeState.resizedId === id
-
-    const visibleMainWidgets = gridState.mainWidgets.filter(
-      widget => isVisible(widget) || isDraggedOrResized(widget.id)
-    )
-    const visibleMainAriesWidgets = gridState.mainAriesWidgets.filter(
-      widget => isVisible(widget) || isDraggedOrResized(widget.id)
-    )
-    const visibleNestContainers = gridState.nestContainers.filter(
-      nest => isVisible(nest) || isDraggedOrResized(nest.id)
-    )
-
-    // For nested items, include all if parent nest is visible
-    const visibleNestedWidgets = gridState.nestedWidgets.filter(widget => {
-      const parentNest = gridState.nestContainers.find(nest => nest.id === widget.nestId)
-      return parentNest && (isVisible(parentNest) || isDraggedOrResized(widget.id))
-    })
-    const visibleNestedAriesWidgets = gridState.nestedAriesWidgets.filter(widget => {
-      const parentNest = gridState.nestContainers.find(nest => nest.id === widget.nestId)
-      return parentNest && (isVisible(parentNest) || isDraggedOrResized(widget.id))
-    })
-
-    const totalItems = gridState.mainWidgets.length + gridState.mainAriesWidgets.length + 
-                     gridState.nestContainers.length + gridState.nestedWidgets.length + 
-                     gridState.nestedAriesWidgets.length
-    const renderedItems = visibleMainWidgets.length + visibleMainAriesWidgets.length + 
-                         visibleNestContainers.length + visibleNestedWidgets.length + 
-                         visibleNestedAriesWidgets.length
-    const culledItems = totalItems - renderedItems
-
-    return {
-      visibleMainWidgets,
-      visibleMainAriesWidgets,
-      visibleNestContainers,
-      visibleNestedWidgets,
-      visibleNestedAriesWidgets,
-      totalWidgets: totalItems,
-      renderedWidgets: renderedItems,
-      culledWidgets: culledItems,
-      isVirtualizationActive: culledItems > 0,
-      cullingPercentage: totalItems > 0 ? (culledItems / totalItems) * 100 : 0,
-    }
-  }, [gridState, viewport, containerSize, dragState.draggedId, resizeState.resizedId])
-
-  // Optimized batched widget updates
-  const batchWidgetUpdate = useCallback((widgetId: string, updates: any) => {
-    batchedUpdates.current.set(widgetId, { ...batchedUpdates.current.get(widgetId), ...updates })
-    
-    if (updateBatchTimeoutRef.current) {
-      clearTimeout(updateBatchTimeoutRef.current)
-    }
-    
-    updateBatchTimeoutRef.current = setTimeout(() => {
-      const updates = new Map(batchedUpdates.current)
-      batchedUpdates.current.clear()
-      
-      if (updates.size > 0) {
-        setGridState(prev => {
-          const newState = { ...prev }
-          
-          updates.forEach((update, widgetId) => {
-            // Update main widgets
-            newState.mainWidgets = newState.mainWidgets.map(widget =>
-              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
-            )
-            // Update main Aries widgets
-            newState.mainAriesWidgets = newState.mainAriesWidgets.map(widget =>
-              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
-            )
-            // Update nested widgets
-            newState.nestedWidgets = newState.nestedWidgets.map(widget =>
-              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
-            )
-            // Update nested Aries widgets
-            newState.nestedAriesWidgets = newState.nestedAriesWidgets.map(widget =>
-              widget.id === widgetId ? { ...widget, ...update, updatedAt: new Date().toISOString() } : widget
-            )
-            // Update nest containers
-            newState.nestContainers = newState.nestContainers.map(nest =>
-              nest.id === widgetId ? { ...nest, ...update, updatedAt: new Date().toISOString() } : nest
-            )
-          })
-          
-          return newState
-        })
-      }
-    }, 16) // Batch updates every 16ms (60fps)
-  }, [setGridState])
-
-  // Performance-optimized frame rate monitoring
-  const updatePerformanceMetrics = useCallback(() => {
-    const now = performance.now()
-    const frameTime = now - performanceMetrics.current.lastFrameTime
-    performanceMetrics.current.lastFrameTime = now
-    performanceMetrics.current.frameCount++
-    
-    // Exponential moving average for smooth frame time tracking
-    performanceMetrics.current.avgFrameTime = 
-      performanceMetrics.current.avgFrameTime * 0.9 + frameTime * 0.1
-  }, [])
-
-  // Optimized mouse move handler with requestAnimationFrame
-  const optimizedMouseMove = useCallback((e: MouseEvent, updateCallback: () => void) => {
-    const now = performance.now()
-    
-    // Throttle updates to 60fps max
-    if (now - performanceMetrics.current.lastFrameTime < 16.67) {
-      return
-    }
-    
-    // Update performance metrics
-    const frameTime = now - performanceMetrics.current.lastFrameTime
-    performanceMetrics.current.lastFrameTime = now
-    performanceMetrics.current.frameCount++
-    performanceMetrics.current.avgFrameTime = 
-      performanceMetrics.current.avgFrameTime * 0.9 + frameTime * 0.1
-    
-    // Use requestAnimationFrame for smooth updates
-    if (dragState.animationFrameId) {
-      cancelAnimationFrame(dragState.animationFrameId)
-    }
-    
-    const frameId = requestAnimationFrame(() => {
-      updateCallback()
-      setDragState(prev => ({ ...prev, animationFrameId: undefined }))
-    })
-    
-    setDragState(prev => ({ ...prev, animationFrameId: frameId }))
-  }, [dragState.animationFrameId])
-
-  // Optimized resize move handler
-  const optimizedResizeMove = useCallback((e: MouseEvent, updateCallback: () => void) => {
-    const now = performance.now()
-    
-    // Throttle updates to 60fps max
-    if (now - performanceMetrics.current.lastFrameTime < 16.67) {
-      return
-    }
-    
-    // Update performance metrics
-    const frameTime = now - performanceMetrics.current.lastFrameTime
-    performanceMetrics.current.lastFrameTime = now
-    performanceMetrics.current.frameCount++
-    performanceMetrics.current.avgFrameTime = 
-      performanceMetrics.current.avgFrameTime * 0.9 + frameTime * 0.1
-    
-    // Use requestAnimationFrame for smooth updates
-    if (resizeState.animationFrameId) {
-      cancelAnimationFrame(resizeState.animationFrameId)
-    }
-    
-    const frameId = requestAnimationFrame(() => {
-      updateCallback()
-      setResizeState(prev => ({ ...prev, animationFrameId: undefined }))
-    })
-    
-    setResizeState(prev => ({ ...prev, animationFrameId: frameId }))
-  }, [resizeState.animationFrameId])
-
-  // Cleanup animation frames on unmount
-  useEffect(() => {
-    return () => {
-      if (dragState.animationFrameId) {
-        cancelAnimationFrame(dragState.animationFrameId)
-      }
-      if (resizeState.animationFrameId) {
-        cancelAnimationFrame(resizeState.animationFrameId)
-      }
-      if (updateBatchTimeoutRef.current) {
-        clearTimeout(updateBatchTimeoutRef.current)
-      }
-    }
-  }, [dragState.animationFrameId, resizeState.animationFrameId])
+  // Cleanup animation frames on unmount - now handled by extracted hooks
 
   const handleToolbarMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -428,103 +263,9 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     setHistoryIndex(prev => Math.min(prev + 1, maxHistorySize - 1))
   }, [historyIndex, maxHistorySize])
 
-  // Save grid state to localStorage and current profile
-  const saveGridState = useCallback(async (isAutoSave = false) => {
-    try {
-      if (isAutoSave) {
-        setAutoSaveStatus('saving')
-        console.log('Starting auto-save...', { gridState, viewport })
-      }
-      
-      const stateToSave = {
-        ...gridState,
-        viewport,
-        lastSaved: new Date().toISOString(),
-        autoSaveEnabled: isAutoSaveEnabled,
-        autoSaveInterval: autoSaveInterval,
-      }
-      
-      // Force save to localStorage with validation
-      const stateString = JSON.stringify(stateToSave)
-      
-      // Check localStorage quota before saving
-      try {
-        const testKey = 'comms-grid-state-test'
-        localStorage.setItem(testKey, stateString)
-        localStorage.removeItem(testKey)
-      } catch (quotaError) {
-        console.error('localStorage quota exceeded:', quotaError)
-        throw new Error('Storage quota exceeded. Please clear some browser data.')
-      }
-      
-      localStorage.setItem("comms-grid-state", stateString)
-      
-      // Verify the save was successful
-      const savedState = localStorage.getItem("comms-grid-state")
-      if (!savedState || savedState !== stateString) {
-        throw new Error("Failed to verify localStorage save")
-      }
-      
-      // Also save to the current active profile if it exists
-      if (state.activeProfile && state.profiles[state.activeProfile]) {
-        const updatedProfiles = { ...state.profiles, [state.activeProfile]: stateToSave }
-        updateProfiles(updatedProfiles)
-        if (!isAutoSave) {
-          dispatch({ type: "ADD_LOG", payload: `Grid state saved to profile "${state.activeProfile}"` })
-        }
-      } else {
-        if (!isAutoSave) {
-          dispatch({ type: "ADD_LOG", payload: "Grid state saved to localStorage" })
-        }
-      }
-      
-      setHasUnsavedChanges(false)
-      
-      if (isAutoSave) {
-        setAutoSaveStatus('saved')
-        setLastAutoSave(new Date().toLocaleTimeString())
-        console.log('Auto-save completed successfully at', new Date().toLocaleTimeString())
-        // Reset status after 2 seconds
-        setTimeout(() => setAutoSaveStatus('idle'), 2000)
-      } else {
-        console.log('Manual save completed successfully')
-      }
-    } catch (error) {
-      console.error("Failed to save grid state:", error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      
-      if (isAutoSave) {
-        setAutoSaveStatus('error')
-        setTimeout(() => setAutoSaveStatus('idle'), 3000)
-      } else {
-        dispatch({ type: "ADD_LOG", payload: `Failed to save grid state: ${errorMessage}` })
-      }
-      throw error // Re-throw to trigger retry logic
-    }
-  }, [gridState, viewport, dispatch, state.activeProfile, state.profiles, updateProfiles, isAutoSaveEnabled, autoSaveInterval])
+  // Save grid state - now handled by useAutoSave hook
 
-  // Export grid state as JSON file
-  const exportGridState = useCallback(() => {
-    try {
-      const stateToExport = {
-        ...gridState,
-        viewport,
-        exportedAt: new Date().toISOString(),
-      }
-      const dataStr = JSON.stringify(stateToExport, null, 2)
-      const dataBlob = new Blob([dataStr], { type: "application/json" })
-      const url = URL.createObjectURL(dataBlob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `comms-grid-${new Date().toISOString().split("T")[0]}.json`
-      link.click()
-      URL.revokeObjectURL(url)
-      dispatch({ type: "ADD_LOG", payload: "Grid state exported successfully" })
-    } catch (error) {
-      console.error("Failed to export grid state:", error)
-      dispatch({ type: "ADD_LOG", payload: "Failed to export grid state" })
-    }
-  }, [gridState, viewport, dispatch])
+  // Export, undo, redo functions - now handled by useAutoSave hook
 
   // Update grid state helper
   const updateGridState = useCallback((updater: (prev: GridStateType) => GridStateType) => {
@@ -533,50 +274,6 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       return newState
     })
   }, [])
-
-  // Undo last action
-  const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1
-      const historyItem = stateHistory[newIndex]
-      if (historyItem) {
-        setGridState(historyItem.gridState)
-        setViewport(historyItem.viewport)
-        setHistoryIndex(newIndex)
-        setHasUnsavedChanges(true)
-        dispatch({ type: "ADD_LOG", payload: "Undo: Reverted to previous state" })
-      }
-    }
-  }, [historyIndex, stateHistory, dispatch])
-
-  // Redo last undone action
-  const redo = useCallback(() => {
-    if (historyIndex < stateHistory.length - 1) {
-      const newIndex = historyIndex + 1
-      const historyItem = stateHistory[newIndex]
-      if (historyItem) {
-        setGridState(historyItem.gridState)
-        setViewport(historyItem.viewport)
-        setHistoryIndex(newIndex)
-        setHasUnsavedChanges(true)
-        dispatch({ type: "ADD_LOG", payload: "Redo: Restored next state" })
-      }
-    }
-  }, [historyIndex, stateHistory, dispatch])
-
-  // Navigate to specific history entry
-  const navigateToHistory = useCallback((index: number) => {
-    if (index >= 0 && index < stateHistory.length) {
-      const historyItem = stateHistory[index]
-      if (historyItem) {
-        setGridState(historyItem.gridState)
-        setViewport(historyItem.viewport)
-        setHistoryIndex(index)
-        setHasUnsavedChanges(true)
-        dispatch({ type: "ADD_LOG", payload: `Navigated to history entry ${index + 1}` })
-      }
-    }
-  }, [stateHistory, dispatch])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -715,36 +412,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     }
   }, [dispatch])
 
-  // Import grid state from JSON file
-  const importGridState = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0]
-      if (!file) return
-
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const importedState = JSON.parse(e.target?.result as string)
-          setGridState(importedState)
-          setViewport(importedState.viewport || { x: 0, y: 0, zoom: 1 })
-          setHasUnsavedChanges(true)
-          
-          // Save imported state to history
-          const importedHistory = [{ gridState: importedState, viewport: importedState.viewport || { x: 0, y: 0, zoom: 1 } }]
-          setStateHistory(importedHistory)
-          setHistoryIndex(0)
-          
-          dispatch({ type: "ADD_LOG", payload: "Grid state imported successfully" })
-        } catch (error) {
-          console.error("Failed to import grid state:", error)
-          dispatch({ type: "ADD_LOG", payload: "Failed to import grid state" })
-        }
-      }
-      reader.readAsText(file)
-      event.target.value = "" // Reset input
-    },
-    [dispatch],
-  )
+  // Import grid state - now handled by useAutoSave hook
 
   // Auto-save with enhanced reliability and better error handling
   useEffect(() => {
@@ -922,280 +590,17 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   /**
    * Handle mouse down for dragging widgets and nests
    * @param e - Mouse event
-   * @param itemId - ID of the item being dragged
-   * @param itemType - Type of item ("widget" or "nest")
+   * Handle mouse down events - now handled by useDragAndDrop hook
    */
-  const handleMouseDown = (e: React.MouseEvent, itemId: string, itemType: "widget" | "nest") => {
-    const target = e.target as HTMLElement
-    
-    // Check if clicking on a resize handle - if so, don't start drag
-    if (target.closest(".resize-handle") || target.classList.contains("resize-handle")) {
-      console.log("Clicked on resize handle, preventing drag")
-      return
-    }
-
-    // Enhanced interactive element detection for AriesMods widgets
-    const isInteractiveElement = (element: HTMLElement): boolean => {
-      // Check for buttons, inputs, and other interactive elements
-      if (element.tagName === 'BUTTON' || element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA') {
-        return true
-      }
-      
-      // Check for elements with click handlers or interactive roles
-      if (element.onclick || element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') {
-        return true
-      }
-      
-      // Check for specific classes that indicate interactive elements
-      if (element.classList.contains('settings-button') || 
-          element.closest('.settings-button') ||
-          element.getAttribute('data-settings-button') === 'true') {
-        return true
-      }
-      
-      // Check for SVG icons inside buttons (like Settings, TestTube icons)
-      if (element.tagName === 'svg' && element.closest('button')) {
-        return true
-      }
-      
-      // Check for dialog elements
-      if (element.closest('[role="dialog"]') || element.closest('.dialog-content')) {
-        return true
-      }
-      
-      // Check for form elements
-      if (element.closest('form') || element.closest('.form-control')) {
-        return true
-      }
-      
-      // Check for elements with pointer cursor (indicating clickable)
-      const computedStyle = window.getComputedStyle(element)
-      if (computedStyle.cursor === 'pointer') {
-        return true
-      }
-      
-      return false
-    }
-
-    // For AriesMods widgets, allow dragging from drag handle, header, or grip areas
-    if (itemType === "widget") {
-      const isAriesWidget = gridState.mainAriesWidgets.some(w => w.id === itemId) || 
-                           gridState.nestedAriesWidgets.some(w => w.id === itemId)
-      
-      if (isAriesWidget) {
-        // Check if clicking on draggable areas for AriesMod widgets
-        const isDragArea = target.closest('.cursor-grab') || 
-                          target.classList.contains('cursor-grab') ||
-                          target.closest('[data-drag-handle]') ||
-                          target.getAttribute('data-drag-handle') === 'true' ||
-                          target.closest('.drag-handle') ||
-                          target.classList.contains('drag-handle') ||
-                          // Allow dragging from GripVertical icon
-                          (target.tagName === 'svg' && target.getAttribute('data-lucide') === 'grip-vertical') ||
-                          // Allow dragging from parent of GripVertical
-                          target.querySelector('svg[data-lucide="grip-vertical"]') ||
-                          // Allow dragging from CardHeader areas
-                          (target.closest('.cursor-grab') && !target.closest('button'))
-        
-        if (!isDragArea) {
-          // Check if clicking on interactive elements within AriesMod
-          if (isInteractiveElement(target)) {
-            console.log("AriesMod widget: Clicked on interactive element, preventing drag")
-            return
-          }
-          console.log("AriesMod widget: Not clicking on drag area, preventing drag")
-          return
-        }
-        
-        console.log("AriesMod widget: Drag area clicked, allowing drag")
-      } else {
-        // For regular widgets, allow dragging from header but prevent from interactive elements
-        const isDragArea = target.closest('.cursor-grab') || 
-                          target.classList.contains('cursor-grab') ||
-                          (target.tagName === 'svg' && target.getAttribute('data-lucide') === 'grip-vertical') ||
-                          target.querySelector('svg[data-lucide="grip-vertical"]')
-        
-        if (!isDragArea && isInteractiveElement(target)) {
-          console.log("Regular widget: Clicked on interactive element, preventing drag:", target)
-          return
-        }
-      }
-    }
-
-    e.preventDefault()
-    e.stopPropagation()
-
-    const rect = e.currentTarget.getBoundingClientRect()
-    const containerRect = containerRef.current?.getBoundingClientRect()
-    if (!containerRect) return
-
-    // Determine source container
-    let sourceContainer: "main" | "nest" = "main"
-    let sourceNestId: string | undefined
-
-    if (itemType === "widget") {
-      const nestedWidget = gridState.nestedWidgets.find((w) => w.id === itemId)
-      const nestedAriesWidget = gridState.nestedAriesWidgets.find((w) => w.id === itemId)
-      
-      if (nestedWidget) {
-        sourceContainer = "nest"
-        sourceNestId = nestedWidget.nestId
-      } else if (nestedAriesWidget) {
-        sourceContainer = "nest"
-        sourceNestId = nestedAriesWidget.nestId
-      }
-    }
-
-    // Calculate offset in world coordinates
-    const worldMouseX = (e.clientX - containerRect.left) / viewport.zoom - viewport.x
-    const worldMouseY = (e.clientY - containerRect.top) / viewport.zoom - viewport.y
-    
-    // Get the item's current position
-    let item: any = null
-    if (itemType === "widget") {
-      item = gridState.mainWidgets.find((w) => w.id === itemId) || 
-             gridState.nestedWidgets.find((w) => w.id === itemId) ||
-             gridState.mainAriesWidgets.find((w) => w.id === itemId) ||
-             gridState.nestedAriesWidgets.find((w) => w.id === itemId)
-    } else {
-      item = gridState.nestContainers.find((n) => n.id === itemId)
-    }
-
-    if (!item) return
-
-    console.log("Starting drag for:", itemType, itemId, "from container:", sourceContainer)
-
-    setDragState({
-      isDragging: true,
-      draggedId: itemId,
-      draggedType: itemType,
-      sourceContainer,
-      sourceNestId,
-      offset: {
-        x: worldMouseX - item.x,
-        y: worldMouseY - item.y,
-      },
-      lastUpdateTime: Date.now(),
-    })
-  }
 
   /**
    * Handle panning start with middle mouse or Ctrl+click
-   * @param e - Mouse event
+   * Handle panning - now handled by useViewportControls hook
    */
-  const handlePanStart = (e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
-      e.preventDefault()
-      setIsPanning(true)
-      setPanStart({ x: e.clientX, y: e.clientY })
-      setLastPanPoint({ x: e.clientX, y: e.clientY })
-    }
-  }
 
-  // Enhanced wheel handling for smooth zooming like Miro
-  const [zoomVelocity, setZoomVelocity] = useState(0)
-  const [lastWheelTime, setLastWheelTime] = useState(0)
-  const zoomAnimationRef = useRef<number | null>(null)
+  // Enhanced wheel handling - now handled by useViewportControls hook
 
-  // Smooth zoom animation with momentum
-  useEffect(() => {
-    if (Math.abs(zoomVelocity) > 0.001) {
-      const animate = () => {
-        setZoomVelocity(prev => {
-          const newVelocity = prev * 0.85 // Friction/damping
-          
-          if (Math.abs(newVelocity) > 0.001) {
-            setViewport(current => ({
-              ...current,
-              zoom: Math.max(0.05, Math.min(10, current.zoom * (1 + newVelocity)))
-            }))
-            zoomAnimationRef.current = requestAnimationFrame(animate)
-            return newVelocity
-          } else {
-            zoomAnimationRef.current = null
-            return 0
-          }
-        })
-      }
-      
-      zoomAnimationRef.current = requestAnimationFrame(animate)
-    }
-
-    return () => {
-      if (zoomAnimationRef.current) {
-        cancelAnimationFrame(zoomAnimationRef.current)
-      }
-    }
-  }, [zoomVelocity])
-
-  const handleWheel = useCallback((e: WheelEvent) => {
-    // If hovering over a nest, do not handle wheel events on main grid
-    if (isHoveringOverNest) {
-      return
-    }
-
-    if (e.ctrlKey) {
-      e.preventDefault()
-      
-      const currentTime = Date.now()
-      const timeDelta = currentTime - lastWheelTime
-      setLastWheelTime(currentTime)
-
-      // Enhanced trackpad vs mouse wheel detection
-      const isTrackpad = Math.abs(e.deltaY) < 50 && timeDelta < 100
-      const isPinch = e.ctrlKey && Math.abs(e.deltaY) < 5
-      
-      // Get mouse position for zoom-to-cursor
-      const containerRect = containerRef.current?.getBoundingClientRect()
-      if (!containerRect) return
-
-      const mouseX = e.clientX - containerRect.left
-      const mouseY = e.clientY - containerRect.top
-
-      let zoomDelta: number
-      
-      if (isPinch) {
-        // Pinch gesture - very fine control
-        zoomDelta = -e.deltaY * 0.005 // Reduced from 0.01 for stability
-      } else if (isTrackpad) {
-        // Trackpad - smooth, continuous zooming with improved stability
-        zoomDelta = -e.deltaY * 0.002 // Further reduced from 0.003 for smoothness
-      } else {
-        // Mouse wheel - discrete steps
-        zoomDelta = e.deltaY > 0 ? -0.08 : 0.08 // Slightly reduced from 0.1
-      }
-      
-      setViewport((prev) => {
-        const newZoom = Math.max(0.05, Math.min(10, prev.zoom * (1 + zoomDelta)))
-        
-        // CORRECT zoom-to-cursor calculation:
-        // 1. Convert mouse position to world coordinates BEFORE zoom
-        const worldPointX = (mouseX / prev.zoom) - prev.x
-        const worldPointY = (mouseY / prev.zoom) - prev.y
-        
-        // 2. Calculate new viewport position so the same world point appears under cursor AFTER zoom
-        const newX = (mouseX / newZoom) - worldPointX
-        const newY = (mouseY / newZoom) - worldPointY
-        
-        return {
-          x: newX,
-          y: newY,
-          zoom: newZoom
-        }
-      })
-    } else {
-      // Enhanced smooth panning
-      const panSpeed = 1.0 // Reduced from 1.2 for smoother trackpad panning
-      const deltaX = e.deltaX * panSpeed
-      const deltaY = e.deltaY * panSpeed
-      
-      setViewport((prev) => ({
-        ...prev,
-        x: prev.x - deltaX / prev.zoom,
-        y: prev.y - deltaY / prev.zoom,
-      }))
-    }
-  }, [isHoveringOverNest, lastWheelTime, viewport.zoom])
+  // Smooth zoom animation and wheel handling - now handled by useViewportControls hook
 
   /**
    * Handle resize mouse down for widgets and nests
