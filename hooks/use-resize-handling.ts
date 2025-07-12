@@ -103,58 +103,10 @@ export const useResizeHandling = ({
   /**
    * Get resize handles for an item
    */
-  const getResizeHandles = useCallback((item: any, itemType: "widget" | "nest"): JSX.Element | null => {
-    if (!item) return null
-
-    const handleStyle = "absolute w-2 h-2 bg-primary/20 border border-primary/40 hover:bg-primary/40 transition-colors cursor-pointer z-10"
-
-    return (
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Corner handles */}
-        <div
-          className={`${handleStyle} -top-1 -left-1 cursor-nw-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "nw")}
-        />
-        <div
-          className={`${handleStyle} -top-1 -right-1 cursor-ne-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "ne")}
-        />
-        <div
-          className={`${handleStyle} -bottom-1 -left-1 cursor-sw-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "sw")}
-        />
-        <div
-          className={`${handleStyle} -bottom-1 -right-1 cursor-se-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "se")}
-        />
-        
-        {/* Edge handles */}
-        <div
-          className={`${handleStyle} -top-1 left-1/2 transform -translate-x-1/2 cursor-n-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "n")}
-        />
-        <div
-          className={`${handleStyle} -bottom-1 left-1/2 transform -translate-x-1/2 cursor-s-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "s")}
-        />
-        <div
-          className={`${handleStyle} -left-1 top-1/2 transform -translate-y-1/2 cursor-w-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "w")}
-        />
-        <div
-          className={`${handleStyle} -right-1 top-1/2 transform -translate-y-1/2 cursor-e-resize`}
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => startResize(e, item.id, itemType, "e")}
-        />
-      </div>
-    )
+  const getResizeHandles = useCallback((item: any, itemType: "widget" | "nest"): React.ReactNode => {
+    // This would be implemented by the parent component
+    // For now, return null since the parent should handle resize handles
+    return null
   }, [startResize])
 
   return {
