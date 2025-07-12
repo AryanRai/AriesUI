@@ -1,12 +1,21 @@
 {
-  "name": "my-v0-project",
+  "name": "ariesui-v3",
   "version": "0.1.0",
+  "description": "AriesUI v3 - Desktop application for Comms hardware control and monitoring",
+  "main": "electron/main.js",
+  "homepage": "./",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "electron": "electron .",
+    "electron-dev": "node scripts/dev.js",
+    "electron-pack": "npm run build && npm run export && electron-builder",
+    "export": "next export",
+    "build-electron": "npm run build && npm run export && electron-builder --publish=never",
+    "dist": "npm run build && npm run export && electron-builder --publish=always"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -37,34 +46,104 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
+    "@react-three/drei": "^10.3.0",
+    "@react-three/fiber": "^9.1.2",
+    "@types/three": "^0.178.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
+    "framer-motion": "^12.19.2",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "next-themes": "latest",
+    "plotly.js": "^3.0.1",
     "react": "^19",
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
     "react-hook-form": "^7.54.1",
+    "react-plotly.js": "^2.6.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "three": "^0.177.0",
     "vaul": "^0.9.6",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/plotly.js": "^3.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-plotly.js": "^2.6.3",
+    "concurrently": "^9.2.0",
+    "electron": "^37.1.0",
+    "electron-builder": "^26.0.12",
+    "electron-updater": "^6.6.2",
     "postcss": "^8.5",
+    "string-replace-loader": "^3.2.0",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.insposoftware.ariesui",
+    "productName": "AriesUI v3",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "electron/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "public/placeholder-logo.png"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/placeholder-logo.png"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/placeholder-logo.png",
+      "category": "Development"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

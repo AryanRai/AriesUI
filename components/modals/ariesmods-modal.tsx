@@ -1,102 +1,52 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { useComms } from "@/components/comms-context"
-import { Download, Trash2, ExternalLink } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function AriesModsModal() {
-  const { dispatch } = useComms()
+  const { state, dispatch } = useComms()
 
-  const availableMods = [
-    { name: "Chart Widget Pro", version: "1.2.0", description: "Advanced charting capabilities" },
-    { name: "Data Export", version: "0.8.1", description: "Export data to various formats" },
-    { name: "Custom Themes", version: "2.1.0", description: "Additional theme options" },
-  ]
-
-  const installedMods = [{ name: "Basic Widgets", version: "1.0.0", description: "Core widget collection" }]
+  const handleClose = () => {
+    dispatch({ type: "SET_MODAL", payload: null })
+  }
 
   return (
-    <Dialog open={true} onOpenChange={() => dispatch({ type: "SET_MODAL", payload: null })}>
-      <DialogContent className="sm:max-w-4xl h-[600px]">
+    <Dialog open={state.activeModal === "ariesmods"} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[900px] h-[70vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>AriesMods Marketplace</DialogTitle>
+          <DialogTitle>AriesMods Management</DialogTitle>
+          <DialogDescription>
+            Manage, create, and browse AriesMod modules.
+          </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-6 h-full">
-          {/* Left side - Configuration */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="git-url">Git Repository URL</Label>
-              <Input id="git-url" placeholder="https://github.com/user/repo.git" className="mt-1" />
-            </div>
-
-            <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center">
-              <p className="text-sm text-muted-foreground mb-2">Drop .js mod files here</p>
-              <Button variant="outline" size="sm">
-                Browse Files
-              </Button>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-2">Installed Mods</h3>
-              <div className="space-y-2">
-                {installedMods.map((mod, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-sm">{mod.name}</div>
-                          <div className="text-xs text-muted-foreground">{mod.description}</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{mod.version}</Badge>
-                          <Button variant="ghost" size="icon" className="h-6 w-6">
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Right side - Available Mods */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Available Mods</h3>
-              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                <ExternalLink className="h-3 w-3" />
-                Browse Online
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {availableMods.map((mod, index) => (
-                <Card key={index}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-sm">{mod.name}</div>
-                        <div className="text-xs text-muted-foreground">{mod.description}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{mod.version}</Badge>
-                        <Button variant="default" size="icon" className="h-6 w-6">
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
+        <Tabs defaultValue="installed" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="installed">Installed</TabsTrigger>
+            <TabsTrigger value="create">Create</TabsTrigger>
+            <TabsTrigger value="docs">Documentation</TabsTrigger>
+          </TabsList>
+          <TabsContent value="installed" className="flex-1 overflow-auto p-4 mt-2">
+            <p className="text-muted-foreground">List of locally installed mods will appear here.</p>
+          </TabsContent>
+          <TabsContent value="create" className="flex-1 overflow-auto p-4 mt-2">
+            <p className="text-muted-foreground">An interface for creating new mods will be here.</p>
+          </TabsContent>
+          <TabsContent value="docs" className="flex-1 overflow-auto p-4 mt-2">
+            <p className="text-muted-foreground">Guides and API documentation for mod development will be here.</p>
+          </TabsContent>
+        </Tabs>
+        <DialogFooter className="mt-auto">
+          <Button onClick={handleClose}>Close</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

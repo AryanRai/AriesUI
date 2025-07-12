@@ -1,0 +1,207 @@
+/* AriesUI Widget Animations - Hardware Accelerated */
+
+/* Base widget card with hardware acceleration */
+.aries-widget-card {
+  /* Enable hardware acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  
+  /* Smooth transitions */
+  transition: 
+    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover state with micro-animations */
+.aries-widget-card:hover {
+  transform: translateZ(0) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Active dragging state with jiggle physics */
+.aries-widget-dragging {
+  transform: translateZ(0) scale(1.05) rotate(1deg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  
+  /* Subtle jiggle animation */
+  animation: jiggle 0.3s ease-in-out;
+}
+
+/* Resizing state with stretch effect */
+.aries-widget-resizing {
+  transform: translateZ(0) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  
+  /* Subtle pulse animation */
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+/* Jiggle animation for drag initiation */
+@keyframes jiggle {
+  0%, 100% { transform: translateZ(0) scale(1.05) rotate(1deg); }
+  25% { transform: translateZ(0) scale(1.05) rotate(-1deg); }
+  50% { transform: translateZ(0) scale(1.05) rotate(1deg); }
+  75% { transform: translateZ(0) scale(1.05) rotate(-0.5deg); }
+}
+
+/* Pulse animation for resizing */
+@keyframes pulse {
+  0% { transform: translateZ(0) scale(1.02); }
+  100% { transform: translateZ(0) scale(1.04); }
+}
+
+/* Collision push animation */
+.aries-widget-pushed {
+  animation: pushShake 0.2s ease-out;
+}
+
+@keyframes pushShake {
+  0%, 100% { transform: translateZ(0) translateX(0); }
+  25% { transform: translateZ(0) translateX(-2px); }
+  75% { transform: translateZ(0) translateX(2px); }
+}
+
+/* Entry animation for new widgets */
+.aries-widget-enter {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: translateZ(0) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+  }
+}
+
+/* Exit animation for removed widgets */
+.aries-widget-exit {
+  animation: fadeOutScale 0.3s ease-in forwards;
+}
+
+@keyframes fadeOutScale {
+  0% {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateZ(0) scale(0.8);
+  }
+}
+
+/* Smooth resize handles */
+.resize-handle {
+  transition: all 0.2s ease;
+  transform: translateZ(0);
+}
+
+.resize-handle:hover {
+  transform: translateZ(0) scale(1.2);
+}
+
+/* Grid fade effect during interactions */
+.aries-grid-faded {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.aries-grid-faded .aries-widget-card:not(.aries-widget-dragging):not(.aries-widget-resizing) {
+  opacity: 0.8;
+}
+
+/* Viewport indicators with smooth transitions */
+.aries-viewport-indicator {
+  transition: all 0.3s ease;
+  transform: translateZ(0);
+}
+
+/* Drag rings for visual feedback */
+.aries-drag-ring {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 197, 94, 0.5);
+  animation: expandRing 0.6s ease-out;
+}
+
+@keyframes expandRing {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 60px;
+    height: 60px;
+    opacity: 0;
+  }
+}
+
+/* Resize rings for visual feedback */
+.aries-resize-ring {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  animation: expandRing 0.6s ease-out;
+}
+
+/* Nest drop zones with smooth transitions */
+.aries-nest-drop-zone {
+  transition: all 0.3s ease;
+  transform: translateZ(0);
+}
+
+.aries-nest-drop-zone.active {
+  transform: translateZ(0) scale(1.02);
+  border-color: rgba(34, 197, 94, 0.6);
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+/* Performance optimizations */
+.aries-performance-mode .aries-widget-card {
+  /* Disable complex animations in performance mode */
+  animation: none;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.aries-performance-mode .aries-widget-card:hover {
+  transform: translateZ(0) scale(1.01);
+}
+
+/* Accessibility - respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .aries-widget-card,
+  .resize-handle,
+  .aries-viewport-indicator {
+    animation: none;
+    transition: none;
+  }
+  
+  .aries-widget-card:hover {
+    transform: none;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .aries-widget-card:hover {
+    box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
+  }
+  
+  .aries-widget-dragging {
+    box-shadow: 0 12px 30px rgba(255, 255, 255, 0.15);
+  }
+  
+  .aries-widget-resizing {
+    box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
+  }
+}
