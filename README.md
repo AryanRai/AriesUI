@@ -9,7 +9,8 @@
 
 AriesUI is the frontend component of the Comms v3.0 ecosystem, providing a drag-and-drop widget dashboard with seamless hardware integration, real-time data streaming, and professional-grade performance optimizations.
 
-![AriesUI Dashboard](https://github.com/user-attachments/assets/02e70432-e6f7-4664-9f17-b6b0acd60a67)
+![AriesUI Dashboard](https://github.com/user-attachments/assets/4f154bf6-f945-4f5e-8a10-f1d459b411e0)
+
 
 ---
 
