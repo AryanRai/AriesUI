@@ -187,6 +187,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   })
 
   const [actionsToolbarPosition, setActionsToolbarPosition] = useLocalStorage("aries-actions-toolbar-pos", { top: 80, right: 20 })
+  const [zoomToolbarPosition, setZoomToolbarPosition] = useLocalStorage("aries-zoom-toolbar-pos", { top: 80, left: 200 })
   
   // Reset all toolbar positions to default
   const resetToolbarPositions = useCallback(() => {
