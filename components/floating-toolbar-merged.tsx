@@ -245,90 +245,7 @@ const TOOLBAR_SECTIONS: ToolbarSection[] = [
   },
 ]
 
-// Snap zones configuration
-const SNAP_ZONES = {
-  TOP_LEFT: { x: 20, y: 20 },
-  TOP_RIGHT: { x: -20, y: 20 }, // Negative x means offset from right edge
-  BOTTOM_LEFT: { x: 20, y: -20 }, // Negative y means offset from bottom edge
-  BOTTOM_RIGHT: { x: -20, y: -20 },
-  LEFT_CENTER: { x: 20, y: 0.5 }, // 0.5 means 50% from top
-  RIGHT_CENTER: { x: -20, y: 0.5 },
-  TOP_CENTER: { x: 0.5, y: 20 }, // 0.5 means 50% from left
-  BOTTOM_CENTER: { x: 0.5, y: -20 },
-} as const
-
-const SNAP_THRESHOLD = 30 // pixels - reduced for less aggressive snapping
-
-// Helper function to calculate snap position - only for preview during drag
-const calculateSnapPosition = (currentX: number, currentY: number, toolbarWidth: number, toolbarHeight: number, enableSnapping: boolean = true) => {
-  if (!enableSnapping) {
-    return {
-      x: currentX,
-      y: currentY,
-      snapped: false,
-      snapZone: null
-    }
-  }
-
-  const windowWidth = window.innerWidth
-  const windowHeight = window.innerHeight
-  
-  let closestDistance = Infinity
-  let closestSnap = null
-  
-  // Optimized: iterate through zones and find closest in single pass
-  for (const [key, zone] of Object.entries(SNAP_ZONES)) {
-    let targetX: number
-    let targetY: number
-    
-    // Calculate target position based on zone configuration
-    if (zone.x < 0) {
-      targetX = windowWidth + zone.x - toolbarWidth // Offset from right edge
-    } else if (zone.x > 0 && zone.x < 1) {
-      targetX = (windowWidth - toolbarWidth) * zone.x // Percentage from left
-    } else {
-      targetX = zone.x // Absolute position from left
-    }
-    
-    if (zone.y < 0) {
-      targetY = windowHeight + zone.y - toolbarHeight // Offset from bottom edge
-    } else if (zone.y > 0 && zone.y < 1) {
-      targetY = (windowHeight - toolbarHeight) * zone.y // Percentage from top
-    } else {
-      targetY = zone.y // Absolute position from top
-    }
-    
-    // Calculate distance to this snap zone (using squared distance for performance)
-    const dx = currentX - targetX
-    const dy = currentY - targetY
-    const distance = dx * dx + dy * dy // Squared distance for performance
-    
-    if (distance < closestDistance) {
-      closestDistance = distance
-      closestSnap = {
-        key,
-        position: { x: targetX, y: targetY },
-        distance: Math.sqrt(distance) // Only sqrt for the final closest
-      }
-    }
-  }
-  
-  // Return snap position if within threshold, otherwise return current position
-  if (closestSnap && closestSnap.distance < SNAP_THRESHOLD) {
-    return {
-      ...closestSnap.position,
-      snapped: true,
-      snapZone: closestSnap.key
-    }
-  }
-  
-  return {
-    x: currentX,
-    y: currentY,
-    snapped: false,
-    snapZone: null
-  }
-}
+// Removed snap zones and snap threshold constants for performance
 
 // Futuristic background for floating toolbar
 const ToolbarBackground = ({ animationsEnabled }: { animationsEnabled: boolean }) => {
@@ -384,12 +301,9 @@ export function FloatingToolbar(props: ToolbarProps) {
   const [position, setPosition] = useLocalStorage("toolbar-position", { x: 50, y: 50 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [showSnapPreview, setShowSnapPreview] = useState(false)
-  const [snapPreviewPosition, setSnapPreviewPosition] = useState({ x: 0, y: 0, label: "" })
   const [canScroll, setCanScroll] = useState(false)
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
-  const [currentSnapZone, setCurrentSnapZone] = useState<string | null>(null)
-  const [snapEnabled, setSnapEnabled] = useLocalStorage("toolbar-snap-enabled", true)
+  // Removed snap-related state variables for performance
   const toolbarRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -442,23 +356,10 @@ export function FloatingToolbar(props: ToolbarProps) {
     // Store the starting position for accurate delta calculations
     dragStartPositionRef.current = currentPositionRef.current
     
-    dispatch({ type: "ADD_LOG", payload: "🚀 Toolbar dragging started - FREE MOVEMENT enabled!" })
+    dispatch({ type: "ADD_LOG", payload: "🚀 Toolbar dragging started - FREE MOVEMENT (no snapping)" })
   }, [dispatch])
 
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const newSnapEnabled = !snapEnabled
-    setSnapEnabled(newSnapEnabled)
-    
-    // Clear any snap preview if snapping is being disabled
-    if (!newSnapEnabled) {
-      setShowSnapPreview(false)
-      setCurrentSnapZone(null)
-    }
-    
-    dispatch({ type: "ADD_LOG", payload: `Toolbar snapping ${newSnapEnabled ? 'enabled' : 'disabled'}` })
-  }, [snapEnabled, setSnapEnabled, dispatch])
+  // Removed double-click snapping toggle since snapping is disabled for performance
 
   // Add RAF throttling state and position tracking
   const rafIdRef = useRef<number | null>(null)
@@ -499,51 +400,14 @@ export function FloatingToolbar(props: ToolbarProps) {
         // Update position ref immediately for smooth dragging
         currentPositionRef.current = { x: newX, y: newY }
         
-        // Update position state less frequently for better performance
+        // Update position state for rendering
         setPosition({ x: newX, y: newY })
-
-        // Only handle snapping if enabled and close to potential snap zones
-        if (snapEnabled && !currentEvent.shiftKey && toolbarRef.current) {
-          const toolbarRect = toolbarRef.current.getBoundingClientRect()
-          
-          // Quick distance check - only calculate snap if we're close to edges
-          const edgeThreshold = SNAP_THRESHOLD * 2 // Double the threshold for performance
-          const windowWidth = window.innerWidth
-          const windowHeight = window.innerHeight
-          
-          const isCloseToEdge = 
-            newX <= edgeThreshold || 
-            newX >= windowWidth - toolbarRect.width - edgeThreshold ||
-            newY <= edgeThreshold || 
-            newY >= windowHeight - toolbarRect.height - edgeThreshold
-          
-          if (isCloseToEdge) {
-            // Calculate snap using current position
-            const snapResult = calculateSnapPosition(newX, newY, toolbarRect.width, toolbarRect.height, true)
-            
-            if (snapResult.snapped) {
-              setShowSnapPreview(true)
-              setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y, label: snapResult.snapZone || "" })
-              setCurrentSnapZone(snapResult.snapZone)
-            } else {
-              setShowSnapPreview(false)
-              setCurrentSnapZone(null)
-            }
-          } else {
-            // Clear snap preview when not close to edges
-            setShowSnapPreview(false)
-            setCurrentSnapZone(null)
-          }
-        } else {
-          setShowSnapPreview(false)
-          setCurrentSnapZone(null)
-        }
 
         // Clear the RAF reference
         rafIdRef.current = null
       })
     },
-    [isDragging, dragOffset, snapEnabled],
+    [isDragging, dragOffset],
   )
 
   const handleMouseUp = useCallback((e?: MouseEvent) => {
@@ -557,33 +421,14 @@ export function FloatingToolbar(props: ToolbarProps) {
       // Use current position ref for final position
       const finalPosition = currentPositionRef.current
       
-      // Apply snapping when drag ends (if enabled and not holding Shift)
-      if (snapEnabled && !e?.shiftKey && toolbarRef.current) {
-        const toolbarRect = toolbarRef.current.getBoundingClientRect()
-        const snapResult = calculateSnapPosition(finalPosition.x, finalPosition.y, toolbarRect.width, toolbarRect.height, true)
-        
-        if (snapResult.snapped) {
-          const snappedPosition = { x: snapResult.x, y: snapResult.y }
-          setPosition(snappedPosition)
-          currentPositionRef.current = snappedPosition
-          setCurrentSnapZone(snapResult.snapZone)
-          dispatch({ type: "ADD_LOG", payload: `✅ Toolbar snapped to ${snapResult.snapZone} at (${Math.round(snapResult.x)}, ${Math.round(snapResult.y)})` })
-        } else {
-          setCurrentSnapZone(null)
-          dispatch({ type: "ADD_LOG", payload: `✅ Toolbar moved to position (${Math.round(finalPosition.x)}, ${Math.round(finalPosition.y)})` })
-        }
-      } else {
-        setCurrentSnapZone(null)
-        dispatch({ type: "ADD_LOG", payload: `✅ Toolbar moved to position (${Math.round(finalPosition.x)}, ${Math.round(finalPosition.y)})` })
-      }
+      dispatch({ type: "ADD_LOG", payload: `✅ Toolbar moved to position (${Math.round(finalPosition.x)}, ${Math.round(finalPosition.y)})` })
     }
     
     setIsDragging(false)
-    setShowSnapPreview(false)
     
     // Clear mouse event reference and reset drag refs
     lastMouseEventRef.current = null
-  }, [isDragging, snapEnabled, dispatch])
+  }, [isDragging, dispatch])
 
   useEffect(() => {
     if (isDragging) {
@@ -698,23 +543,11 @@ export function FloatingToolbar(props: ToolbarProps) {
           // This action is handled by the WindowControls component
           // No direct dispatch needed here, as WindowControls manages its own state
         }
-      case "snap":
-        return () => {
-          const newSnapEnabled = !snapEnabled
-          setSnapEnabled(newSnapEnabled)
-          
-          // Clear any snap preview if snapping is being disabled
-          if (!newSnapEnabled) {
-            setShowSnapPreview(false)
-            setCurrentSnapZone(null)
-          }
-          
-          dispatch({ type: "ADD_LOG", payload: `Toolbar snapping ${newSnapEnabled ? 'enabled' : 'disabled'}` })
-        }
+      // Removed snap action for performance
       default:
         return () => dispatch({ type: "ADD_LOG", payload: `Action ${actionId} triggered` })
     }
-  }, [saveGridState, isAutoSaveEnabled, setIsAutoSaveEnabled, undo, redo, exportGridState, addWidget, addNestContainer, setIsDebugPanelVisible, isDebugPanelVisible, isHistoryPanelVisible, setIsHistoryPanelVisible, dispatch, isMinimized, setIsMinimized, snapEnabled, setSnapEnabled])
+  }, [saveGridState, isAutoSaveEnabled, setIsAutoSaveEnabled, undo, redo, exportGridState, addWidget, addNestContainer, setIsDebugPanelVisible, isDebugPanelVisible, isHistoryPanelVisible, setIsHistoryPanelVisible, dispatch, isMinimized, setIsMinimized])
 
   const getActionProps = useCallback((actionId: ActionId) => {
     const baseAction = AVAILABLE_ACTIONS[actionId]
@@ -768,15 +601,11 @@ export function FloatingToolbar(props: ToolbarProps) {
       case "windowControls":
         // This action does not have a direct state to track, so no isActive or badge
         break
-      case "snap":
-        props.variant = snapEnabled ? "default" : "outline"
-        props.isActive = snapEnabled
-        props.badge = snapEnabled ? "ON" : "OFF"
-        break
+      // Removed snap action for performance
     }
 
     return props
-  }, [hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus, historyIndex, stateHistory, isDebugPanelVisible, isHistoryPanelVisible, isMinimized, snapEnabled])
+  }, [hasUnsavedChanges, isAutoSaveEnabled, autoSaveStatus, historyIndex, stateHistory, isDebugPanelVisible, isHistoryPanelVisible, isMinimized])
 
   const toggleSectionExpansion = useCallback((sectionId: string) => {
     setExpandedSections(prev => 
@@ -881,8 +710,7 @@ export function FloatingToolbar(props: ToolbarProps) {
             <div 
               className="relative z-10 p-1 cursor-grab active:cursor-grabbing touch-none hover:bg-[rgba(var(--theme-primary),0.05)] transition-all duration-200" 
               onMouseDown={handleMouseDown}
-              onDoubleClick={handleDoubleClick}
-              title="🚀 DRAG ANYWHERE! • Double-click to toggle snapping • Hold Shift while dragging to temporarily disable snapping"
+              title="🚀 DRAG ANYWHERE! Click and drag to move toolbar"
             >
               <div className="flex items-center gap-1">
                 <motion.div
@@ -903,13 +731,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                       />
                     )}
                   </div>
-                  <div
-                    className={cn(
-                      "w-1 h-1 rounded-full transition-all duration-300",
-                      snapEnabled ? "bg-[rgb(var(--theme-primary))]" : "bg-yellow-500"
-                    )}
-                    title={snapEnabled ? "Snapping enabled" : "Snapping disabled"}
-                  />
+                  {/* Removed snap status indicator for performance */}
                 </motion.div>
 
                 {/* Quick Action Buttons */}
@@ -992,8 +814,7 @@ export function FloatingToolbar(props: ToolbarProps) {
           <CardHeader 
             className="pb-2 cursor-grab active:cursor-grabbing touch-none relative z-10 hover:bg-[rgba(var(--theme-primary),0.05)] transition-all duration-200 border-b border-[rgba(var(--theme-primary),0.1)]" 
             onMouseDown={handleMouseDown}
-            onDoubleClick={handleDoubleClick}
-            title="🚀 DRAG ANYWHERE! • Double-click to toggle snapping • Hold Shift while dragging to temporarily disable snapping"
+            title="🚀 DRAG ANYWHERE! Click and drag to move toolbar"
           >
             <motion.div 
               key="header-content"
@@ -1025,18 +846,7 @@ export function FloatingToolbar(props: ToolbarProps) {
                 <CardTitle className="text-sm bg-gradient-to-r from-[rgb(var(--theme-primary))] to-slate-200 bg-clip-text text-transparent">
                   Unified Toolkit
                 </CardTitle>
-                <motion.div
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all duration-300",
-                    snapEnabled ? "bg-[rgb(var(--theme-primary))]" : "bg-yellow-500"
-                  )}
-                  animate={animationsEnabled ? { opacity: [0.5, 1, 0.5] } : {}}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  title={snapEnabled ? "Snapping enabled" : "Snapping disabled"}
-                />
-                {!snapEnabled && (
-                  <span className="text-xs text-yellow-500 font-medium">No Snap</span>
-                )}
+                {/* Removed snap status indicator for performance */}
               </div>
               <div className="flex items-center gap-1">
                 <motion.div
@@ -1358,40 +1168,7 @@ export function FloatingToolbar(props: ToolbarProps) {
         </motion.div>
       )}
 
-      {/* Snap Preview Overlay */}
-      {showSnapPreview && (
-        <motion.div
-          key="snap-preview"
-          initial={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
-          animate={animationsEnabled ? { opacity: 1, scale: 1 } : {}}
-          exit={animationsEnabled ? { opacity: 0, scale: 0.8 } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          className="fixed z-40 pointer-events-none"
-          style={{
-            left: snapPreviewPosition.x,
-            top: snapPreviewPosition.y,
-            width: toolbarRef.current?.offsetWidth || 320,
-            height: toolbarRef.current?.offsetHeight || 200,
-          }}
-        >
-          <div className="w-full h-full border-2 border-dashed border-[rgba(var(--theme-primary),0.8)] rounded-lg bg-[rgba(var(--theme-primary),0.1)] backdrop-blur-sm">
-            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-[rgba(var(--theme-primary),0.9)] text-white text-xs rounded font-medium">
-              Snap to {currentSnapZone?.replace('_', ' ').toLowerCase()}
-            </div>
-            <motion.div
-              className="absolute inset-0 rounded-lg border-2 border-[rgba(var(--theme-primary),0.4)]"
-              animate={animationsEnabled ? {
-                borderColor: [
-                  "rgba(var(--theme-primary), 0.4)",
-                  "rgba(var(--theme-primary), 0.8)",
-                  "rgba(var(--theme-primary), 0.4)"
-                ]
-              } : {}}
-              transition={{ duration: 1, repeat: Infinity }}
-            />
-          </div>
-        </motion.div>
-      )}
+      {/* Removed snap preview overlay for performance */}
 
       {/* Hidden file input for import */}
       <input
