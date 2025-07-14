@@ -108,13 +108,16 @@ export const useDragAndDrop = ({
 
     // Check for interactive elements and drag areas
     if (itemType === "widget") {
-      // Find if this is an AriesMod widget by checking for specific classes
-      const isAriesModWidget = target.closest('.aries-mod-widget') !== null
+      // Find if this is an AriesMod widget by checking the widget type from grid state
+      const isAriesModWidget = gridState.mainAriesWidgets.some(w => w.id === itemId) || 
+                              gridState.nestedAriesWidgets.some(w => w.id === itemId)
       
       if (isAriesModWidget) {
         // For AriesModWidget, only allow dragging from the drag area (header with grip icon)
         const isDragArea = target.closest('.cursor-grab') || 
                           target.classList.contains('cursor-grab') ||
+                          target.closest('[data-drag-handle="true"]') ||
+                          target.getAttribute('data-drag-handle') === 'true' ||
                           (target.tagName === 'svg' && target.getAttribute('data-lucide') === 'grip-vertical') ||
                           target.querySelector('svg[data-lucide="grip-vertical"]')
         
@@ -133,6 +136,8 @@ export const useDragAndDrop = ({
         // For regular widgets, allow dragging from header but prevent from interactive elements
         const isDragArea = target.closest('.cursor-grab') || 
                           target.classList.contains('cursor-grab') ||
+                          target.closest('[data-drag-handle="true"]') ||
+                          target.getAttribute('data-drag-handle') === 'true' ||
                           (target.tagName === 'svg' && target.getAttribute('data-lucide') === 'grip-vertical') ||
                           target.querySelector('svg[data-lucide="grip-vertical"]')
         
