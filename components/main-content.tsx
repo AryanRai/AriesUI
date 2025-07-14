@@ -556,8 +556,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       localStorage.setItem("comms-grid-state", JSON.stringify(currentState))
       
       dispatch({ type: "ADD_LOG", payload: "Default profile created" })
+    } else {
+      // Load the active profile's data if it exists
+      const activeProfileData = state.profiles[state.activeProfile]
+      if (activeProfileData) {
+        localStorage.setItem("comms-grid-state", JSON.stringify(activeProfileData))
+      }
     }
-  }, [state.profiles, gridState, viewport, updateProfiles, dispatch])
+  }, [state.profiles, state.activeProfile, gridState, viewport, updateProfiles, dispatch])
 
   // Load grid state from localStorage on component mount
   useEffect(() => {

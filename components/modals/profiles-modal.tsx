@@ -15,6 +15,7 @@ interface ProfilesModalProps {
   onLoadProfile: (name: string) => void
   onSaveProfile: (name: string) => void
   onDeleteProfile: (name: string) => void
+  onClearAllProfiles: () => void
   onClose: () => void
 }
 
@@ -24,6 +25,7 @@ export function ProfilesModal({
   onLoadProfile,
   onSaveProfile,
   onDeleteProfile,
+  onClearAllProfiles,
   onClose,
 }: ProfilesModalProps) {
   const [newProfileName, setNewProfileName] = useState("")
@@ -71,6 +73,23 @@ export function ProfilesModal({
               </Button>
             </div>
           </div>
+          
+          <div className="space-y-2">
+            <Label>Clear All Layouts</Label>
+            <Button 
+              variant="destructive" 
+              onClick={onClearAllProfiles}
+              className="w-full"
+              disabled={Object.keys(profiles).length <= 1}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear All Layouts
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              This will remove all saved layouts except the default one.
+            </p>
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="new-profile-name">Save as New Profile</Label>
              <div className="flex gap-2">

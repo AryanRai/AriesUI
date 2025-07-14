@@ -119,18 +119,20 @@ export const useAutoSave = ({
 
     while (retryCount <= maxRetries) {
       try {
-        const updatedProfile = {
-          ...commsState.activeProfile,
-          gridState,
+        const stateToSave = {
+          ...gridState,
           viewport,
-          lastModified: new Date().toISOString(),
+          lastSaved: new Date().toISOString(),
         }
 
-        const updatedProfiles = Array.isArray(commsState.profiles) 
-          ? commsState.profiles.map((profile: any) =>
-              profile.id === commsState.activeProfile.id ? updatedProfile : profile
-            )
-          : [updatedProfile]
+        // Save to localStorage
+        localStorage.setItem("comms-grid-state", JSON.stringify(stateToSave))
+        
+        // Update the profiles with the current active profile
+        const updatedProfiles = {
+          ...commsState.profiles,
+          [commsState.activeProfile]: stateToSave
+        }
 
         await updateProfiles(updatedProfiles)
         

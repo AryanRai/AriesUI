@@ -124,7 +124,7 @@ const CommsContext = createContext<{
 } | null>(null)
 
 export function CommsProvider({ children }: { children: ReactNode }) {
-  const [profiles, setProfiles] = useLocalStorage<Record<string, any>>("aries-grid-profiles", { default: {} })
+  const [profiles, setProfiles] = useLocalStorage<Record<string, any>>("aries-grid-profiles", {})
   const [activeProfile, setActiveProfile] = useLocalStorage<string>("aries-grid-active-profile", "default")
 
   const [state, dispatch] = useReducer(commsReducer, { ...initialState, profiles, activeProfile })
