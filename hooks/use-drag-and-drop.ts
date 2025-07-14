@@ -343,29 +343,28 @@ export const useDragAndDrop = ({
           // Create new widget from AriesMods
           const newWidget = {
             id: generateUniqueId("widget"),
-            type: "ariesmod",
+            type: "ariesmods", // Fixed: should be "ariesmods" not "ariesmod"
             ariesModType: parsedData.ariesModType,
             title: parsedData.title,
-            content: "",
             x: nonCollidingPos.x,
             y: nonCollidingPos.y,
             w: parsedData.defaultSize.w,
             h: parsedData.defaultSize.h,
-            container: nestId || "main",
+            config: {}, // Add empty config object
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           }
           
           // Add to appropriate container
           if (nestId) {
-            // Add to nest container
+            // Add to nest container as NestedAriesWidget
+            const nestedWidget = {
+              ...newWidget,
+              nestId: nestId
+            }
             setGridState(prev => ({
               ...prev,
-              nestContainers: prev.nestContainers.map(nest => 
-                nest.id === nestId 
-                  ? { ...nest, widgets: [...nest.widgets, newWidget] }
-                  : nest
-              )
+              nestedAriesWidgets: [...prev.nestedAriesWidgets, nestedWidget]
             }))
           } else {
             // Add to main grid as AriesWidget
