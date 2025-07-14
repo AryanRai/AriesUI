@@ -105,6 +105,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     resetViewport,
   } = useViewportControls({
     initialViewport: { x: 0, y: 0, zoom: 1 },
+    containerRef,
   })
 
   // Use extracted drag and drop hook
@@ -768,7 +769,15 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   useEffect(() => {
     const container = containerRef.current
     if (container) {
-      container.addEventListener("wheel", handleWheel, { passive: false })
+      const wheelHandler = (e: WheelEvent) => {
+        // If hovering over a nest, do not handle wheel events on main grid
+        if (isHoveringOverNest) {
+          return
+        }
+        handleWheel(e)
+      }
+      
+      container.addEventListener("wheel", wheelHandler, { passive: false })
       
       // Track container size for virtual grid
       const resizeObserver = new ResizeObserver(entries => {
@@ -783,11 +792,11 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       resizeObserver.observe(container)
       
       return () => {
-        container.removeEventListener("wheel", handleWheel)
+        container.removeEventListener("wheel", wheelHandler)
         resizeObserver.disconnect()
       }
     }
-  }, [handleWheel])
+  }, [handleWheel, isHoveringOverNest])
 
   // Widget removal functions
   const removeWidget = (id: string) => {

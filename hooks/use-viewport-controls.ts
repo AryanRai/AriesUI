@@ -15,7 +15,7 @@ export interface ViewportState {
 
 export interface UseViewportControlsProps {
   initialViewport?: ViewportState
-  isHoveringOverNest?: boolean
+  containerRef?: React.RefObject<HTMLDivElement | null>
 }
 
 export interface UseViewportControlsReturn {
@@ -42,7 +42,7 @@ const DEFAULT_VIEWPORT: ViewportState = {
 
 export const useViewportControls = ({
   initialViewport = DEFAULT_VIEWPORT,
-  isHoveringOverNest = false,
+  containerRef,
 }: UseViewportControlsProps = {}): UseViewportControlsReturn => {
   // Viewport state for infinite scrolling
   const [viewport, setViewport] = useState<ViewportState>(initialViewport)
@@ -54,7 +54,6 @@ export const useViewportControls = ({
   const [zoomVelocity, setZoomVelocity] = useState(0)
   const [lastWheelTime, setLastWheelTime] = useState(0)
   const zoomAnimationRef = useRef<number | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   /**
    * Handle panning start with middle mouse or Ctrl+click
@@ -110,11 +109,6 @@ export const useViewportControls = ({
    * Handle wheel events for zoom and pan
    */
   const handleWheel = useCallback((e: WheelEvent) => {
-    // If hovering over a nest, do not handle wheel events on main grid
-    if (isHoveringOverNest) {
-      return
-    }
-
     if (e.ctrlKey) {
       e.preventDefault()
       
@@ -176,7 +170,7 @@ export const useViewportControls = ({
         y: prev.y - deltaY / prev.zoom,
       }))
     }
-  }, [isHoveringOverNest, lastWheelTime])
+  }, [lastWheelTime, containerRef])
 
   return {
     viewport,
