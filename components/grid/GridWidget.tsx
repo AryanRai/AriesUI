@@ -70,7 +70,7 @@ const RegularWidget = memo<{
       }}
     >
       {/* Resize Handles */}
-      {getResizeHandles(widget.id, "widget")}
+      {getResizeHandles(widget, "widget")}
 
       <CardHeader
         className="pb-2 cursor-grab active:cursor-grabbing"
@@ -181,7 +181,7 @@ const AriesWidgetComponent = memo<{
       }}
     >
       {/* Resize Handles */}
-      {getResizeHandles(widget.id, "widget")}
+      {getResizeHandles(widget, "widget")}
 
       {/* Drag Handle */}
       <div

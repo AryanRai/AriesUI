@@ -513,7 +513,7 @@ export const NestContainer = memo<NestContainerProps>(({
       onDrop={handleDrop}
     >
       {/* Resize Handles */}
-      {getResizeHandles(nest.id, "nest")}
+      {getResizeHandles(nest, "nest")}
 
       {/* Nest Header */}
       <NestHeader
