@@ -433,10 +433,14 @@ export function FloatingToolbar(props: ToolbarProps) {
     e.stopPropagation()
     setIsDragging(true)
     
+    // Store initial mouse position for delta calculation
     setDragOffset({
       x: e.clientX,
       y: e.clientY,
     })
+    
+    // Store the starting position for accurate delta calculations
+    dragStartPositionRef.current = currentPositionRef.current
     
     dispatch({ type: "ADD_LOG", payload: "🚀 Toolbar dragging started - FREE MOVEMENT enabled!" })
   }, [dispatch])
@@ -444,13 +448,28 @@ export function FloatingToolbar(props: ToolbarProps) {
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setSnapEnabled(!snapEnabled)
-    dispatch({ type: "ADD_LOG", payload: `Toolbar snapping ${!snapEnabled ? 'enabled' : 'disabled'}` })
+    const newSnapEnabled = !snapEnabled
+    setSnapEnabled(newSnapEnabled)
+    
+    // Clear any snap preview if snapping is being disabled
+    if (!newSnapEnabled) {
+      setShowSnapPreview(false)
+      setCurrentSnapZone(null)
+    }
+    
+    dispatch({ type: "ADD_LOG", payload: `Toolbar snapping ${newSnapEnabled ? 'enabled' : 'disabled'}` })
   }, [snapEnabled, setSnapEnabled, dispatch])
 
-  // Add RAF throttling state
+  // Add RAF throttling state and position tracking
   const rafIdRef = useRef<number | null>(null)
   const lastMouseEventRef = useRef<MouseEvent | null>(null)
+  const currentPositionRef = useRef(position)
+  const dragStartPositionRef = useRef(position)
+
+  // Update position ref when position state changes
+  useEffect(() => {
+    currentPositionRef.current = position
+  }, [position])
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -469,29 +488,25 @@ export function FloatingToolbar(props: ToolbarProps) {
         const currentEvent = lastMouseEventRef.current
         if (!currentEvent || !isDragging) return
 
-        // Calculate delta from start position (like zoom toolbar)
+        // Calculate delta from initial drag position for better accuracy
         const deltaX = currentEvent.clientX - dragOffset.x
         const deltaY = currentEvent.clientY - dragOffset.y
         
-        // Update position by adding delta to original position
-        setPosition(prev => ({
-          x: prev.x + deltaX,
-          y: prev.y + deltaY
-        }))
+        // Calculate new position using drag start position as reference
+        const newX = dragStartPositionRef.current.x + deltaX
+        const newY = dragStartPositionRef.current.y + deltaY
         
-        // Update drag offset for next calculation
-        setDragOffset({
-          x: currentEvent.clientX,
-          y: currentEvent.clientY,
-        })
+        // Update position ref immediately for smooth dragging
+        currentPositionRef.current = { x: newX, y: newY }
+        
+        // Update position state less frequently for better performance
+        setPosition({ x: newX, y: newY })
 
         // Handle snapping preview if enabled (throttled)
         if (snapEnabled && !currentEvent.shiftKey && toolbarRef.current) {
           const toolbarRect = toolbarRef.current.getBoundingClientRect()
-          const newX = position.x + deltaX
-          const newY = position.y + deltaY
           
-          // Only calculate snap if position changed significantly (optimization)
+          // Calculate snap using current position
           const snapResult = calculateSnapPosition(newX, newY, toolbarRect.width, toolbarRect.height, true)
           
           if (snapResult.snapped) {
@@ -511,7 +526,7 @@ export function FloatingToolbar(props: ToolbarProps) {
         rafIdRef.current = null
       })
     },
-    [isDragging, dragOffset, snapEnabled, position],
+    [isDragging, dragOffset, snapEnabled],
   )
 
   const handleMouseUp = useCallback((e?: MouseEvent) => {
@@ -522,30 +537,36 @@ export function FloatingToolbar(props: ToolbarProps) {
         rafIdRef.current = null
       }
       
+      // Use current position ref for final position
+      const finalPosition = currentPositionRef.current
+      
       // Apply snapping when drag ends (if enabled and not holding Shift)
       if (snapEnabled && !e?.shiftKey && toolbarRef.current) {
         const toolbarRect = toolbarRef.current.getBoundingClientRect()
-        const snapResult = calculateSnapPosition(position.x, position.y, toolbarRect.width, toolbarRect.height, true)
+        const snapResult = calculateSnapPosition(finalPosition.x, finalPosition.y, toolbarRect.width, toolbarRect.height, true)
         
         if (snapResult.snapped) {
-          setPosition({ x: snapResult.x, y: snapResult.y })
+          const snappedPosition = { x: snapResult.x, y: snapResult.y }
+          setPosition(snappedPosition)
+          currentPositionRef.current = snappedPosition
           setCurrentSnapZone(snapResult.snapZone)
+          dispatch({ type: "ADD_LOG", payload: `✅ Toolbar snapped to ${snapResult.snapZone} at (${Math.round(snapResult.x)}, ${Math.round(snapResult.y)})` })
         } else {
           setCurrentSnapZone(null)
+          dispatch({ type: "ADD_LOG", payload: `✅ Toolbar moved to position (${Math.round(finalPosition.x)}, ${Math.round(finalPosition.y)})` })
         }
       } else {
         setCurrentSnapZone(null)
+        dispatch({ type: "ADD_LOG", payload: `✅ Toolbar moved to position (${Math.round(finalPosition.x)}, ${Math.round(finalPosition.y)})` })
       }
-      
-      dispatch({ type: "ADD_LOG", payload: `✅ Toolbar moved to position (${Math.round(position.x)}, ${Math.round(position.y)})` })
     }
     
     setIsDragging(false)
     setShowSnapPreview(false)
     
-    // Clear mouse event reference
+    // Clear mouse event reference and reset drag refs
     lastMouseEventRef.current = null
-  }, [isDragging, position, snapEnabled, dispatch])
+  }, [isDragging, snapEnabled, dispatch])
 
   useEffect(() => {
     if (isDragging) {
@@ -662,8 +683,16 @@ export function FloatingToolbar(props: ToolbarProps) {
         }
       case "snap":
         return () => {
-          setSnapEnabled(!snapEnabled)
-          dispatch({ type: "ADD_LOG", payload: `Toolbar snapping ${!snapEnabled ? 'enabled' : 'disabled'}` })
+          const newSnapEnabled = !snapEnabled
+          setSnapEnabled(newSnapEnabled)
+          
+          // Clear any snap preview if snapping is being disabled
+          if (!newSnapEnabled) {
+            setShowSnapPreview(false)
+            setCurrentSnapZone(null)
+          }
+          
+          dispatch({ type: "ADD_LOG", payload: `Toolbar snapping ${newSnapEnabled ? 'enabled' : 'disabled'}` })
         }
       default:
         return () => dispatch({ type: "ADD_LOG", payload: `Action ${actionId} triggered` })
