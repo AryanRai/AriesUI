@@ -10,6 +10,8 @@ import { useLocalStorage } from "@/hooks/use-local-storage"
 import type { GridState as GridStateType } from "@/components/grid/types"
 import type { ViewportState } from "./use-viewport-controls"
 
+export type AutoSaveStatus = "idle" | "saving" | "saved" | "error"
+
 export interface AutoSaveConfig {
   enabled: boolean
   interval: number
@@ -39,9 +41,11 @@ export interface UseAutoSaveReturn {
   setIsAutoSaveEnabled: React.Dispatch<React.SetStateAction<boolean>>
   autoSaveInterval: number
   setAutoSaveInterval: React.Dispatch<React.SetStateAction<number>>
-  autoSaveStatus: string
+  autoSaveStatus: AutoSaveStatus
+  setAutoSaveStatus: React.Dispatch<React.SetStateAction<AutoSaveStatus>>
   lastAutoSave: Date | null
   stateHistory: HistoryEntry[]
+  setStateHistory: React.Dispatch<React.SetStateAction<HistoryEntry[]>>
   historyIndex: number
   setHistoryIndex: React.Dispatch<React.SetStateAction<number>>
   saveGridState: (showNotification?: boolean) => Promise<void>
@@ -70,7 +74,7 @@ export const useAutoSave = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useLocalStorage("aries-auto-save-enabled", true)
   const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage("aries-auto-save-interval", 30000)
-  const [autoSaveStatus, setAutoSaveStatus] = useState("idle")
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle")
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null)
   
   // History management
@@ -281,8 +285,10 @@ export const useAutoSave = ({
     autoSaveInterval,
     setAutoSaveInterval,
     autoSaveStatus,
+    setAutoSaveStatus,
     lastAutoSave,
     stateHistory,
+    setStateHistory,
     historyIndex,
     setHistoryIndex,
     saveGridState,

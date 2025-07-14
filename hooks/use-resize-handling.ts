@@ -25,7 +25,7 @@ export interface UseResizeHandlingProps {
   gridState: GridStateType
   setGridState: React.Dispatch<React.SetStateAction<GridStateType>>
   viewport: ViewportState
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
 }
 
 export interface UseResizeHandlingReturn {

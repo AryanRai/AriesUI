@@ -152,8 +152,10 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     autoSaveInterval,
     setAutoSaveInterval,
     autoSaveStatus,
+    setAutoSaveStatus,
     lastAutoSave,
     stateHistory,
+    setStateHistory,
     historyIndex,
     setHistoryIndex,
     saveGridState,
@@ -252,9 +254,14 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   }
 
   // Save state to history for undo/redo
-  const saveStateToHistory = useCallback((gridState: GridStateType, viewport: { x: number; y: number; zoom: number }) => {
+  const saveStateToHistory = useCallback((gridState: GridStateType, viewport: { x: number; y: number; zoom: number }, description: string = "Grid state updated") => {
     setStateHistory(prev => {
-      const newHistory = [...prev.slice(0, historyIndex + 1), { gridState, viewport }]
+      const newHistory = [...prev.slice(0, historyIndex + 1), { 
+        gridState, 
+        viewport, 
+        timestamp: Date.now(),
+        description
+      }]
       // Keep only the last maxHistorySize items
       if (newHistory.length > maxHistorySize) {
         newHistory.shift()
@@ -262,7 +269,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
       return newHistory
     })
     setHistoryIndex(prev => Math.min(prev + 1, maxHistorySize - 1))
-  }, [historyIndex, maxHistorySize])
+  }, [historyIndex, maxHistorySize, setStateHistory, setHistoryIndex])
 
   // Save grid state - now handled by useAutoSave hook
 
@@ -353,7 +360,11 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         const input = document.createElement('input')
         input.type = 'file'
         input.accept = '.json'
-        input.onchange = importGridState
+        input.onchange = (e) => {
+          if (e.target instanceof HTMLInputElement) {
+            importGridState(e as any)
+          }
+        }
         input.click()
       },
       onAddWidget: addWidget,
@@ -450,7 +461,12 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         setHasUnsavedChanges(false)
         
         // Initialize history with the loaded state
-        const initialHistory = [{ gridState: parsedState, viewport: parsedState.viewport || { x: 0, y: 0, zoom: 1 } }]
+        const initialHistory = [{ 
+          gridState: parsedState, 
+          viewport: parsedState.viewport || { x: 0, y: 0, zoom: 1 },
+          timestamp: Date.now(),
+          description: "Grid state loaded"
+        }]
         setStateHistory(initialHistory)
         setHistoryIndex(0)
         
@@ -912,7 +928,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
         autoSaveInterval={autoSaveInterval}
         setAutoSaveInterval={setAutoSaveInterval}
         autoSaveStatus={autoSaveStatus}
-        lastAutoSave={lastAutoSave}
+        lastAutoSave={lastAutoSave ? lastAutoSave.toISOString() : null}
         historyIndex={historyIndex}
         stateHistory={stateHistory}
         saveGridState={saveGridState}
