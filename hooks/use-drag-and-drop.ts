@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useCallback } from "react"
+import { generateUniqueId, findNonCollidingPosition } from "@/components/grid/utils"
 import type { GridState as GridStateType, ResizeHandle } from "@/components/grid/types"
 import type { ViewportState } from "./use-viewport-controls"
 
@@ -224,15 +225,88 @@ export const useDragAndDrop = ({
     e.preventDefault()
     setDropState(DEFAULT_DROP_STATE)
     
-    // Handle the drop logic here if needed
-    // This would typically involve updating the grid state
-    // based on the dropped item and target location
+    // Handle external drops from AriesMods palette
+    try {
+      const dragData = e.dataTransfer.getData("application/json")
+      if (dragData) {
+        const parsedData = JSON.parse(dragData)
+        
+        if (parsedData.type === 'ariesmods' && parsedData.isFromPalette) {
+          // Calculate drop position
+          const containerRect = containerRef.current?.getBoundingClientRect()
+          if (!containerRect) return
+          
+          const x = (e.clientX - containerRect.left - viewport.x) / viewport.zoom
+          const y = (e.clientY - containerRect.top - viewport.y) / viewport.zoom
+          
+          // Snap to grid
+          const gridSize = gridState.gridSize
+          const snappedX = Math.round(x / gridSize) * gridSize
+          const snappedY = Math.round(y / gridSize) * gridSize
+          
+          // Find non-colliding position
+          const existingItems = nestId 
+            ? gridState.nestContainers.find(nest => nest.id === nestId)?.widgets || []
+            : [...gridState.mainWidgets, ...gridState.nestContainers]
+          
+          const baseWidget = {
+            x: snappedX,
+            y: snappedY,
+            w: parsedData.defaultSize.w,
+            h: parsedData.defaultSize.h,
+          }
+          
+          const nonCollidingPos = findNonCollidingPosition(baseWidget, existingItems, gridSize)
+          
+          // Create new widget from AriesMods
+          const newWidget = {
+            id: generateUniqueId("widget"),
+            type: "ariesmod",
+            ariesModType: parsedData.ariesModType,
+            title: parsedData.title,
+            content: "",
+            x: nonCollidingPos.x,
+            y: nonCollidingPos.y,
+            w: parsedData.defaultSize.w,
+            h: parsedData.defaultSize.h,
+            container: nestId || "main",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+          
+          // Add to appropriate container
+          if (nestId) {
+            // Add to nest container
+            setGridState(prev => ({
+              ...prev,
+              nestContainers: prev.nestContainers.map(nest => 
+                nest.id === nestId 
+                  ? { ...nest, widgets: [...nest.widgets, newWidget] }
+                  : nest
+              )
+            }))
+          } else {
+            // Add to main grid
+            setGridState(prev => ({
+              ...prev,
+              mainWidgets: [...prev.mainWidgets, newWidget]
+            }))
+          }
+          
+          dispatch({ type: "ADD_LOG", payload: `Added AriesMod: ${parsedData.title}` })
+          return
+        }
+      }
+    } catch (error) {
+      console.error("Error handling drop:", error)
+    }
     
+    // Handle internal drag operations
     if (dragState.isDragging && dragState.draggedId) {
       console.log("Dropped item:", dragState.draggedId, "on nest:", nestId)
       dispatch({ type: "ADD_LOG", payload: `Dropped ${dragState.draggedType} ${dragState.draggedId}` })
     }
-  }, [dragState, dispatch])
+  }, [dragState, dispatch, containerRef, viewport, gridState, setGridState])
 
   return {
     dragState,

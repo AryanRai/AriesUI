@@ -151,7 +151,7 @@ const AVAILABLE_ACTIONS = {
   redo: { id: "redo", icon: ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M21 7v6h-6"/>
-      <path d="M3 17a9 9 0 919-9 9 9 0 016 2.3L21 13"/>
+      <path d="M3 17a9 9 0 0 19-9 9 9 0 0 16 2.3L21 13"/>
     </svg>
   ), label: "Redo", variant: "outline" as const },
   export: { id: "export", icon: Download, label: "Export", variant: "outline" as const },
