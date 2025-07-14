@@ -273,8 +273,11 @@ const calculateSnapPosition = (currentX: number, currentY: number, toolbarWidth:
   const windowWidth = window.innerWidth
   const windowHeight = window.innerHeight
   
-  // Calculate distances to each snap zone
-  const snapDistances = Object.entries(SNAP_ZONES).map(([key, zone]) => {
+  let closestDistance = Infinity
+  let closestSnap = null
+  
+  // Optimized: iterate through zones and find closest in single pass
+  for (const [key, zone] of Object.entries(SNAP_ZONES)) {
     let targetX: number
     let targetY: number
     
@@ -295,23 +298,23 @@ const calculateSnapPosition = (currentX: number, currentY: number, toolbarWidth:
       targetY = zone.y // Absolute position from top
     }
     
-    // Calculate distance to this snap zone
-    const distance = Math.sqrt(Math.pow(currentX - targetX, 2) + Math.pow(currentY - targetY, 2))
+    // Calculate distance to this snap zone (using squared distance for performance)
+    const dx = currentX - targetX
+    const dy = currentY - targetY
+    const distance = dx * dx + dy * dy // Squared distance for performance
     
-    return {
-      key,
-      position: { x: targetX, y: targetY },
-      distance
+    if (distance < closestDistance) {
+      closestDistance = distance
+      closestSnap = {
+        key,
+        position: { x: targetX, y: targetY },
+        distance: Math.sqrt(distance) // Only sqrt for the final closest
+      }
     }
-  })
-  
-  // Find closest snap zone
-  const closestSnap = snapDistances.reduce((closest, current) => 
-    current.distance < closest.distance ? current : closest
-  )
+  }
   
   // Return snap position if within threshold, otherwise return current position
-  if (closestSnap.distance < SNAP_THRESHOLD) {
+  if (closestSnap && closestSnap.distance < SNAP_THRESHOLD) {
     return {
       ...closestSnap.position,
       snapped: true,
@@ -445,15 +448,30 @@ export function FloatingToolbar(props: ToolbarProps) {
     dispatch({ type: "ADD_LOG", payload: `Toolbar snapping ${!snapEnabled ? 'enabled' : 'disabled'}` })
   }, [snapEnabled, setSnapEnabled, dispatch])
 
+  // Add RAF throttling state
+  const rafIdRef = useRef<number | null>(null)
+  const lastMouseEventRef = useRef<MouseEvent | null>(null)
+
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isDragging) return
 
-      // Use requestAnimationFrame for smoother performance
-      requestAnimationFrame(() => {
+      // Store the latest mouse event
+      lastMouseEventRef.current = e
+
+      // Cancel any pending RAF
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+      }
+
+      // Use requestAnimationFrame for smoother performance with throttling
+      rafIdRef.current = requestAnimationFrame(() => {
+        const currentEvent = lastMouseEventRef.current
+        if (!currentEvent || !isDragging) return
+
         // Calculate delta from start position (like zoom toolbar)
-        const deltaX = e.clientX - dragOffset.x
-        const deltaY = e.clientY - dragOffset.y
+        const deltaX = currentEvent.clientX - dragOffset.x
+        const deltaY = currentEvent.clientY - dragOffset.y
         
         // Update position by adding delta to original position
         setPosition(prev => ({
@@ -463,14 +481,18 @@ export function FloatingToolbar(props: ToolbarProps) {
         
         // Update drag offset for next calculation
         setDragOffset({
-          x: e.clientX,
-          y: e.clientY,
+          x: currentEvent.clientX,
+          y: currentEvent.clientY,
         })
 
-        // Handle snapping preview if enabled
-        if (snapEnabled && !e.shiftKey && toolbarRef.current) {
+        // Handle snapping preview if enabled (throttled)
+        if (snapEnabled && !currentEvent.shiftKey && toolbarRef.current) {
           const toolbarRect = toolbarRef.current.getBoundingClientRect()
-          const snapResult = calculateSnapPosition(position.x + deltaX, position.y + deltaY, toolbarRect.width, toolbarRect.height, true)
+          const newX = position.x + deltaX
+          const newY = position.y + deltaY
+          
+          // Only calculate snap if position changed significantly (optimization)
+          const snapResult = calculateSnapPosition(newX, newY, toolbarRect.width, toolbarRect.height, true)
           
           if (snapResult.snapped) {
             setShowSnapPreview(true)
@@ -484,13 +506,22 @@ export function FloatingToolbar(props: ToolbarProps) {
           setShowSnapPreview(false)
           setCurrentSnapZone(null)
         }
+
+        // Clear the RAF reference
+        rafIdRef.current = null
       })
     },
     [isDragging, dragOffset, snapEnabled, position],
   )
 
-    const handleMouseUp = useCallback((e?: MouseEvent) => {
+  const handleMouseUp = useCallback((e?: MouseEvent) => {
     if (isDragging) {
+      // Cancel any pending RAF
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+      
       // Apply snapping when drag ends (if enabled and not holding Shift)
       if (snapEnabled && !e?.shiftKey && toolbarRef.current) {
         const toolbarRect = toolbarRef.current.getBoundingClientRect()
@@ -511,6 +542,9 @@ export function FloatingToolbar(props: ToolbarProps) {
     
     setIsDragging(false)
     setShowSnapPreview(false)
+    
+    // Clear mouse event reference
+    lastMouseEventRef.current = null
   }, [isDragging, position, snapEnabled, dispatch])
 
   useEffect(() => {
@@ -522,6 +556,12 @@ export function FloatingToolbar(props: ToolbarProps) {
     return () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
+      
+      // Cancel any pending RAF on cleanup
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
 

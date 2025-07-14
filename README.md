@@ -52,9 +52,11 @@ npm run build-electron
 
 ### 🎯 **Performance Optimized**
 - **Hardware Acceleration**: GPU-optimized with `translate3d()` transforms
-- **60fps Rendering**: RequestAnimationFrame-based smooth interactions
+- **60fps Rendering**: RequestAnimationFrame-based smooth interactions with RAF throttling
 - **Virtual Grid**: Viewport culling for thousands of widgets
 - **Lazy Loading**: Progressive widget loading for optimal performance
+- **Modular Architecture**: Main component reduced from 2,718 to 1,048 lines (61% reduction)
+- **Optimized Event Handling**: RAF throttling for smooth drag operations even on maximized windows
 
 ### 🔧 **Hardware Integration Ready**
 - **Real-time Streams**: WebSocket integration with Comms backend
@@ -81,10 +83,13 @@ npm run build-electron
 ### Core Components
 ```
 📁 AriesUI Structure
-├── 🎯 Main Dashboard        # Drag-and-drop widget grid
-├── 🔧 Widget System         # Modular AriesMods plugins
+├── 🎯 Main Dashboard        # Refactored modular main-content.tsx (1,048 lines)
+│   ├── 🔧 Custom Hooks      # useViewportControls, useAutoSave, useDragAndDrop
+│   ├── 🎛️ Grid Components   # ViewportControls, PerformanceMonitor
+│   └── ⚡ Event Handlers    # useKeyboardShortcuts, useResizeHandling
+├── 🔧 Widget System         # Modular AriesMods plugins  
 ├── 📡 Hardware Integration  # Real-time data streaming
-├── ⚡ Performance Layer     # Hardware acceleration & optimization
+├── ⚡ Performance Layer     # Hardware acceleration & RAF optimization
 └── 🎨 Theme System         # Dark/light modes & custom colors
 ```
 
@@ -173,11 +178,12 @@ export default CustomSensor
 
 ### Performance Hooks
 ```typescript
-// Hardware-accelerated dragging
+// Hardware-accelerated dragging with RAF throttling
 const { isDragging, position } = usePerformanceDrag({
   onDragStart: handleDragStart,
   onDragEnd: handleDragEnd,
-  useGPU: true
+  useGPU: true,
+  useRAFThrottling: true // Optimized for maximized windows
 })
 
 // Virtual grid for large datasets  
@@ -186,16 +192,50 @@ const virtualGrid = useVirtualGrid({
   viewportSize: containerSize,
   bufferSize: 200
 })
+
+// Optimized toolbar dragging
+const { handleMouseMove, handleMouseUp } = useToolbarDrag({
+  rafThrottling: true,
+  snapEnabled: true,
+  optimizedForMaximized: true
+})
 ```
+
+---
+
+## 🏗️ Recent Refactoring (v3.0)
+
+### Modular Architecture Implementation
+The massive `main-content.tsx` component has been successfully refactored from a monolithic 2,718-line file into a clean, modular architecture:
+
+#### New Custom Hooks
+- **`useViewportControls`** - Viewport state, zoom/pan logic, wheel handling
+- **`useAutoSave`** - Auto-save functionality, export/import, history management  
+- **`useKeyboardShortcuts`** - Keyboard event handlers for all shortcuts
+- **`usePerformanceMonitoring`** - Performance metrics, virtual rendering, RAF optimization
+- **`useDragAndDrop`** - Drag state and handlers with push physics
+- **`useResizeHandling`** - Resize operations and handle management
+
+#### New Components
+- **`ViewportControls`** - Zoom toolbar, viewport info, pan controls
+- **`PerformanceMonitor`** - Performance status display with metrics
+
+#### Benefits
+- **61% Code Reduction**: 2,718 → 1,048 lines
+- **Better Maintainability**: Clear separation of concerns
+- **Enhanced Performance**: Optimized RAF throttling for smooth drag operations
+- **Improved Testing**: Isolated hooks and components
+- **Better Developer Experience**: Reduced cognitive load
 
 ---
 
 ## 📊 Performance Metrics
 
 ### Optimization Results
-- **Main Content**: 2,719 lines → ~400 lines (modular refactor)
-- **Frame Rate**: Consistent 60fps during interactions
+- **Main Content**: 2,718 lines → 1,048 lines (61% reduction through modular refactor)
+- **Frame Rate**: Consistent 60fps during interactions with optimized RAF throttling
 - **Memory Usage**: 50% reduction with virtual rendering
+- **Toolbar Performance**: Enhanced drag performance with RAF throttling for smooth maximized window interactions
 - **Load Time**: Lazy loading reduces initial bundle size
 - **GPU Utilization**: Hardware acceleration for all transforms
 
