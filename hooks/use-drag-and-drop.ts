@@ -65,6 +65,28 @@ const DEFAULT_DROP_STATE: DropState = {
   targetNestId: null,
 }
 
+/**
+ * Check if moving a nest to another nest would create a circular dependency
+ */
+const checkCircularNesting = (
+  draggedNest: any, 
+  targetNestId: string, 
+  allNests: any[]
+): boolean => {
+  // Check if the target nest is already a child of the dragged nest
+  const isTargetChildOfDragged = (nestId: string): boolean => {
+    const nest = allNests.find(n => n.id === nestId)
+    if (!nest) return false
+    
+    if (nest.parentNestId === draggedNest.id) return true
+    if (nest.parentNestId) return isTargetChildOfDragged(nest.parentNestId)
+    
+    return false
+  }
+  
+  return isTargetChildOfDragged(targetNestId)
+}
+
 export const useDragAndDrop = ({
   gridState,
   setGridState,
@@ -387,10 +409,117 @@ export const useDragAndDrop = ({
       console.error("Error handling drop:", error)
     }
     
-    // Handle internal drag operations
+    // Handle internal drag operations - moving widgets/nests into nests
     if (dragState.isDragging && dragState.draggedId) {
+      const draggedId = dragState.draggedId
+      const draggedType = dragState.draggedType
+      
+      // Handle moving widgets to nests
+      if (nestId && draggedType === "widget") {
+        // Find the dragged widget
+        let draggedWidget = null
+        let sourceContainer = null
+        
+        // Check main widgets first
+        const mainWidgetIndex = gridState.mainWidgets.findIndex(w => w.id === draggedId)
+        if (mainWidgetIndex !== -1) {
+          draggedWidget = gridState.mainWidgets[mainWidgetIndex]
+          sourceContainer = "main"
+        }
+        
+        // Check nested widgets
+        if (!draggedWidget) {
+          const nestedWidgetIndex = gridState.nestedWidgets.findIndex(w => w.id === draggedId)
+          if (nestedWidgetIndex !== -1) {
+            draggedWidget = gridState.nestedWidgets[nestedWidgetIndex]
+            sourceContainer = "nested"
+          }
+        }
+        
+        // Check main aries widgets
+        if (!draggedWidget) {
+          const mainAriesWidgetIndex = gridState.mainAriesWidgets.findIndex(w => w.id === draggedId)
+          if (mainAriesWidgetIndex !== -1) {
+            draggedWidget = gridState.mainAriesWidgets[mainAriesWidgetIndex]
+            sourceContainer = "mainAries"
+          }
+        }
+        
+        // Check nested aries widgets
+        if (!draggedWidget) {
+          const nestedAriesWidgetIndex = gridState.nestedAriesWidgets.findIndex(w => w.id === draggedId)
+          if (nestedAriesWidgetIndex !== -1) {
+            draggedWidget = gridState.nestedAriesWidgets[nestedAriesWidgetIndex]
+            sourceContainer = "nestedAries"
+          }
+        }
+        
+        if (draggedWidget && sourceContainer) {
+          // Create the new nested widget
+          const newNestedWidget = {
+            ...draggedWidget,
+            nestId: nestId,
+            // Reset position relative to nest
+            x: 0,
+            y: 0
+          }
+          
+          // Update grid state - remove from source and add to nest
+          setGridState(prev => {
+            const newState = { ...prev }
+            
+            // Remove from source container
+            switch (sourceContainer) {
+              case "main":
+                newState.mainWidgets = newState.mainWidgets.filter(w => w.id !== draggedId)
+                newState.nestedWidgets = [...newState.nestedWidgets, newNestedWidget]
+                break
+              case "nested":
+                newState.nestedWidgets = newState.nestedWidgets.map(w => 
+                  w.id === draggedId ? { ...w, nestId: nestId } : w
+                )
+                break
+              case "mainAries":
+                newState.mainAriesWidgets = newState.mainAriesWidgets.filter(w => w.id !== draggedId)
+                newState.nestedAriesWidgets = [...newState.nestedAriesWidgets, newNestedWidget]
+                break
+              case "nestedAries":
+                newState.nestedAriesWidgets = newState.nestedAriesWidgets.map(w => 
+                  w.id === draggedId ? { ...w, nestId: nestId } : w
+                )
+                break
+            }
+            
+            return newState
+          })
+          
+          dispatch({ type: "ADD_LOG", payload: `Moved ${draggedType} ${draggedId} to nest ${nestId}` })
+        }
+      }
+      
+      // Handle moving nests into nests (nested nests)
+      if (nestId && draggedType === "nest") {
+        const draggedNest = gridState.nestContainers.find(n => n.id === draggedId)
+        if (draggedNest && draggedNest.id !== nestId) {
+          // Prevent circular nesting
+          const isCircular = checkCircularNesting(draggedNest, nestId, gridState.nestContainers)
+          
+          if (!isCircular) {
+            setGridState(prev => ({
+              ...prev,
+              nestContainers: prev.nestContainers.map(n => 
+                n.id === draggedId ? { ...n, parentNestId: nestId, x: 0, y: 0 } : n
+              )
+            }))
+            
+            dispatch({ type: "ADD_LOG", payload: `Moved nest ${draggedId} to nest ${nestId}` })
+          } else {
+            dispatch({ type: "ADD_LOG", payload: `Cannot create circular nest dependency` })
+          }
+        }
+      }
+      
       console.log("Dropped item:", dragState.draggedId, "on nest:", nestId)
-      dispatch({ type: "ADD_LOG", payload: `Dropped ${dragState.draggedType} ${dragState.draggedId}` })
     }
   }, [dragState, dispatch, containerRef, viewport, gridState, setGridState])
 

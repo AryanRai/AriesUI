@@ -502,18 +502,35 @@ export function FloatingToolbar(props: ToolbarProps) {
         // Update position state less frequently for better performance
         setPosition({ x: newX, y: newY })
 
-        // Handle snapping preview if enabled (throttled)
+        // Only handle snapping if enabled and close to potential snap zones
         if (snapEnabled && !currentEvent.shiftKey && toolbarRef.current) {
           const toolbarRect = toolbarRef.current.getBoundingClientRect()
           
-          // Calculate snap using current position
-          const snapResult = calculateSnapPosition(newX, newY, toolbarRect.width, toolbarRect.height, true)
+          // Quick distance check - only calculate snap if we're close to edges
+          const edgeThreshold = SNAP_THRESHOLD * 2 // Double the threshold for performance
+          const windowWidth = window.innerWidth
+          const windowHeight = window.innerHeight
           
-          if (snapResult.snapped) {
-            setShowSnapPreview(true)
-            setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y, label: snapResult.snapZone || "" })
-            setCurrentSnapZone(snapResult.snapZone)
+          const isCloseToEdge = 
+            newX <= edgeThreshold || 
+            newX >= windowWidth - toolbarRect.width - edgeThreshold ||
+            newY <= edgeThreshold || 
+            newY >= windowHeight - toolbarRect.height - edgeThreshold
+          
+          if (isCloseToEdge) {
+            // Calculate snap using current position
+            const snapResult = calculateSnapPosition(newX, newY, toolbarRect.width, toolbarRect.height, true)
+            
+            if (snapResult.snapped) {
+              setShowSnapPreview(true)
+              setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y, label: snapResult.snapZone || "" })
+              setCurrentSnapZone(snapResult.snapZone)
+            } else {
+              setShowSnapPreview(false)
+              setCurrentSnapZone(null)
+            }
           } else {
+            // Clear snap preview when not close to edges
             setShowSnapPreview(false)
             setCurrentSnapZone(null)
           }

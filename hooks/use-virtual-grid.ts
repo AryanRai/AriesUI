@@ -28,9 +28,9 @@ export function useVirtualGrid(
   config: VirtualGridConfig = {}
 ): VirtualGridResult {
   const {
-    bufferSize = 200,
-    minRenderDistance = 100,
-    maxRenderCount = 100
+    bufferSize = 300, // Increased buffer to prevent flickering
+    minRenderDistance = 150,
+    maxRenderCount = 150 // Increased max render count
   } = config
 
   // Calculate visible viewport bounds with buffer
@@ -69,7 +69,7 @@ export function useVirtualGrid(
     )
   }, [viewport, containerSize])
 
-  // Virtual grid calculation
+  // Virtual grid calculation with better preservation
   const virtualGrid = useMemo(() => {
     const totalWidgets = 
       gridState.mainWidgets.length + 
@@ -78,8 +78,8 @@ export function useVirtualGrid(
       gridState.nestedWidgets.length +
       gridState.nestedAriesWidgets.length
 
-    // If total widgets is small, don't virtualize
-    if (totalWidgets <= 50) {
+    // Disable virtualization for smaller grids to prevent data loss
+    if (totalWidgets <= 80) {
       return {
         visibleMainWidgets: gridState.mainWidgets,
         visibleMainAriesWidgets: gridState.mainAriesWidgets,
@@ -93,16 +93,15 @@ export function useVirtualGrid(
       }
     }
 
-    // Filter main widgets by visibility
+    // Always render visible items first
     const visibleMainWidgets = gridState.mainWidgets.filter(isItemVisible)
     const visibleMainAriesWidgets = gridState.mainAriesWidgets.filter(isItemVisible)
-    
-    // Filter nest containers by visibility
     const visibleNestContainers = gridState.nestContainers.filter(isItemVisible)
     
-    // For nested widgets, check if their parent nest is visible
+    // For nested widgets, include them if their parent nest is visible
     const visibleNestIds = new Set(visibleNestContainers.map(nest => nest.id))
     
+    // Always include all nested widgets from visible nests to prevent data loss
     const visibleNestedWidgets = gridState.nestedWidgets.filter(widget => 
       visibleNestIds.has(widget.nestId)
     )
@@ -111,48 +110,63 @@ export function useVirtualGrid(
       visibleNestIds.has(widget.nestId)
     )
 
-    // If we still have too many widgets, prioritize by distance
-    const allVisibleItems = [
-      ...visibleMainWidgets,
-      ...visibleMainAriesWidgets,
-      ...visibleNestContainers
-    ]
-
-    let finalVisibleItems = allVisibleItems
+    // Calculate total visible items
+    const visibleItems = visibleMainWidgets.length + visibleMainAriesWidgets.length + visibleNestContainers.length
     
-    if (allVisibleItems.length > maxRenderCount) {
-      // Sort by distance from viewport center and take the closest ones
-      finalVisibleItems = allVisibleItems
+    // If we have too many visible items, prioritize by distance but keep minimum set
+    if (visibleItems > maxRenderCount) {
+      const allVisibleItems = [
+        ...visibleMainWidgets.map(item => ({ ...item, category: 'mainWidget' })),
+        ...visibleMainAriesWidgets.map(item => ({ ...item, category: 'mainAriesWidget' })),
+        ...visibleNestContainers.map(item => ({ ...item, category: 'nestContainer' }))
+      ]
+      
+      // Sort by distance and keep the closest ones
+      const prioritizedItems = allVisibleItems
         .map(item => ({
           ...item,
           distance: getDistanceFromViewportCenter(item)
         }))
         .sort((a, b) => a.distance - b.distance)
         .slice(0, maxRenderCount)
+      
+      // Separate back into categories
+      const finalMainWidgets = prioritizedItems.filter(item => item.category === 'mainWidget')
+      const finalMainAriesWidgets = prioritizedItems.filter(item => item.category === 'mainAriesWidget')
+      const finalNestContainers = prioritizedItems.filter(item => item.category === 'nestContainer')
+      
+      const renderedWidgets = 
+        finalMainWidgets.length + 
+        finalMainAriesWidgets.length + 
+        finalNestContainers.length +
+        visibleNestedWidgets.length +
+        visibleNestedAriesWidgets.length
+
+      return {
+        visibleMainWidgets: finalMainWidgets,
+        visibleMainAriesWidgets: finalMainAriesWidgets,
+        visibleNestContainers: finalNestContainers,
+        visibleNestedWidgets,
+        visibleNestedAriesWidgets,
+        totalWidgets,
+        renderedWidgets,
+        culledWidgets: totalWidgets - renderedWidgets,
+        isVirtualizationActive: true
+      }
     }
 
-    // Separate back into categories
-    const finalMainWidgets = finalVisibleItems.filter(item => 
-      gridState.mainWidgets.some(w => w.id === item.id)
-    )
-    const finalMainAriesWidgets = finalVisibleItems.filter(item => 
-      gridState.mainAriesWidgets.some(w => w.id === item.id)
-    )
-    const finalNestContainers = finalVisibleItems.filter(item => 
-      gridState.nestContainers.some(n => n.id === item.id)
-    )
-
+    // No need to prioritize - return all visible items
     const renderedWidgets = 
-      finalMainWidgets.length + 
-      finalMainAriesWidgets.length + 
-      finalNestContainers.length +
+      visibleMainWidgets.length + 
+      visibleMainAriesWidgets.length + 
+      visibleNestContainers.length +
       visibleNestedWidgets.length +
       visibleNestedAriesWidgets.length
 
     return {
-      visibleMainWidgets: finalMainWidgets,
-      visibleMainAriesWidgets: finalMainAriesWidgets,
-      visibleNestContainers: finalNestContainers,
+      visibleMainWidgets,
+      visibleMainAriesWidgets,
+      visibleNestContainers,
       visibleNestedWidgets,
       visibleNestedAriesWidgets,
       totalWidgets,
