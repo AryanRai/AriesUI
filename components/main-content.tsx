@@ -276,6 +276,71 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     })
   }, [])
 
+  // Add functions with collision detection
+  const addWidget = useCallback(() => {
+    const gridSize = gridState.gridSize
+    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers]
+
+    const baseWidget = {
+      x: Math.round((Math.random() * 400) / gridSize) * gridSize,
+      y: Math.round((Math.random() * 300) / gridSize) * gridSize,
+      w: 200,
+      h: 150,
+    }
+
+    const nonCollidingPos = findNonCollidingPosition(baseWidget, existingItems, gridSize)
+
+    const newWidget: MainGridWidget = {
+      id: generateUniqueId("widget"),
+      type: "enhanced-sensor",
+      title: "Enhanced Sensor",
+      content: "Hardware-integrated sensor",
+      x: nonCollidingPos.x,
+      y: nonCollidingPos.y,
+      w: 250,
+      h: 180,
+      container: "main",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    updateGridState((prev) => ({
+      ...prev,
+      mainWidgets: [...prev.mainWidgets, newWidget],
+    }))
+    dispatch({ type: "ADD_LOG", payload: `New widget created: ${newWidget.id}` })
+  }, [gridState.gridSize, gridState.mainWidgets, gridState.nestContainers, updateGridState, dispatch])
+
+  const addNestContainer = useCallback(() => {
+    const gridSize = gridState.gridSize
+    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers]
+
+    const baseNest = {
+      x: Math.round((Math.random() * 200) / gridSize) * gridSize,
+      y: Math.round((Math.random() * 150) / gridSize) * gridSize,
+      w: 400,
+      h: 300,
+    }
+
+    const nonCollidingPos = findNonCollidingPosition(baseNest, existingItems, gridSize)
+
+    const newNest: NestContainerType = {
+      id: generateUniqueId("nest"),
+      type: "nest",
+      title: "Nest Container",
+      x: nonCollidingPos.x,
+      y: nonCollidingPos.y,
+      w: 400,
+      h: 300,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    updateGridState((prev) => ({
+      ...prev,
+      nestContainers: [...prev.nestContainers, newNest],
+    }))
+    dispatch({ type: "ADD_LOG", payload: `Nest container created: ${newNest.id}` })
+  }, [gridState.gridSize, gridState.mainWidgets, gridState.nestContainers, updateGridState, dispatch])
+
   // Use extracted keyboard shortcuts hook
   const { shortcuts } = useKeyboardShortcuts({
     handlers: {
@@ -778,70 +843,7 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
     dispatch({ type: "ADD_LOG", payload: `Nest container ${id} removed` })
   }
 
-  // Add functions with collision detection
-  const addWidget = () => {
-    const gridSize = gridState.gridSize
-    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers]
 
-    const baseWidget = {
-      x: Math.round((Math.random() * 400) / gridSize) * gridSize,
-      y: Math.round((Math.random() * 300) / gridSize) * gridSize,
-      w: 200,
-      h: 150,
-    }
-
-    const nonCollidingPos = findNonCollidingPosition(baseWidget, existingItems, gridSize)
-
-    const newWidget: MainGridWidget = {
-      id: generateUniqueId("widget"),
-      type: "enhanced-sensor",
-      title: "Enhanced Sensor",
-      content: "Hardware-integrated sensor",
-      x: nonCollidingPos.x,
-      y: nonCollidingPos.y,
-      w: 250,
-      h: 180,
-      container: "main",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    updateGridState((prev) => ({
-      ...prev,
-      mainWidgets: [...prev.mainWidgets, newWidget],
-    }))
-    dispatch({ type: "ADD_LOG", payload: `New widget created: ${newWidget.id}` })
-  }
-
-  const addNestContainer = () => {
-    const gridSize = gridState.gridSize
-    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers]
-
-    const baseNest = {
-      x: Math.round((Math.random() * 200) / gridSize) * gridSize,
-      y: Math.round((Math.random() * 150) / gridSize) * gridSize,
-      w: 400,
-      h: 300,
-    }
-
-    const nonCollidingPos = findNonCollidingPosition(baseNest, existingItems, gridSize)
-
-    const newNest: NestContainerType = {
-      id: generateUniqueId("nest"),
-      type: "nest",
-      title: "Nest Container",
-      x: nonCollidingPos.x,
-      y: nonCollidingPos.y,
-      w: 400,
-      h: 300,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    updateGridState((prev) => ({
-      ...prev,
-      nestContainers: [...prev.nestContainers, newNest],
-    }))
-    dispatch({ type: "ADD_LOG", payload: `Nest container created: ${newNest.id}` })
-  }
 
 
 
