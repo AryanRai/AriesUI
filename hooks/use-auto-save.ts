@@ -126,9 +126,11 @@ export const useAutoSave = ({
           lastModified: new Date().toISOString(),
         }
 
-        const updatedProfiles = commsState.profiles.map((profile: any) =>
-          profile.id === commsState.activeProfile.id ? updatedProfile : profile
-        )
+        const updatedProfiles = Array.isArray(commsState.profiles) 
+          ? commsState.profiles.map((profile: any) =>
+              profile.id === commsState.activeProfile.id ? updatedProfile : profile
+            )
+          : [updatedProfile]
 
         await updateProfiles(updatedProfiles)
         

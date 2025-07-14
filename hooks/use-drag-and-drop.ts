@@ -5,7 +5,7 @@
  * Handles widget and nest dragging with push physics and smooth animations.
  */
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { generateUniqueId, findNonCollidingPosition } from "@/components/grid/utils"
 import type { GridState as GridStateType, ResizeHandle } from "@/components/grid/types"
 import type { ViewportState } from "./use-viewport-controls"
@@ -201,6 +201,88 @@ export const useDragAndDrop = ({
   }, [dragState.isDragging, containerRef, viewport, gridState, isInteractiveElement])
 
   /**
+   * Handle mouse move for drag operations
+   */
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragState.isDragging || !dragState.draggedId) return
+
+    const containerRect = containerRef.current?.getBoundingClientRect()
+    if (!containerRect) return
+
+    // Calculate world coordinates
+    const worldX = (e.clientX - containerRect.left) / viewport.zoom - viewport.x
+    const worldY = (e.clientY - containerRect.top) / viewport.zoom - viewport.y
+
+    // Get current item
+    let item: any = null
+    if (dragState.draggedType === "widget") {
+      item = gridState.mainWidgets.find((w) => w.id === dragState.draggedId) || 
+             gridState.nestedWidgets.find((w) => w.id === dragState.draggedId) ||
+             gridState.mainAriesWidgets.find((w) => w.id === dragState.draggedId) ||
+             gridState.nestedAriesWidgets.find((w) => w.id === dragState.draggedId)
+    } else {
+      item = gridState.nestContainers.find((n) => n.id === dragState.draggedId)
+    }
+
+    if (!item) return
+
+    // Calculate new position
+    const newX = Math.round((worldX - dragState.offset.x) / gridState.gridSize) * gridState.gridSize
+    const newY = Math.round((worldY - dragState.offset.y) / gridState.gridSize) * gridState.gridSize
+
+    // Update the item position
+    if (dragState.draggedType === "widget") {
+      setGridState(prev => ({
+        ...prev,
+        mainWidgets: prev.mainWidgets.map(w => 
+          w.id === dragState.draggedId ? { ...w, x: newX, y: newY } : w
+        ),
+        nestedWidgets: prev.nestedWidgets.map(w => 
+          w.id === dragState.draggedId ? { ...w, x: newX, y: newY } : w
+        ),
+        mainAriesWidgets: prev.mainAriesWidgets.map(w => 
+          w.id === dragState.draggedId ? { ...w, x: newX, y: newY } : w
+        ),
+        nestedAriesWidgets: prev.nestedAriesWidgets.map(w => 
+          w.id === dragState.draggedId ? { ...w, x: newX, y: newY } : w
+        ),
+      }))
+    } else {
+      setGridState(prev => ({
+        ...prev,
+        nestContainers: prev.nestContainers.map(n => 
+          n.id === dragState.draggedId ? { ...n, x: newX, y: newY } : n
+        ),
+      }))
+    }
+  }, [dragState, containerRef, viewport, gridState, setGridState])
+
+  /**
+   * Handle mouse up for drag operations
+   */
+  const handleMouseUp = useCallback(() => {
+    if (dragState.isDragging) {
+      setDragState(DEFAULT_DRAG_STATE)
+      setPushedWidgets(new Set())
+    }
+  }, [dragState.isDragging])
+
+  /**
+   * Set up mouse event listeners for drag operations
+   */
+  useEffect(() => {
+    if (dragState.isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [dragState.isDragging, handleMouseMove, handleMouseUp])
+
+  /**
    * Handle drag over for drop zones
    */
   const handleDragOver = useCallback((e: React.DragEvent, nestId?: string) => {
@@ -286,10 +368,10 @@ export const useDragAndDrop = ({
               )
             }))
           } else {
-            // Add to main grid
+            // Add to main grid as AriesWidget
             setGridState(prev => ({
               ...prev,
-              mainWidgets: [...prev.mainWidgets, newWidget]
+              mainAriesWidgets: [...prev.mainAriesWidgets, newWidget]
             }))
           }
           

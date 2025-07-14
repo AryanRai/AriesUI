@@ -449,39 +449,42 @@ export function FloatingToolbar(props: ToolbarProps) {
     (e: MouseEvent) => {
       if (!isDragging) return
 
-      // Calculate delta from start position (like zoom toolbar)
-      const deltaX = e.clientX - dragOffset.x
-      const deltaY = e.clientY - dragOffset.y
-      
-      // Update position by adding delta to original position
-      setPosition(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
-      }))
-      
-      // Update drag offset for next calculation
-      setDragOffset({
-        x: e.clientX,
-        y: e.clientY,
-      })
-
-      // Handle snapping preview if enabled
-      if (snapEnabled && !e.shiftKey && toolbarRef.current) {
-        const toolbarRect = toolbarRef.current.getBoundingClientRect()
-        const snapResult = calculateSnapPosition(position.x + deltaX, position.y + deltaY, toolbarRect.width, toolbarRect.height, true)
+      // Use requestAnimationFrame for smoother performance
+      requestAnimationFrame(() => {
+        // Calculate delta from start position (like zoom toolbar)
+        const deltaX = e.clientX - dragOffset.x
+        const deltaY = e.clientY - dragOffset.y
         
-        if (snapResult.snapped) {
-          setShowSnapPreview(true)
-          setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y, label: snapResult.snapZone || "" })
-          setCurrentSnapZone(snapResult.snapZone)
+        // Update position by adding delta to original position
+        setPosition(prev => ({
+          x: prev.x + deltaX,
+          y: prev.y + deltaY
+        }))
+        
+        // Update drag offset for next calculation
+        setDragOffset({
+          x: e.clientX,
+          y: e.clientY,
+        })
+
+        // Handle snapping preview if enabled
+        if (snapEnabled && !e.shiftKey && toolbarRef.current) {
+          const toolbarRect = toolbarRef.current.getBoundingClientRect()
+          const snapResult = calculateSnapPosition(position.x + deltaX, position.y + deltaY, toolbarRect.width, toolbarRect.height, true)
+          
+          if (snapResult.snapped) {
+            setShowSnapPreview(true)
+            setSnapPreviewPosition({ x: snapResult.x, y: snapResult.y, label: snapResult.snapZone || "" })
+            setCurrentSnapZone(snapResult.snapZone)
+          } else {
+            setShowSnapPreview(false)
+            setCurrentSnapZone(null)
+          }
         } else {
           setShowSnapPreview(false)
           setCurrentSnapZone(null)
         }
-      } else {
-        setShowSnapPreview(false)
-        setCurrentSnapZone(null)
-      }
+      })
     },
     [isDragging, dragOffset, snapEnabled, position],
   )
