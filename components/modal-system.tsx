@@ -55,6 +55,17 @@ export function ModalSystem() {
     dispatch({ type: "ADD_LOG", payload: `Profile "${name}" deleted successfully` })
   }
 
+  const handleClearAllProfiles = () => {
+    // Keep only the default profile
+    const defaultProfile = state.profiles.default || {}
+    updateProfiles({ default: defaultProfile })
+    
+    // Switch to default profile
+    loadProfile("default")
+    
+    dispatch({ type: "ADD_LOG", payload: "All profiles cleared except default" })
+  }
+
   const handleClose = () => dispatch({ type: "SET_MODAL", payload: null })
 
   const MotionWrapper = animationsEnabled ? motion.div : 'div'
@@ -155,6 +166,7 @@ export function ModalSystem() {
             onLoadProfile={handleLoadProfile}
             onSaveProfile={handleSaveProfile}
             onDeleteProfile={handleDeleteProfile}
+            onClearAllProfiles={handleClearAllProfiles}
             onClose={handleClose}
           />
         </MotionWrapper>

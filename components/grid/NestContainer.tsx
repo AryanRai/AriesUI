@@ -506,6 +506,7 @@ export const NestContainer = memo<NestContainerProps>(({
         height: nest.h,
         cursor: isDragging ? "grabbing" : "default",
       }}
+      data-nest-id={nest.id}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onDragOver={handleDragOver}
@@ -513,7 +514,7 @@ export const NestContainer = memo<NestContainerProps>(({
       onDrop={handleDrop}
     >
       {/* Resize Handles */}
-      {getResizeHandles(nest.id, "nest")}
+      {getResizeHandles(nest, "nest")}
 
       {/* Nest Header */}
       <NestHeader

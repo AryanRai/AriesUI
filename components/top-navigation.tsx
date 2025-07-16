@@ -163,7 +163,7 @@ export function TopNavigation() {
                   className="border-[rgba(var(--theme-primary),0.2)] hover:border-[rgba(var(--theme-primary),0.4)] hover:bg-[rgba(var(--theme-primary),0.1)] transition-all"
                 >
                   <Layout className="h-4 w-4 mr-2" />
-                  <span>{state.activeProfile}</span>
+                  <span>{state.activeProfile || 'default'}</span>
                   <ChevronDown className="h-3 w-3 ml-2" />
                 </Button>
               </MotionWrapper>
@@ -171,15 +171,21 @@ export function TopNavigation() {
             <DropdownMenuContent align="end" className="border-[rgba(var(--theme-primary),0.2)] bg-background/95 backdrop-blur">
               <DropdownMenuLabel>Switch Layout</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-[rgba(var(--theme-primary),0.2)]" />
-              {Object.keys(state.profiles).map((name) => (
-                <DropdownMenuItem 
-                  key={name} 
-                  onClick={() => handleLayoutSwitch(name)}
-                  className="hover:bg-[rgba(var(--theme-primary),0.1)] focus:bg-[rgba(var(--theme-primary),0.1)]"
-                >
-                  {name}
+              {Object.keys(state.profiles).length > 0 ? (
+                Object.keys(state.profiles).map((name) => (
+                  <DropdownMenuItem 
+                    key={name} 
+                    onClick={() => handleLayoutSwitch(name)}
+                    className="hover:bg-[rgba(var(--theme-primary),0.1)] focus:bg-[rgba(var(--theme-primary),0.1)]"
+                  >
+                    {name}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>
+                  No layouts available
                 </DropdownMenuItem>
-              ))}
+              )}
               <DropdownMenuSeparator className="bg-[rgba(var(--theme-primary),0.2)]" />
               <DropdownMenuItem 
                 onClick={() => dispatch({ type: "SET_MODAL", payload: "profiles" })}
