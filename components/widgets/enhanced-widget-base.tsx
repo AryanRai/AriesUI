@@ -37,6 +37,7 @@ interface EnhancedWidgetBaseProps {
   onStreamMappingsChange?: (mappings: StreamMapping[]) => void
   refreshRate?: number // ms
   onTitleChange?: (newTitle: string) => void
+  headerActions?: React.ReactNode[] // Additional header actions
 }
 
 export function EnhancedWidgetBase({
@@ -47,7 +48,8 @@ export function EnhancedWidgetBase({
   streamMappings = [],
   onStreamMappingsChange,
   refreshRate = 100,
-  onTitleChange
+  onTitleChange,
+  headerActions = []
 }: EnhancedWidgetBaseProps) {
   const { state } = useComms()
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -240,6 +242,13 @@ export function EnhancedWidgetBase({
           </div>
           
           <div className="flex items-center gap-1">
+            {/* Additional header actions */}
+            {headerActions.map((action, index) => (
+              <div key={index} className="z-10 relative">
+                {action}
+              </div>
+            ))}
+            
             <Button 
               size="sm" 
               variant="ghost" 
