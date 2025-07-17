@@ -16,10 +16,10 @@ import {
 } from 'lucide-react'
 import type { AriesMod, AriesModProps, AriesModData } from '@/types/ariesmods'
 
-// Three.js imports (would need to be installed)
-// import * as THREE from 'three'
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-// import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+// Three.js imports
+import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 
 interface SensorPoint {
   id: string
@@ -72,11 +72,12 @@ const Scene3DComponent: React.FC<AriesModProps> = ({
   onDataRequest
 }) => {
   const mountRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<any>(null)
-  const rendererRef = useRef<any>(null)
-  const cameraRef = useRef<any>(null)
-  const controlsRef = useRef<any>(null)
+  const sceneRef = useRef<THREE.Scene | null>(null)
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
+  const controlsRef = useRef<OrbitControls | null>(null)
   const animationRef = useRef<number | null>(null)
+  const sensorPointsRef = useRef<THREE.Group | null>(null)
   
   const [isLoaded, setIsLoaded] = useState(false)
   const [isAnimating, setIsAnimating] = useState(true)
@@ -92,117 +93,157 @@ const Scene3DComponent: React.FC<AriesModProps> = ({
     if (!mountRef.current) return
 
     try {
-      // For now, create a placeholder scene without Three.js
-      // In real implementation, this would initialize:
-      // - THREE.Scene
-      // - THREE.PerspectiveCamera  
-      // - THREE.WebGLRenderer
-      // - OrbitControls
-      // - Lights, grid, axes
-      
-      const placeholder = document.createElement('div')
-      placeholder.style.cssText = `
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-family: monospace;
-        position: relative;
-        overflow: hidden;
-      `
-      
-      // Add 3D-like grid effect
-      const grid = document.createElement('div')
-      grid.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-image: 
-          linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-        background-size: 20px 20px;
-        transform: perspective(500px) rotateX(60deg);
-        transform-origin: center bottom;
-      `
-      
-      // Add scene info
-      const info = document.createElement('div')
-      info.style.cssText = `
-        z-index: 10;
-        text-align: center;
-        background: rgba(0,0,0,0.5);
-        padding: 20px;
-        border-radius: 8px;
-        backdrop-filter: blur(10px);
-      `
-      
-      info.innerHTML = `
-        <div style="font-size: 18px; margin-bottom: 10px;">🌐 3D Scene</div>
-        <div style="font-size: 12px; opacity: 0.8;">Three.js integration required</div>
-        <div style="font-size: 10px; margin-top: 10px;">
-          Install: npm install three @types/three<br/>
-          Sensor Points: ${scene3DData?.sensorPoints?.length || 0}<br/>
-          Point Clouds: ${scene3DData?.pointClouds?.length || 0}
-        </div>
-      `
-      
-      // Add floating sensor points
+      // Clear previous scene
+      if (mountRef.current.children.length > 0) {
+        mountRef.current.innerHTML = ''
+      }
+
+      // Initialize Three.js Scene
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(scene3DConfig?.backgroundColor || '#1e293b')
+      sceneRef.current = scene
+
+      // Initialize Camera
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        mountRef.current.clientWidth / mountRef.current.clientHeight,
+        0.1,
+        1000
+      )
+      camera.position.set(
+        scene3DConfig?.cameraPosition?.[0] || 10,
+        scene3DConfig?.cameraPosition?.[1] || 10,
+        scene3DConfig?.cameraPosition?.[2] || 10
+      )
+      cameraRef.current = camera
+
+      // Initialize Renderer
+      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
+      renderer.shadowMap.enabled = true
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap
+      rendererRef.current = renderer
+      mountRef.current.appendChild(renderer.domElement)
+
+      // Initialize Controls
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controls.enableDamping = true
+      controls.dampingFactor = 0.05
+      controls.autoRotate = scene3DConfig?.autoRotate || false
+      controls.autoRotateSpeed = scene3DConfig?.rotationSpeed || 2
+      controlsRef.current = controls
+
+      // Add Lights
+      const ambientLight = new THREE.AmbientLight(0x404040, scene3DConfig?.ambientLightIntensity || 0.6)
+      scene.add(ambientLight)
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, scene3DConfig?.directionalLightIntensity || 0.8)
+      directionalLight.position.set(10, 10, 5)
+      directionalLight.castShadow = true
+      directionalLight.shadow.mapSize.width = 2048
+      directionalLight.shadow.mapSize.height = 2048
+      scene.add(directionalLight)
+
+      // Add Grid
+      if (scene3DConfig?.showGrid !== false) {
+        const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x444444)
+        scene.add(gridHelper)
+      }
+
+      // Add Axes
+      if (scene3DConfig?.showAxes) {
+        const axesHelper = new THREE.AxesHelper(5)
+        scene.add(axesHelper)
+      }
+
+      // Create sensor points group
+      const sensorPointsGroup = new THREE.Group()
+      sensorPointsRef.current = sensorPointsGroup
+      scene.add(sensorPointsGroup)
+
+      // Add sensor points
       if (scene3DData?.sensorPoints) {
-        scene3DData.sensorPoints.forEach((sensor, index) => {
+        scene3DData.sensorPoints.forEach((sensor) => {
           if (!sensor.visible) return
-          
-          const point = document.createElement('div')
-          point.style.cssText = `
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: ${sensor.color || '#3b82f6'};
-            border-radius: 50%;
-            box-shadow: 0 0 10px ${sensor.color || '#3b82f6'};
-            left: ${30 + index * 60}px;
-            top: ${50 + (index % 3) * 40}px;
-            animation: pulse 2s infinite;
-          `
-          
-          const label = document.createElement('div')
-          label.style.cssText = `
-            position: absolute;
-            top: -25px;
-            left: -20px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            white-space: nowrap;
-          `
-          label.textContent = `${sensor.label}: ${sensor.value}`
-          
-          point.appendChild(label)
-          placeholder.appendChild(point)
+
+          // Create sensor point geometry
+          const geometry = new THREE.SphereGeometry(scene3DConfig?.sensorPointSize || 0.2, 16, 16)
+          const material = new THREE.MeshPhongMaterial({ 
+            color: sensor.color || '#3b82f6',
+            emissive: sensor.color || '#3b82f6',
+            emissiveIntensity: 0.2
+          })
+          const sphere = new THREE.Mesh(geometry, material)
+          sphere.position.set(sensor.position[0], sensor.position[1], sensor.position[2])
+          sphere.castShadow = true
+          sphere.receiveShadow = true
+          sphere.userData = { sensor }
+          sensorPointsGroup.add(sphere)
+
+          // Add label (sprite)
+          if (scene3DConfig?.showSensorLabels !== false) {
+            const canvas = document.createElement('canvas')
+            const context = canvas.getContext('2d')!
+            canvas.width = 128
+            canvas.height = 32
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0.8)'
+            context.fillRect(0, 0, 128, 32)
+            
+            context.fillStyle = 'white'
+            context.font = '12px Arial'
+            context.textAlign = 'center'
+            context.fillText(`${sensor.label}: ${sensor.value}`, 64, 20)
+            
+            const texture = new THREE.CanvasTexture(canvas)
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture })
+            const sprite = new THREE.Sprite(spriteMaterial)
+            sprite.position.set(sensor.position[0], sensor.position[1] + 0.5, sensor.position[2])
+            sprite.scale.set(2, 0.5, 1)
+            sensorPointsGroup.add(sprite)
+          }
         })
       }
-      
-      // Add CSS for animations
-      const style = document.createElement('style')
-      style.textContent = `
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.2); }
-        }
-      `
-      document.head.appendChild(style)
-      
-      placeholder.appendChild(grid)
-      placeholder.appendChild(info)
-      mountRef.current.appendChild(placeholder)
-      
+
+      // Add point clouds
+      if (scene3DData?.pointClouds) {
+        scene3DData.pointClouds.forEach((pointCloud) => {
+          const geometry = new THREE.BufferGeometry()
+          geometry.setAttribute('position', new THREE.BufferAttribute(pointCloud.points, 3))
+          
+          if (pointCloud.colors) {
+            geometry.setAttribute('color', new THREE.BufferAttribute(pointCloud.colors, 3))
+          }
+          
+          const material = new THREE.PointsMaterial({
+            size: pointCloud.size || 0.1,
+            vertexColors: pointCloud.colors ? true : false,
+            color: pointCloud.colors ? undefined : 0x888888
+          })
+          
+          const points = new THREE.Points(geometry, material)
+          scene.add(points)
+        })
+      }
+
+      // Add robot pose indicator
+      if (scene3DData?.robotPose) {
+        const robotGeometry = new THREE.ConeGeometry(0.3, 1, 8)
+        const robotMaterial = new THREE.MeshPhongMaterial({ color: '#ff6b6b' })
+        const robotMesh = new THREE.Mesh(robotGeometry, robotMaterial)
+        robotMesh.position.set(
+          scene3DData.robotPose.position[0],
+          scene3DData.robotPose.position[1] + 0.5,
+          scene3DData.robotPose.position[2]
+        )
+        robotMesh.rotation.set(
+          scene3DData.robotPose.rotation[0],
+          scene3DData.robotPose.rotation[1],
+          scene3DData.robotPose.rotation[2]
+        )
+        scene.add(robotMesh)
+      }
+
       setIsLoaded(true)
     } catch (error) {
       console.error('Failed to initialize 3D scene:', error)
@@ -211,25 +252,72 @@ const Scene3DComponent: React.FC<AriesModProps> = ({
 
   // Animation loop
   const animate = useCallback(() => {
-    if (!isAnimating) return
+    if (!isAnimating || !sceneRef.current || !cameraRef.current || !rendererRef.current) return
     
-    // In real implementation, this would:
-    // - Update camera controls
-    // - Render the scene
-    // - Update sensor point positions
-    // - Animate robot movements
+    // Update controls
+    if (controlsRef.current) {
+      controlsRef.current.update()
+    }
+    
+    // Animate sensor points (pulsing effect)
+    if (sensorPointsRef.current && scene3DConfig?.animate !== false) {
+      const time = Date.now() * 0.001
+      sensorPointsRef.current.children.forEach((child, index) => {
+        if (child instanceof THREE.Mesh) {
+          const scale = 1 + Math.sin(time * 2 + index) * 0.2
+          child.scale.set(scale, scale, scale)
+        }
+      })
+    }
+    
+    // Render the scene
+    rendererRef.current.render(sceneRef.current, cameraRef.current)
     
     animationRef.current = requestAnimationFrame(animate)
-  }, [isAnimating])
+  }, [isAnimating, scene3DConfig])
 
   // Cleanup
   const cleanup = useCallback(() => {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current)
     }
+    
+    // Dispose of Three.js resources
+    if (controlsRef.current) {
+      controlsRef.current.dispose()
+    }
+    
+    if (rendererRef.current) {
+      rendererRef.current.dispose()
+    }
+    
+    if (sceneRef.current) {
+      // Dispose of all geometries and materials
+      sceneRef.current.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) child.geometry.dispose()
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((material) => material.dispose())
+            } else {
+              child.material.dispose()
+            }
+          }
+        }
+      })
+      sceneRef.current.clear()
+    }
+    
     if (mountRef.current) {
       mountRef.current.innerHTML = ''
     }
+    
+    // Clear refs
+    sceneRef.current = null
+    rendererRef.current = null
+    cameraRef.current = null
+    controlsRef.current = null
+    sensorPointsRef.current = null
   }, [])
 
   useEffect(() => {
@@ -243,8 +331,11 @@ const Scene3DComponent: React.FC<AriesModProps> = ({
 
   // Control handlers
   const resetCamera = () => {
-    // Reset camera to default position
-    console.log('Reset camera')
+    if (cameraRef.current && controlsRef.current) {
+      cameraRef.current.position.set(10, 10, 10)
+      controlsRef.current.target.set(0, 0, 0)
+      controlsRef.current.update()
+    }
   }
 
   const toggleAnimation = () => {
@@ -252,11 +343,21 @@ const Scene3DComponent: React.FC<AriesModProps> = ({
   }
 
   const zoomIn = () => {
-    setCameraDistance(prev => Math.max(2, prev - 1))
+    if (cameraRef.current) {
+      const newDistance = Math.max(2, cameraDistance - 1)
+      setCameraDistance(newDistance)
+      const direction = cameraRef.current.position.clone().normalize()
+      cameraRef.current.position.copy(direction.multiplyScalar(newDistance))
+    }
   }
 
   const zoomOut = () => {
-    setCameraDistance(prev => Math.min(50, prev + 1))
+    if (cameraRef.current) {
+      const newDistance = Math.min(50, cameraDistance + 1)
+      setCameraDistance(newDistance)
+      const direction = cameraRef.current.position.clone().normalize()
+      cameraRef.current.position.copy(direction.multiplyScalar(newDistance))
+    }
   }
 
   const toggleGrid = () => {
@@ -265,6 +366,23 @@ const Scene3DComponent: React.FC<AriesModProps> = ({
       showGrid: !scene3DConfig?.showGrid
     })
   }
+
+  // Handle resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (cameraRef.current && rendererRef.current && mountRef.current) {
+        const width = mountRef.current.clientWidth
+        const height = mountRef.current.clientHeight
+        
+        cameraRef.current.aspect = width / height
+        cameraRef.current.updateProjectionMatrix()
+        rendererRef.current.setSize(width, height)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   return (
     <Card className="w-full h-full flex flex-col">
@@ -378,7 +496,7 @@ export const Scene3DMod: AriesMod = {
     minWidth: 300,
     minHeight: 250,
     tags: ['3d', 'sensors', 'robotics', 'visualization', 'threejs'],
-    dependencies: ['three', '@types/three'] // Would be installed separately
+    dependencies: ['three', '@types/three'] // Already installed
   },
   component: Scene3DComponent,
   generateDummyData: (): AriesModData => ({

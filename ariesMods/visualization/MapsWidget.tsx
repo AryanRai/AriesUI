@@ -228,15 +228,15 @@ const MapsWidget: React.FC<AriesModProps> = ({
             📍
           </div>
           <div className="text-xs text-muted-foreground">
-            {formatCoordinate(center.lat, 'lat')}
+            {formatCoordinate(center?.lat || 0, 'lat')}
           </div>
           <div className="text-xs text-muted-foreground">
-            {formatCoordinate(center.lng, 'lng')}
+            {formatCoordinate(center?.lng || 0, 'lng')}
           </div>
-          {currentData.currentLocation.heading !== undefined && (
+          {currentData.currentLocation?.heading !== undefined && (
             <div className="flex items-center gap-1 mt-1">
               <Compass className="h-3 w-3" />
-              <span className="text-xs">{currentData.currentLocation.heading.toFixed(0)}°</span>
+              <span className="text-xs">{(currentData.currentLocation?.heading || 0).toFixed(0)}°</span>
             </div>
           )}
         </div>
@@ -277,34 +277,34 @@ const MapsWidget: React.FC<AriesModProps> = ({
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div>
         <div className="text-muted-foreground">Latitude</div>
-        <div className="font-mono">{formatCoordinate(currentData.currentLocation.lat, 'lat')}</div>
+        <div className="font-mono">{formatCoordinate(currentData.currentLocation?.lat || 0, 'lat')}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Longitude</div>
-        <div className="font-mono">{formatCoordinate(currentData.currentLocation.lng, 'lng')}</div>
+        <div className="font-mono">{formatCoordinate(currentData.currentLocation?.lng || 0, 'lng')}</div>
       </div>
-      {currentData.currentLocation.speed !== undefined && (
+      {currentData.currentLocation?.speed !== undefined && (
         <div>
           <div className="text-muted-foreground">Speed</div>
-          <div className="font-mono">{currentData.currentLocation.speed.toFixed(1)} m/s</div>
+          <div className="font-mono">{(currentData.currentLocation?.speed || 0).toFixed(1)} m/s</div>
         </div>
       )}
-      {currentData.currentLocation.heading !== undefined && (
+      {currentData.currentLocation?.heading !== undefined && (
         <div>
           <div className="text-muted-foreground">Heading</div>
-          <div className="font-mono">{currentData.currentLocation.heading.toFixed(0)}°</div>
+          <div className="font-mono">{(currentData.currentLocation?.heading || 0).toFixed(0)}°</div>
         </div>
       )}
-      {currentData.currentLocation.altitude !== undefined && (
+      {currentData.currentLocation?.altitude !== undefined && (
         <div>
           <div className="text-muted-foreground">Altitude</div>
-          <div className="font-mono">{currentData.currentLocation.altitude.toFixed(0)} m</div>
+          <div className="font-mono">{(currentData.currentLocation?.altitude || 0).toFixed(0)} m</div>
         </div>
       )}
-      {currentData.currentLocation.accuracy !== undefined && (
+      {currentData.currentLocation?.accuracy !== undefined && (
         <div>
           <div className="text-muted-foreground">Accuracy</div>
-          <div className="font-mono">±{currentData.currentLocation.accuracy.toFixed(1)} m</div>
+          <div className="font-mono">±{(currentData.currentLocation?.accuracy || 0).toFixed(1)} m</div>
         </div>
       )}
     </div>
@@ -312,7 +312,7 @@ const MapsWidget: React.FC<AriesModProps> = ({
 
   const renderWaypoints = () => (
     <div className="space-y-2">
-      {currentData.waypoints.map((waypoint) => {
+      {(currentData.waypoints || []).map((waypoint) => {
         const distance = calculateDistance(currentData.currentLocation, waypoint)
         return (
           <div 

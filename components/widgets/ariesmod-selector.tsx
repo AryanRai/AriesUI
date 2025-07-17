@@ -150,7 +150,13 @@ export const AriesModSelector: React.FC<AriesModSelectorProps> = ({
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm">{mod.metadata.icon}</span>
+                          <span className="text-sm">
+                            {mod.metadata.icon ? (
+                              typeof mod.metadata.icon === 'string' ? 
+                                mod.metadata.icon : 
+                                <mod.metadata.icon className="h-4 w-4" />
+                            ) : '⚡'}
+                          </span>
                           <h3 className="font-medium text-sm truncate">
                             {mod.metadata.displayName}
                           </h3>
@@ -195,4 +201,6 @@ export const AriesModSelector: React.FC<AriesModSelectorProps> = ({
       </CardContent>
     </Card>
   )
-} 
+}
+
+export default AriesModSelector 
