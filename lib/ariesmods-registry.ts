@@ -44,7 +44,7 @@ export class AriesModsRegistry {
       const { PointCloudVisMod } = await import('@/ariesMods/visualization/PointCloudVis')
       const { ClockMod } = await import('@/ariesMods/utility/Clock')
       
-      // Import new comprehensive AriesMods
+      // Import comprehensive AriesMods
       const { DataTableMod } = await import('@/ariesMods/utility/DataTable')
       const { DiagnosticsMod } = await import('@/ariesMods/utility/Diagnostics')
       const { RawMessagesMod } = await import('@/ariesMods/utility/RawMessages')
@@ -56,9 +56,15 @@ export class AriesModsRegistry {
       const { PlotChartMod } = await import('@/ariesMods/visualization/PlotChart')
       const { PublishControlMod } = await import('@/ariesMods/controls/PublishControl')
       const { RobotControlsMod } = await import('@/ariesMods/controls/RobotControls')
-      const { SpringDamperMod } = await import('@/ariesMods/physics/SpringDamper')
-      const { FluidSimulationMod } = await import('@/ariesMods/physics/FluidSimulation')
+      const { SpringDamperMod } = await import('@/ariesMods/physics/SpringDamperMod')
+      const { FluidSimulationMod } = await import('@/ariesMods/physics/FluidSimulationMod')
       const { LatexPhysicsMod } = await import('@/ariesMods/physics/LatexPhysics')
+      
+      // Import StarSim Physics AriesMods
+      const { PhysicsValueMonitorMod } = await import('@/ariesMods/physics/PhysicsValueMonitorMod')
+      const { PhysicsChartMod } = await import('@/ariesMods/physics/PhysicsChartMod')
+      const { PhysicsVectorFieldMod } = await import('@/ariesMods/physics/PhysicsVectorFieldMod')
+      const { PhysicsControlPanelMod } = await import('@/ariesMods/physics/PhysicsControlPanelMod')
       
       // Register existing mods
       this.registerMod(TemperatureSensorMod)
@@ -69,7 +75,7 @@ export class AriesModsRegistry {
       this.registerMod(PointCloudVisMod)
       this.registerMod(ClockMod)
       
-      // Register new comprehensive AriesMods
+      // Register comprehensive AriesMods
       this.registerMod(DataTableMod)
       this.registerMod(DiagnosticsMod)
       this.registerMod(RawMessagesMod)
@@ -84,6 +90,12 @@ export class AriesModsRegistry {
       this.registerMod(SpringDamperMod)
       this.registerMod(FluidSimulationMod)
       this.registerMod(LatexPhysicsMod)
+      
+      // Register StarSim Physics AriesMods
+      this.registerMod(PhysicsValueMonitorMod)
+      this.registerMod(PhysicsChartMod)
+      this.registerMod(PhysicsVectorFieldMod)
+      this.registerMod(PhysicsControlPanelMod)
     } catch (error) {
       console.warn('Some built-in AriesMods failed to load:', error)
     }
