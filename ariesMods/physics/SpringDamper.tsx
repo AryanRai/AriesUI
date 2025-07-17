@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -141,7 +141,12 @@ const SpringDamper: React.FC<AriesModProps> = ({
     }
   }, [springConfig, springData])
 
-  const currentData = springData || getDummyData()
+  const currentData = useMemo(() => {
+    if (springData && springData.currentState && springData.trajectory && springData.phaseSpace) {
+      return springData as SpringDamperData
+    }
+    return getDummyData()
+  }, [springData, getDummyData])
 
   const handleConfigChange = (key: keyof SpringDamperConfig, value: any) => {
     onConfigChange?.({
@@ -187,7 +192,7 @@ const SpringDamper: React.FC<AriesModProps> = ({
     const massSize = 20
     const springLength = 80
     const equilibrium = plotWidth / 2
-    const massPosition = equilibrium + currentData.currentState.position * 50 // Scale for display
+    const massPosition = equilibrium + (currentData.currentState?.position || 0) * 50 // Scale for display
     
     return (
       <div className="relative bg-background border rounded p-4">
@@ -271,7 +276,7 @@ const SpringDamper: React.FC<AriesModProps> = ({
               <line
                 x1={massPosition}
                 y1={plotHeight/2 - 30}
-                x2={massPosition + (springConfig.externalForce > 0 ? 30 : -30)}
+                x2={massPosition + ((springConfig?.externalForce || 0) > 0 ? 30 : -30)}
                 y2={plotHeight/2 - 30}
                 stroke="orange"
                 strokeWidth="2"
@@ -283,7 +288,7 @@ const SpringDamper: React.FC<AriesModProps> = ({
                 textAnchor="middle"
                 className="text-xs fill-orange-500"
               >
-                F={springConfig.externalForce.toFixed(1)}N
+                F={(springConfig?.externalForce || 0).toFixed(1)}N
               </text>
             </g>
           )}
@@ -293,7 +298,7 @@ const SpringDamper: React.FC<AriesModProps> = ({
             Equilibrium
           </text>
           <text x={massPosition} y={plotHeight/2 + 35} textAnchor="middle" className="text-xs fill-current">
-            x={currentData.currentState.position.toFixed(2)}m
+            x={(currentData.currentState?.position || 0).toFixed(2)}m
           </text>
         </svg>
       </div>
@@ -375,8 +380,8 @@ const SpringDamper: React.FC<AriesModProps> = ({
           
           {/* Current position marker */}
           <circle
-            cx={xScale(currentData.currentState.time)}
-            cy={yScale(currentData.currentState.position)}
+            cx={xScale(currentData.currentState?.time || 0)}
+            cy={yScale(currentData.currentState?.position || 0)}
             r="3"
             fill="#ef4444"
           />
@@ -444,8 +449,8 @@ const SpringDamper: React.FC<AriesModProps> = ({
           
           {/* Current state marker */}
           <circle
-            cx={xScale(currentData.currentState.position)}
-            cy={yScale(currentData.currentState.velocity)}
+            cx={xScale(currentData.currentState?.position || 0)}
+            cy={yScale(currentData.currentState?.velocity || 0)}
             r="3"
             fill="#ef4444"
           />
@@ -513,13 +518,13 @@ const SpringDamper: React.FC<AriesModProps> = ({
       </div>
       <div className="flex gap-2">
         <Button
-          variant={currentData.isRunning ? "default" : "outline"}
+          variant={currentData?.isRunning ? "default" : "outline"}
           size="sm"
-          onClick={currentData.isRunning ? stopSimulation : startSimulation}
+          onClick={currentData?.isRunning ? stopSimulation : startSimulation}
           className="flex-1"
         >
-          {currentData.isRunning ? <Pause className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
-          {currentData.isRunning ? 'Pause' : 'Start'}
+          {currentData?.isRunning ? <Pause className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
+          {currentData?.isRunning ? 'Pause' : 'Start'}
         </Button>
         <Button
           variant="outline"
@@ -544,39 +549,39 @@ const SpringDamper: React.FC<AriesModProps> = ({
       <div>
         <div className="text-muted-foreground">System Type</div>
         <Badge variant={
-          currentData.systemType === 'underdamped' ? 'default' :
-          currentData.systemType === 'overdamped' ? 'destructive' : 'secondary'
+          currentData?.systemType === 'underdamped' ? 'default' :
+          currentData?.systemType === 'overdamped' ? 'destructive' : 'secondary'
         }>
-          {currentData.systemType.replace('_', ' ')}
+          {(currentData?.systemType || 'unknown').replace('_', ' ')}
         </Badge>
       </div>
       <div>
         <div className="text-muted-foreground">Natural Freq</div>
-        <div className="font-mono">{currentData.naturalFrequency.toFixed(2)} Hz</div>
+        <div className="font-mono">{(currentData?.naturalFrequency || 0).toFixed(2)} Hz</div>
       </div>
       <div>
         <div className="text-muted-foreground">Damping Ratio</div>
-        <div className="font-mono">{currentData.dampingRatio.toFixed(3)}</div>
+        <div className="font-mono">{(currentData?.dampingRatio || 0).toFixed(3)}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Quality Factor</div>
-        <div className="font-mono">{currentData.quality.toFixed(1)}</div>
+        <div className="font-mono">{(currentData?.quality || 0).toFixed(1)}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Position</div>
-        <div className="font-mono">{currentData.currentState.position.toFixed(3)} m</div>
+        <div className="font-mono">{(currentData.currentState?.position || 0).toFixed(3)} m</div>
       </div>
       <div>
         <div className="text-muted-foreground">Velocity</div>
-        <div className="font-mono">{currentData.currentState.velocity.toFixed(3)} m/s</div>
+        <div className="font-mono">{(currentData.currentState?.velocity || 0).toFixed(3)} m/s</div>
       </div>
       <div>
         <div className="text-muted-foreground">Kinetic Energy</div>
-        <div className="font-mono">{currentData.currentState.energy.kinetic.toFixed(3)} J</div>
+        <div className="font-mono">{(currentData.currentState?.energy?.kinetic || 0).toFixed(3)} J</div>
       </div>
       <div>
         <div className="text-muted-foreground">Potential Energy</div>
-        <div className="font-mono">{currentData.currentState.energy.potential.toFixed(3)} J</div>
+        <div className="font-mono">{(currentData.currentState?.energy?.potential || 0).toFixed(3)} J</div>
       </div>
     </div>
   )
@@ -654,10 +659,10 @@ const SpringDamper: React.FC<AriesModProps> = ({
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge 
-              variant={currentData.isRunning ? "default" : "secondary"}
+              variant={currentData?.isRunning ? "default" : "secondary"}
               className="text-xs"
             >
-              {currentData.isRunning ? 'Running' : 'Stopped'}
+              {currentData?.isRunning ? 'Running' : 'Stopped'}
             </Badge>
             <Button
               variant="ghost"
@@ -704,7 +709,7 @@ const SpringDamper: React.FC<AriesModProps> = ({
         </Tabs>
 
         <div className="text-xs text-muted-foreground text-center">
-          Time: {currentData.currentState.time.toFixed(2)}s
+          Time: {(currentData.currentState?.time || 0).toFixed(2)}s
         </div>
       </CardContent>
     </Card>
