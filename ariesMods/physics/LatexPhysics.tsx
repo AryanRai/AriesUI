@@ -220,7 +220,7 @@ const LatexPhysics: React.FC<AriesModProps> = ({
   }
 
   const exportEquations = () => {
-    const exportData = currentData.equationLibrary.filter(eq => eq.isFavorite)
+    const exportData = (currentData.equationLibrary || []).filter(eq => eq.isFavorite)
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -230,7 +230,7 @@ const LatexPhysics: React.FC<AriesModProps> = ({
     URL.revokeObjectURL(url)
   }
 
-  const filteredEquations = currentData.equationLibrary.filter(eq => {
+  const filteredEquations = (currentData.equationLibrary || []).filter(eq => {
     const categoryMatch = selectedCategory === 'all' || eq.category === selectedCategory
     const searchMatch = !searchTerm || 
                        eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -239,7 +239,7 @@ const LatexPhysics: React.FC<AriesModProps> = ({
     return categoryMatch && searchMatch
   })
 
-  const categories = ['all', ...Array.from(new Set(currentData.equationLibrary.map(eq => eq.category)))]
+  const categories = ['all', ...Array.from(new Set((currentData.equationLibrary || []).map(eq => eq.category)))]
 
   // Simple LaTeX renderer (placeholder - in real implementation would use MathJax/KaTeX)
   const renderLatexPreview = (latex: string) => {
@@ -540,11 +540,11 @@ const LatexPhysics: React.FC<AriesModProps> = ({
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge 
-              variant={currentData.renderingStatus === 'success' ? "default" : 
-                      currentData.renderingStatus === 'error' ? "destructive" : "secondary"}
+              variant={currentData?.renderingStatus === 'success' ? "default" : 
+                      currentData?.renderingStatus === 'error' ? "destructive" : "secondary"}
               className="text-xs"
             >
-              {currentData.renderingStatus}
+              {currentData?.renderingStatus || 'unknown'}
             </Badge>
             <Button
               variant="ghost"
@@ -587,7 +587,7 @@ const LatexPhysics: React.FC<AriesModProps> = ({
         </Tabs>
 
         <div className="text-xs text-muted-foreground text-center">
-          Render Time: {currentData.renderTime}ms | Equations: {currentData.equationLibrary.length}
+          Render Time: {currentData?.renderTime || 0}ms | Equations: {currentData?.equationLibrary?.length || 0}
         </div>
       </CardContent>
     </Card>
@@ -598,16 +598,21 @@ const LatexPhysics: React.FC<AriesModProps> = ({
 export const LatexPhysicsMod: AriesMod = {
   metadata: {
     id: 'latex-physics',
+    name: 'LatexPhysics',
     displayName: 'LaTeX Physics Tool',
     description: 'Render mathematical equations and physics formulas with comprehensive equation library',
     category: 'physics',
     tags: ['latex', 'math', 'physics', 'equations', 'formulas', 'science'],
     version: '1.0.0',
     author: 'AriesUI',
+    icon: Calculator,
     thumbnail: '/thumbnails/latex-physics.png',
-    defaultSize: { width: 450, height: 500 },
-    minSize: { width: 350, height: 300 },
-    maxSize: { width: 600, height: 700 },
+    defaultWidth: 450,
+    defaultHeight: 500,
+    minWidth: 350,
+    minHeight: 300,
+    maxWidth: 600,
+    maxHeight: 700,
     supportedDataTypes: ['equations', 'latex', 'mathematical'],
     configurable: true,
     hardwareIntegrated: false

@@ -306,9 +306,9 @@ const SpringDamper: React.FC<AriesModProps> = ({
     const margin = { top: 10, right: 10, bottom: 20, left: 30 }
     
     const xScale = (t: number) => 
-      margin.left + ((t - (currentData.trajectory[0]?.t || 0)) / ((currentData.trajectory[currentData.trajectory.length - 1]?.t || 10) - (currentData.trajectory[0]?.t || 0))) * (plotWidth - margin.left - margin.right)
+      margin.left + ((t - (currentData.trajectory?.[0]?.t || 0)) / ((currentData.trajectory?.[currentData.trajectory.length - 1]?.t || 10) - (currentData.trajectory?.[0]?.t || 0))) * (plotWidth - margin.left - margin.right)
     const yScale = (x: number) => {
-      const maxX = Math.max(...currentData.trajectory.map(p => Math.abs(p.x)))
+      const maxX = Math.max(...(currentData.trajectory?.map(p => Math.abs(p.x)) || [1]))
       return plotHeight - margin.bottom - ((x + maxX) / (2 * maxX)) * (plotHeight - margin.top - margin.bottom)
     }
 
@@ -362,9 +362,9 @@ const SpringDamper: React.FC<AriesModProps> = ({
           </g>
 
           {/* Position trajectory */}
-          {currentData.trajectory.length > 1 && (
+          {(currentData.trajectory?.length || 0) > 1 && (
             <path
-              d={`M ${currentData.trajectory.map(point => 
+              d={`M ${(currentData.trajectory || []).map(point => 
                 `${xScale(point.t)},${yScale(point.x)}`
               ).join(' L ')}`}
               fill="none"
@@ -399,8 +399,8 @@ const SpringDamper: React.FC<AriesModProps> = ({
     const plotHeight = 120
     const margin = { top: 10, right: 10, bottom: 20, left: 30 }
     
-    const maxX = Math.max(...currentData.phaseSpace.map(p => Math.abs(p.x)))
-    const maxV = Math.max(...currentData.phaseSpace.map(p => Math.abs(p.v)))
+    const maxX = Math.max(...(currentData.phaseSpace?.map(p => Math.abs(p.x)) || [1]))
+    const maxV = Math.max(...(currentData.phaseSpace?.map(p => Math.abs(p.v)) || [1]))
     
     const xScale = (x: number) => 
       margin.left + ((x + maxX) / (2 * maxX)) * (plotWidth - margin.left - margin.right)
@@ -431,9 +431,9 @@ const SpringDamper: React.FC<AriesModProps> = ({
           </g>
 
           {/* Phase space trajectory */}
-          {currentData.phaseSpace.length > 1 && (
+          {(currentData.phaseSpace?.length || 0) > 1 && (
             <path
-              d={`M ${currentData.phaseSpace.map(point => 
+              d={`M ${(currentData.phaseSpace || []).map(point => 
                 `${xScale(point.x)},${yScale(point.v)}`
               ).join(' L ')}`}
               fill="none"

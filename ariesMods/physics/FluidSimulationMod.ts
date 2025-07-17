@@ -1,18 +1,20 @@
 import type { AriesMod, AriesModData } from '@/types/ariesmods'
+import { Droplets } from 'lucide-react'
 import FluidSimulation from './FluidSimulation'
 
 export const FluidSimulationMod: AriesMod = {
   component: FluidSimulation,
   metadata: {
     id: 'fluid-simulation',
-    name: 'fluid-simulation',
+    name: 'FluidSimulation',
     displayName: 'Fluid Simulation',
     description: 'Interactive fluid dynamics simulation with particle systems and flow visualization',
     version: '1.0.0',
     author: 'StarSim',
     category: 'physics',
-    defaultWidth: 12,
-    defaultHeight: 12,
+    icon: Droplets,
+    defaultWidth: 400,
+    defaultHeight: 400,
     tags: ['physics', 'simulation', 'fluid', 'dynamics', 'particles', 'flow', 'starsim']
   },
   

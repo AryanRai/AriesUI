@@ -1,18 +1,20 @@
 import type { AriesMod, AriesModData } from '@/types/ariesmods'
+import { Activity } from 'lucide-react'
 import SpringDamper from './SpringDamper'
 
 export const SpringDamperMod: AriesMod = {
   component: SpringDamper,
   metadata: {
     id: 'spring-damper',
-    name: 'spring-damper',
+    name: 'SpringDamper',
     displayName: 'Spring-Damper System',
     description: 'Interactive spring-mass-damper physics simulation with real-time visualization',
     version: '1.0.0',
     author: 'StarSim',
     category: 'physics',
-    defaultWidth: 12,
-    defaultHeight: 10,
+    icon: Activity,
+    defaultWidth: 400,
+    defaultHeight: 350,
     tags: ['physics', 'simulation', 'spring', 'damper', 'oscillator', 'dynamics', 'starsim']
   },
   

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -149,7 +149,12 @@ const FluidSimulation: React.FC<AriesModProps> = ({
     }
   }, [fluidConfig, fluidData])
 
-  const currentData = fluidData || getDummyData()
+  const currentData = useMemo(() => {
+    if (fluidData && fluidData.particles && fluidData.field && fluidData.gridSize) {
+      return fluidData as FluidSimulationData
+    }
+    return getDummyData()
+  }, [fluidData, getDummyData])
 
   const handleConfigChange = (key: keyof FluidSimulationConfig, value: any) => {
     onConfigChange?.({
@@ -259,13 +264,13 @@ const FluidSimulation: React.FC<AriesModProps> = ({
           {/* Velocity field vectors */}
           {fluidConfig?.showVelocityField && (
             <g>
-              {currentData.field.velocityX.map((row, y) =>
+              {currentData.field?.velocityX?.map((row, y) =>
                 row.map((vx, x) => {
-                  const vy = currentData.field.velocityY[y][x]
+                  const vy = currentData.field?.velocityY?.[y]?.[x] || 0
                   const magnitude = Math.sqrt(vx * vx + vy * vy)
                   const scale = 8
-                  const startX = (x / currentData.gridSize.width) * plotWidth
-                  const startY = (y / currentData.gridSize.height) * plotHeight
+                  const startX = (x / (currentData.gridSize?.width || 30)) * plotWidth
+                  const startY = (y / (currentData.gridSize?.height || 20)) * plotHeight
                   const endX = startX + vx * scale
                   const endY = startY + vy * scale
                   
@@ -296,10 +301,10 @@ const FluidSimulation: React.FC<AriesModProps> = ({
           {/* Pressure field */}
           {fluidConfig?.showPressureField && (
             <g>
-              {currentData.field.pressure.map((row, y) =>
+              {currentData.field?.pressure?.map((row, y) =>
                 row.map((pressure, x) => {
-                  const cellWidth = plotWidth / currentData.gridSize.width
-                  const cellHeight = plotHeight / currentData.gridSize.height
+                  const cellWidth = plotWidth / (currentData.gridSize?.width || 30)
+                  const cellHeight = plotHeight / (currentData.gridSize?.height || 20)
                   const color = getColorForValue((pressure - 0.8) / 0.4, 'pressure')
                   
                   return (
@@ -319,7 +324,7 @@ const FluidSimulation: React.FC<AriesModProps> = ({
           )}
           
           {/* Particles */}
-          {currentData.particles.map((particle) => (
+          {currentData.particles?.map((particle) => (
             <g key={particle.id}>
               <circle
                 cx={particle.x}
@@ -377,7 +382,7 @@ const FluidSimulation: React.FC<AriesModProps> = ({
         
         <div className="absolute top-2 right-2">
           <Badge variant="outline" className="text-xs bg-black/50 text-white">
-            {currentData.particles.length} particles
+            {currentData.particles?.length || 0} particles
           </Badge>
         </div>
         
@@ -487,11 +492,11 @@ const FluidSimulation: React.FC<AriesModProps> = ({
       </div>
       <div>
         <div className="text-muted-foreground">Particles</div>
-        <div className="font-mono">{currentData.particles.length}</div>
+        <div className="font-mono">{currentData.particles?.length || 0}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Grid Size</div>
-        <div className="font-mono">{currentData.gridSize.width}×{currentData.gridSize.height}</div>
+        <div className="font-mono">{currentData.gridSize?.width || 30}×{currentData.gridSize?.height || 20}</div>
       </div>
     </div>
   )
