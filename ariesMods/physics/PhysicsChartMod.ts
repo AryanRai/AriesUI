@@ -11,8 +11,10 @@ export const PhysicsChartMod: AriesMod = {
     version: '1.0.0',
     author: 'StarSim',
     category: 'physics',
-    defaultWidth: 8,
-    defaultHeight: 6,
+    defaultWidth: 400,
+    defaultHeight: 300,
+    minWidth: 300,
+    minHeight: 200,
     tags: ['physics', 'chart', 'graph', 'starsim']
   },
   

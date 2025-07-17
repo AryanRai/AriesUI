@@ -11,8 +11,10 @@ export const PhysicsVectorFieldMod: AriesMod = {
     version: '1.0.0',
     author: 'StarSim',
     category: 'physics',
-    defaultWidth: 12,
-    defaultHeight: 8,
+    defaultWidth: 500,
+    defaultHeight: 400,
+    minWidth: 400,
+    minHeight: 300,
     tags: ['physics', 'vector', 'field', 'starsim', '2d']
   },
   

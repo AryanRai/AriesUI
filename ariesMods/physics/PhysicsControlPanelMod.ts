@@ -11,8 +11,10 @@ export const PhysicsControlPanelMod: AriesMod = {
     version: '1.0.0',
     author: 'StarSim',
     category: 'physics',
-    defaultWidth: 6,
-    defaultHeight: 8,
+    defaultWidth: 350,
+    defaultHeight: 400,
+    minWidth: 300,
+    minHeight: 350,
     tags: ['physics', 'control', 'simulation', 'starsim']
   },
   

@@ -175,12 +175,21 @@ const PlotlyChart: React.FC<AriesModProps> = ({
         </div>
         
         <div className="relative h-[calc(100%-40px)]">
-          <Plot
-            data={chartData as any}
-            layout={layout as any}
-            config={config_plotly}
-            style={{ width: '100%', height: '100%' }}
-          />
+          {chartData && chartData.length > 0 && layout ? (
+            <Plot
+              data={chartData as any}
+              layout={layout as any}
+              config={config_plotly}
+              style={{ width: '100%', height: '100%' }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <div className="text-center">
+                <div className="text-lg mb-2">📊</div>
+                <div className="text-sm">No data available</div>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

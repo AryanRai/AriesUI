@@ -11,8 +11,10 @@ export const PhysicsValueMonitorMod: AriesMod = {
     version: '1.0.0',
     author: 'StarSim',
     category: 'physics',
-    defaultWidth: 4,
-    defaultHeight: 3,
+    defaultWidth: 250,
+    defaultHeight: 200,
+    minWidth: 200,
+    minHeight: 150,
     tags: ['physics', 'monitor', 'value', 'starsim']
   },
   
