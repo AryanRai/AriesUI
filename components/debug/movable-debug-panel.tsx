@@ -148,7 +148,7 @@ export function MovableDebugPanel({
           <div className="text-cyan-400 font-semibold mt-2">WIDGETS</div>
           <div>Main: {gridState.mainWidgets?.length || 0} | Nests: {gridState.nestContainers?.length || 0}</div>
           <div>AriesWidgets: {gridState.mainAriesWidgets?.length || 0}</div>
-          <div>Enhanced Sensors: {gridState.mainWidgets?.filter((w: any) => w.type === 'enhanced-sensor').length || 0}</div>
+          <div>Basic Widgets: {gridState.mainWidgets?.length || 0}</div>
           
           {/* System Status */}
           <div className="text-cyan-400 font-semibold mt-2">STATUS</div>

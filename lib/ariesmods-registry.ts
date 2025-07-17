@@ -38,6 +38,7 @@ export class AriesModsRegistry {
       // Import built-in AriesMods
       const { TemperatureSensorMod } = await import('@/ariesMods/sensors/TemperatureSensor')
       const { GenericSensorMod } = await import('@/ariesMods/sensors/GenericSensor')
+      const { EnhancedSensorMod } = await import('@/ariesMods/sensors/EnhancedSensor')
       const { ToggleControlMod } = await import('@/ariesMods/controls/ToggleControl')
       const { LineChartMod } = await import('@/ariesMods/visualization/LineChart')
       const { PlotlyChartMod } = await import('@/ariesMods/visualization/PlotlyChart')
@@ -69,6 +70,7 @@ export class AriesModsRegistry {
       // Register existing mods
       this.registerMod(TemperatureSensorMod)
       this.registerMod(GenericSensorMod)
+      this.registerMod(EnhancedSensorMod)
       this.registerMod(ToggleControlMod)
       this.registerMod(LineChartMod)
       this.registerMod(PlotlyChartMod)
