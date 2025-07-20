@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCommsStream } from '@/hooks/use-comms-stream'
+import { commsClient } from '@/lib/comms-stream-client'
 import type { AriesModProps } from '@/types/ariesmods'
 
 /**
@@ -20,9 +21,6 @@ const PhysicsControlPanel: React.FC<AriesModProps> = ({
   data,
   config = {}
 }) => {
-  // WebSocket connection for sending commands
-  const [ws, setWs] = useState<WebSocket | null>(null)
-  
   // Simulation state
   const [simulationStatus, setSimulationStatus] = useState<string>('idle')
   const [simulationTime, setSimulationTime] = useState<number>(0)
@@ -30,69 +28,39 @@ const PhysicsControlPanel: React.FC<AriesModProps> = ({
   
   // Configuration options
   const simulationId = config.simulationId || 'default_simulation'
-  const wsUrl = config.wsUrl || 'ws://localhost:3000'
   const parameters = config.parameters || []
   
-  // Connect to WebSocket
+  // Use unified comms client for connection
+  const { isConnected } = useCommsStream()
+  
+  // Listen for physics simulation messages
   useEffect(() => {
-    const socket = new WebSocket(wsUrl)
-    
-    socket.onopen = () => {
-      console.log('Connected to Stream Handler')
-      setWs(socket)
-    }
-    
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data)
-        
-        // Handle physics simulation messages
-        if (message.type === 'physics_simulation') {
-          if (message.simulation_id === simulationId) {
-            if (message.action === 'status') {
-              setSimulationStatus(message.status)
-            } else if (message.action === 'updated') {
-              // Update simulation time if available
-              if (message.stream_id === 'simulation_state' && message.data?.value?.time) {
-                setSimulationTime(message.data.value.time)
-              }
-            }
+    const handleMessage = (message: any) => {
+      if (message.type === 'physics_simulation' && message.simulation_id === simulationId) {
+        if (message.action === 'status') {
+          setSimulationStatus(message.status)
+        } else if (message.action === 'updated') {
+          // Update simulation time if available
+          if (message.stream_id === 'simulation_state' && message.data?.value?.time) {
+            setSimulationTime(message.data.value.time)
           }
         }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error)
       }
     }
     
-    socket.onclose = () => {
-      console.log('Disconnected from Stream Handler')
-      setWs(null)
-    }
-    
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error)
-    }
-    
-    // Clean up WebSocket connection
-    return () => {
-      socket.close()
-    }
-  }, [wsUrl, simulationId])
+    commsClient.onMessage(handleMessage)
+    return () => commsClient.offMessage(handleMessage)
+  }, [simulationId])
   
-  // Send control command to simulation
+  // Send control command to simulation using unified client
   const sendCommand = (command: string, params: any = {}) => {
-    if (!ws) return
-    
-    const message = {
-      type: 'physics_simulation',
-      action: 'control',
-      simulation_id: simulationId,
-      command,
-      params,
-      'msg-sent-timestamp': new Date().toISOString()
+    if (!isConnected) {
+      console.warn('Not connected to stream handler')
+      return
     }
     
-    ws.send(JSON.stringify(message))
+    // Use the new sendPhysicsCommand method
+    commsClient.sendPhysicsCommand(simulationId, command, params)
   }
   
   // Handle parameter change

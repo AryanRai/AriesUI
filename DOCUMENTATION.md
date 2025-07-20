@@ -44,9 +44,12 @@ npm run build-electron # Desktop build
 ### Integration with Comms Backend
 ```bash
 # Start backend components first
-python HyperThreader.py          # Process manager
-python insposoftware/sh/sh.py   # Stream handler
-python insposoftware/en/en.py   # Hardware engine
+python HyperThreader.py                    # Process manager
+python sh/stream_handlerv3.0_physics.py   # Unified Protocol Stream Handler
+python en/enginev0.6.py                   # Hardware engine
+
+# Optional: Start StarSim Physics Integration
+cd int/StarSim && python run_integration_demo.py
 
 # Then start AriesUI
 npm run electron-dev             # Recommended for desktop

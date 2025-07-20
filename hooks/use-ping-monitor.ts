@@ -18,7 +18,7 @@ interface PingIntervals {
   ui: number
 }
 
-export function usePingMonitor(url: string = 'ws://localhost:8000') {
+export function usePingMonitor(url: string = 'ws://localhost:3000') {
   const [socket, setSocket] = useState<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [pingData, setPingData] = useState<PingMonitorData>({

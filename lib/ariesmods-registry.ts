@@ -67,6 +67,11 @@ export class AriesModsRegistry {
       const { PhysicsVectorFieldMod } = await import('@/ariesMods/physics/PhysicsVectorFieldMod')
       const { PhysicsControlPanelMod } = await import('@/ariesMods/physics/PhysicsControlPanelMod')
       
+      // Import Trading AriesMods
+      const { PortfolioMonitorMod } = await import('@/ariesMods/trading/PortfolioMonitorMod')
+      const { StockPriceMonitorMod } = await import('@/ariesMods/trading/StockPriceMonitorMod')
+      const { MarketStatusMod } = await import('@/ariesMods/trading/MarketStatusMod')
+      
       // Register existing mods
       this.registerMod(TemperatureSensorMod)
       this.registerMod(GenericSensorMod)
@@ -98,6 +103,11 @@ export class AriesModsRegistry {
       this.registerMod(PhysicsChartMod)
       this.registerMod(PhysicsVectorFieldMod)
       this.registerMod(PhysicsControlPanelMod)
+      
+      // Register Trading AriesMods
+      this.registerMod(PortfolioMonitorMod)
+      this.registerMod(StockPriceMonitorMod)
+      this.registerMod(MarketStatusMod)
     } catch (error) {
       console.warn('Some built-in AriesMods failed to load:', error)
     }

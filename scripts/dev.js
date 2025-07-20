@@ -56,7 +56,7 @@ function startElectron(port = 3000) {
 function waitForNextJs(callback) {
   let foundPort = null
   
-  const checkPorts = [3000, 3001, 3002, 3003] // Common Next.js ports
+  const checkPorts = [3002, 3000, 3001, 3003] // Common Next.js ports, prioritize 3002
   
   const checkServer = () => {
     if (foundPort) {
@@ -96,9 +96,9 @@ app.prepare().then(() => {
   createServer((req, res) => {
     const parsedUrl = parse(req.url, true)
     handle(req, res, parsedUrl)
-  }).listen(3000, (err) => {
+  }).listen(3002, (err) => {
     if (err) throw err
-    console.log('🌐 Next.js server ready on http://localhost:3000')
+    console.log('🌐 Next.js server ready on http://localhost:3002')
     
     // Wait a moment then start Electron
     waitForNextJs((port) => {

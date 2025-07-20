@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CommsMessage, CommsModule, ControlMessage, ConfigUpdateMessage } from '@/types/comms'
 
-export function useCommsSocket(target: 'sh' | 'en' = 'sh', url: string = 'ws://localhost:8000') {
+export function useCommsSocket(target: 'sh' | 'en' = 'sh', url: string = 'ws://localhost:3000') {
   const [socket, setSocket] = useState<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [modules, setModules] = useState<Map<string, CommsModule>>(new Map())
