@@ -202,7 +202,7 @@ const ImageCamera: React.FC<AriesModProps> = ({
           style={{ transform }}
         >
           <img
-            src={currentData.currentFrame.imageData}
+            src={currentData.currentFrame?.imageData || ''}
             alt="Camera feed"
             className="max-w-full max-h-full object-contain"
             style={{
@@ -325,24 +325,24 @@ const ImageCamera: React.FC<AriesModProps> = ({
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div>
         <div className="text-muted-foreground">Resolution</div>
-        <div className="font-mono">{currentData.resolution.width}x{currentData.resolution.height}</div>
+        <div className="font-mono">{currentData.resolution?.width || 0}x{currentData.resolution?.height || 0}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Frame Rate</div>
-        <div className="font-mono">{currentData.frameRate} FPS</div>
+        <div className="font-mono">{currentData.frameRate || 0} FPS</div>
       </div>
       <div>
         <div className="text-muted-foreground">Frame #</div>
-        <div className="font-mono">{currentData.currentFrame.frameNumber}</div>
+        <div className="font-mono">{currentData.currentFrame?.frameNumber || 0}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Format</div>
-        <div className="font-mono">{currentData.currentFrame.format.toUpperCase()}</div>
+        <div className="font-mono">{currentData.currentFrame?.format?.toUpperCase() || 'UNKNOWN'}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Storage</div>
         <div className="font-mono">
-          {formatFileSize(currentData.storageUsed)} / {formatFileSize(currentData.storageTotal)}
+          {formatFileSize(currentData.storageUsed || 0)} / {formatFileSize(currentData.storageTotal || 0)}
         </div>
       </div>
       <div>
@@ -551,16 +551,21 @@ const ImageCamera: React.FC<AriesModProps> = ({
 export const ImageCameraMod: AriesMod = {
   metadata: {
     id: 'image-camera',
+    name: 'ImageCamera',
     displayName: 'Image/Camera Widget',
     description: 'Live camera feed widget with overlay support, recording, and image controls',
     category: 'visualization',
     tags: ['camera', 'video', 'image', 'live', 'recording', 'overlay'],
     version: '1.0.0',
     author: 'AriesUI',
+    icon: Camera,
     thumbnail: '/thumbnails/image-camera.png',
-    defaultSize: { width: 400, height: 400 },
-    minSize: { width: 300, height: 250 },
-    maxSize: { width: 800, height: 600 },
+    defaultWidth: 400,
+    defaultHeight: 400,
+    minWidth: 300,
+    minHeight: 250,
+    maxWidth: 800,
+    maxHeight: 600,
     supportedDataTypes: ['camera', 'video', 'image'],
     configurable: true,
     hardwareIntegrated: true

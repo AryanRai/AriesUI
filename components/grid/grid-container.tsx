@@ -4,7 +4,7 @@ import React from 'react'
 import { GridWidget } from './GridWidget'
 import { NestContainer } from './NestContainer'
 import { HardwareAcceleratedWidget } from '@/components/widgets/hardware-accelerated-widget'
-import { EnhancedSensorWidget } from '@/components/widgets/enhanced-sensor-widget'
+import { AriesModWidget } from '@/components/widgets/ariesmod-widget'
 import type { GridState, ResizeHandle } from './types'
 
 interface GridContainerProps {
@@ -134,45 +134,17 @@ export function GridContainer({
 
         {/* Hardware-Accelerated Main Grid Widgets */}
         {gridState.mainWidgets.map((widget) => (
-          widget.type === "enhanced-sensor" ? (
-            <HardwareAcceleratedWidget
-              key={widget.id}
-              id={widget.id}
-              x={widget.x}
-              y={widget.y}
-              width={widget.w}
-              height={widget.h}
-              isDragging={dragState.draggedId === widget.id}
-              isResizing={resizeState.resizedId === widget.id}
-              isPushed={pushedWidgets.has(widget.id)}
-              onMouseDown={onMouseDown}
-              onRemove={removeWidget}
-            >
-              <EnhancedSensorWidget
-                widgetId={widget.id}
-                title={widget.title}
-                sensorType="generic"
-                streamMappings={[]}
-                onStreamMappingsChange={() => {}}
-                className="w-full h-full"
-                showTrend={true}
-                precision={2}
-              />
-              {getResizeHandles(widget.id, "widget")}
-            </HardwareAcceleratedWidget>
-          ) : (
-            <GridWidget
-              key={widget.id}
-              widget={widget}
-              isDragging={dragState.draggedId === widget.id}
-              isResizing={resizeState.resizedId === widget.id}
-              isPushed={pushedWidgets.has(widget.id)}
-              onMouseDown={onMouseDown}
-              onRemove={removeWidget}
-              onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
-              getResizeHandles={getResizeHandles}
-            />
-          )
+          <GridWidget
+            key={widget.id}
+            widget={widget}
+            isDragging={dragState.draggedId === widget.id}
+            isResizing={resizeState.resizedId === widget.id}
+            isPushed={pushedWidgets.has(widget.id)}
+            onMouseDown={onMouseDown}
+            onRemove={removeWidget}
+            onConfigOpen={() => dispatch({ type: "SET_MODAL", payload: "widget-config" })}
+            getResizeHandles={getResizeHandles}
+          />
         ))}
 
         {/* Hardware-Accelerated Main Grid AriesWidgets */}
@@ -190,19 +162,10 @@ export function GridContainer({
             onMouseDown={onMouseDown}
             onRemove={removeAriesWidget}
           >
-            <EnhancedSensorWidget
-              widgetId={widget.id}
-              title={widget.title}
-              sensorType="temperature"
-              streamMappings={[]}
-              onStreamMappingsChange={(mappings) => updateAriesWidget(widget.id, { streamMappings: mappings } as any)}
+            <AriesModWidget
+              widget={widget}
+              onUpdate={(updates) => updateAriesWidget(widget.id, updates)}
               className="w-full h-full"
-              showTrend={true}
-              precision={1}
-              thresholds={{
-                warning: { min: 0, max: 50 },
-                critical: { min: -10, max: 70 }
-              }}
             />
             {getResizeHandles(widget.id, "widget")}
           </HardwareAcceleratedWidget>

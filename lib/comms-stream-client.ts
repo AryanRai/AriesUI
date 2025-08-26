@@ -2,37 +2,39 @@
 // Handles connection to StreamHandler and Engine with automatic reconnection
 
 export interface CommsMessage {
-  type: 'negotiation' | 'stream_update' | 'control' | 'status' | 'error'
-  status: 'active' | 'inactive' | 'error' | 'connecting'
-  data: {
-    [moduleId: string]: {
+  type: 'negotiation' | 'stream_update' | 'control' | 'status' | 'error' | 'physics_simulation' | 'ping' | 'pong' | 'query' | 'active_streams'
+  status?: 'active' | 'inactive' | 'error' | 'connecting'
+  data?: {
+    [streamId: string]: {
+      stream_id: string
       name: string
+      datatype: 'float' | 'int' | 'string' | 'bool' | 'vector2' | 'vector3'
+      unit: string
+      value: any
+      vector_value?: number[]
       status: 'active' | 'inactive' | 'error'
-      config: {
-        update_rate: number
-        enabled_streams: string[]
-        debug_mode: boolean
-      }
-      streams: {
-        [streamId: string]: {
-          stream_id: number
-          name: string
-          datatype: 'float' | 'int' | 'string' | 'bool'
-          unit: string
-          status: 'active' | 'inactive' | 'error'
-          metadata: {
-            sensor?: string
-            precision?: number
-            location?: string
-            [key: string]: any
-          }
-          value: any
-          priority: 'high' | 'medium' | 'low'
-          timestamp?: string
-        }
+      timestamp: string
+      simulation_id?: string
+      metadata?: {
+        sensor?: string
+        precision?: number
+        location?: string
+        [key: string]: any
       }
     }
   }
+  // Query fields
+  query_type?: string
+  // Physics simulation specific fields
+  action?: string
+  simulation_id?: string
+  stream_id?: string
+  command?: string
+  params?: any
+  // Ping/pong fields
+  timestamp?: number
+  target?: string
+  server_time?: number
   'msg-sent-timestamp': string
 }
 
@@ -64,7 +66,7 @@ export class CommsStreamClient {
   private latestData: Map<string, any> = new Map()
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' = 'disconnected'
 
-  constructor(url: string = 'ws://localhost:8000') {
+  constructor(url: string = 'ws://localhost:3000') {
     this.url = url
   }
 
@@ -88,11 +90,11 @@ export class CommsStreamClient {
         this.connectionStatus = 'connected'
         this.notifyConnectionListeners(true)
         
-        // Request initial negotiation
+        // Request initial stream data
         this.send({
-          type: 'negotiation',
+          type: 'query',
+          query_type: 'active_streams',
           status: 'active',
-          data: {},
           'msg-sent-timestamp': new Date().toISOString()
         })
       }
@@ -165,8 +167,20 @@ export class CommsStreamClient {
       case 'negotiation':
         this.handleNegotiation(message)
         break
+      case 'active_streams':
+        this.handleActiveStreams(message)
+        break
       case 'stream_update':
         this.handleStreamUpdate(message)
+        break
+      case 'physics_simulation':
+        this.handlePhysicsSimulation(message)
+        break
+      case 'ping':
+        this.handlePing(message)
+        break
+      case 'pong':
+        this.handlePong(message)
         break
       case 'status':
         this.handleStatus(message)
@@ -178,43 +192,129 @@ export class CommsStreamClient {
   }
 
   private handleNegotiation(message: CommsMessage) {
-    // Update available streams from negotiation
-    Object.entries(message.data).forEach(([moduleId, moduleData]) => {
-      Object.entries(moduleData.streams).forEach(([streamId, streamData]) => {
-        const fullStreamId = `${moduleId}.${streamId}`
-        this.latestData.set(fullStreamId, {
+    // Handle the unified stream format from stream handler v3.0
+    if (message.data) {
+      Object.entries(message.data).forEach(([streamId, streamData]) => {
+        this.latestData.set(streamId, {
           value: streamData.value,
-          metadata: streamData.metadata,
-          timestamp: message['msg-sent-timestamp'],
+          vector_value: streamData.vector_value,
+          metadata: streamData.metadata || {},
+          timestamp: streamData.timestamp || message['msg-sent-timestamp'],
           unit: streamData.unit,
-          datatype: streamData.datatype
+          datatype: streamData.datatype,
+          simulation_id: streamData.simulation_id
         })
+        
+        // Notify stream-specific listeners
+        const listeners = this.streamListeners.get(streamId)
+        if (listeners) {
+          listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
+        }
       })
-    })
+      
+      console.log(`📡 Updated ${Object.keys(message.data).length} streams from negotiation`)
+    }
+  }
+
+  private handleActiveStreams(message: CommsMessage) {
+    // Handle active_streams response from stream handler
+    console.log('📡 Received active streams:', message.data)
+    
+    if (message.data) {
+      Object.entries(message.data).forEach(([streamId, streamData]) => {
+        this.latestData.set(streamId, {
+          value: streamData.value,
+          vector_value: streamData.vector_value,
+          metadata: streamData.metadata || {},
+          timestamp: streamData.timestamp || message['msg-sent-timestamp'],
+          unit: streamData.unit,
+          datatype: streamData.datatype,
+          simulation_id: streamData.simulation_id
+        })
+        
+        // Notify stream-specific listeners
+        const listeners = this.streamListeners.get(streamId)
+        if (listeners) {
+          listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
+        }
+      })
+      
+      console.log(`📡 Loaded ${Object.keys(message.data).length} active streams`)
+    }
   }
 
   private handleStreamUpdate(message: CommsMessage) {
-    // Update stream values and notify listeners
-    Object.entries(message.data).forEach(([moduleId, moduleData]) => {
-      Object.entries(moduleData.streams).forEach(([streamId, streamData]) => {
-        const fullStreamId = `${moduleId}.${streamId}`
+    // Handle the unified stream format from stream handler v3.0
+    if (message.data) {
+      Object.entries(message.data).forEach(([streamId, streamData]) => {
         const streamValue = {
           value: streamData.value,
-          metadata: streamData.metadata,
-          timestamp: message['msg-sent-timestamp'],
+          vector_value: streamData.vector_value,
+          metadata: streamData.metadata || {},
+          timestamp: streamData.timestamp || message['msg-sent-timestamp'],
           unit: streamData.unit,
-          datatype: streamData.datatype
+          datatype: streamData.datatype,
+          simulation_id: streamData.simulation_id
         }
         
-        this.latestData.set(fullStreamId, streamValue)
+        this.latestData.set(streamId, streamValue)
         
         // Notify stream-specific listeners
-        const listeners = this.streamListeners.get(fullStreamId)
+        const listeners = this.streamListeners.get(streamId)
         if (listeners) {
-          listeners.forEach(listener => listener(streamData.value, streamData.metadata))
+          listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
         }
       })
-    })
+      
+      console.log(`📡 Updated ${Object.keys(message.data).length} streams`)
+    }
+  }
+
+  private handlePhysicsSimulation(message: CommsMessage) {
+    console.log('🔬 Physics simulation message:', message.action, message.simulation_id)
+    
+    // Handle physics simulation updates as stream updates
+    if (message.action === 'updated' && message.stream_id && message.data) {
+      const streamId = `${message.simulation_id}_${message.stream_id}`
+      const streamValue = {
+        value: message.data.value,
+        vector_value: message.data.vector_value,
+        metadata: message.data.metadata || {},
+        timestamp: message.data.timestamp || message['msg-sent-timestamp'],
+        unit: message.data.unit || '',
+        datatype: message.data.datatype || 'float',
+        simulation_id: message.simulation_id
+      }
+      
+      this.latestData.set(streamId, streamValue)
+      
+      // Notify stream-specific listeners
+      const listeners = this.streamListeners.get(streamId)
+      if (listeners) {
+        listeners.forEach(listener => listener(streamValue.value, streamValue.metadata))
+      }
+    }
+  }
+
+  private handlePing(message: CommsMessage) {
+    // Respond to ping with pong
+    if (message.target === 'ui' || !message.target) {
+      this.send({
+        type: 'pong',
+        timestamp: message.timestamp,
+        target: 'sh',
+        status: 'active',
+        'msg-sent-timestamp': new Date().toISOString()
+      })
+    }
+  }
+
+  private handlePong(message: CommsMessage) {
+    // Handle pong response (for latency measurement)
+    if (message.timestamp) {
+      const latency = Date.now() - (message.timestamp * 1000)
+      console.log(`🏓 Pong received, latency: ${latency}ms`)
+    }
   }
 
   private handleStatus(message: CommsMessage) {
@@ -271,6 +371,23 @@ export class CommsStreamClient {
       },
       'msg-sent-timestamp': new Date().toISOString()
     })
+  }
+
+  // Physics Simulation Commands
+  sendPhysicsCommand(simulationId: string, command: string, params: any = {}) {
+    this.send({
+      type: 'physics_simulation',
+      action: 'control',
+      simulation_id: simulationId,
+      command,
+      params,
+      'msg-sent-timestamp': new Date().toISOString()
+    })
+  }
+
+  // Send custom message
+  sendMessage(message: any) {
+    this.send(message)
   }
 
   // Event Listeners

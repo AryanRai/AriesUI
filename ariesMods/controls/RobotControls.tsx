@@ -250,12 +250,12 @@ const RobotControls: React.FC<AriesModProps> = ({
     <div className="space-y-3">
       {/* Emergency Stop */}
       <Button
-        variant={currentData.robot_status.emergency_stop ? "default" : "destructive"}
+        variant={currentData.robot_status?.emergency_stop ? "default" : "destructive"}
         className="w-full"
-        onClick={currentData.robot_status.emergency_stop ? () => onDataRequest?.(id, { action: 'reset_estop' }) : emergencyStop}
+        onClick={currentData.robot_status?.emergency_stop ? () => onDataRequest?.(id, { action: 'reset_estop' }) : emergencyStop}
       >
         <Square className="h-4 w-4 mr-2" />
-        {currentData.robot_status.emergency_stop ? 'Reset E-Stop' : 'Emergency Stop'}
+        {currentData.robot_status?.emergency_stop ? 'Reset E-Stop' : 'Emergency Stop'}
       </Button>
 
       {/* Direction Controls */}
@@ -265,7 +265,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           variant="outline"
           onMouseDown={() => sendDirectionCommand('forward')}
           onMouseUp={() => sendDirectionCommand('stop')}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         >
           <ArrowUp className="h-4 w-4" />
         </Button>
@@ -274,14 +274,14 @@ const RobotControls: React.FC<AriesModProps> = ({
           variant="outline"
           onMouseDown={() => sendDirectionCommand('left')}
           onMouseUp={() => sendDirectionCommand('stop')}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <Button
           variant="outline"
           onClick={() => sendDirectionCommand('stop')}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         >
           <Square className="h-4 w-4" />
         </Button>
@@ -289,7 +289,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           variant="outline"
           onMouseDown={() => sendDirectionCommand('right')}
           onMouseUp={() => sendDirectionCommand('stop')}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         >
           <ArrowRight className="h-4 w-4" />
         </Button>
@@ -298,7 +298,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           variant="outline"
           onMouseDown={() => sendDirectionCommand('backward')}
           onMouseUp={() => sendDirectionCommand('stop')}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         >
           <ArrowDown className="h-4 w-4" />
         </Button>
@@ -314,7 +314,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           max={robotConfig?.maxLinearSpeed || 2.0}
           step={0.1}
           className="w-full"
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         />
         <Label className="text-xs">Angular Speed: {velocityCommand.angular.toFixed(1)} rad/s</Label>
         <Slider
@@ -323,7 +323,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           max={robotConfig?.maxAngularSpeed || 2.0}
           step={0.1}
           className="w-full"
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         />
       </div>
 
@@ -333,7 +333,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           variant="outline"
           size="sm"
           onClick={homeRobot}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
           className="flex-1"
         >
           <Home className="h-4 w-4 mr-1" />
@@ -343,7 +343,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           variant="outline"
           size="sm"
           onClick={() => setMissionMode(!missionMode)}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
           className="flex-1"
         >
           <Target className="h-4 w-4 mr-1" />
@@ -372,7 +372,7 @@ const RobotControls: React.FC<AriesModProps> = ({
                 max={Math.PI}
                 step={0.1}
                 className="w-full"
-                disabled={currentData.robot_status.emergency_stop}
+                disabled={currentData.robot_status?.emergency_stop}
               />
             </div>
           ))}
@@ -389,7 +389,7 @@ const RobotControls: React.FC<AriesModProps> = ({
               max={1}
               step={0.01}
               className="w-full"
-              disabled={currentData.robot_status.emergency_stop}
+              disabled={currentData.robot_status?.emergency_stop}
             />
             <div className="text-xs text-muted-foreground">
               Force: {currentData.arm_state.gripper_force.toFixed(1)} N
@@ -424,7 +424,7 @@ const RobotControls: React.FC<AriesModProps> = ({
           variant="default"
           size="sm"
           onClick={startMission}
-          disabled={currentData.robot_status.emergency_stop}
+          disabled={currentData.robot_status?.emergency_stop}
         >
           <Play className="h-4 w-4 mr-1" />
           Start
@@ -432,7 +432,7 @@ const RobotControls: React.FC<AriesModProps> = ({
       </div>
       
       <div className="space-y-2 max-h-32 overflow-y-auto">
-        {currentData.mission_waypoints.map((waypoint, index) => (
+        {(currentData.mission_waypoints || []).map((waypoint, index) => (
           <div 
             key={waypoint.id}
             className={`
@@ -473,7 +473,7 @@ const RobotControls: React.FC<AriesModProps> = ({
       </div>
       
       <div className="text-xs text-muted-foreground">
-        Progress: {currentData.mission_waypoints.filter(w => w.completed).length} / {currentData.mission_waypoints.length} waypoints
+        Progress: {(currentData.mission_waypoints || []).filter(w => w.completed).length} / {(currentData.mission_waypoints || []).length} waypoints
       </div>
     </div>
   )
@@ -492,36 +492,36 @@ const RobotControls: React.FC<AriesModProps> = ({
       </div>
       <div>
         <div className="text-muted-foreground">Battery</div>
-        <div className={`font-mono ${getBatteryColor(currentData.robot_status.battery_level)}`}>
-          {currentData.robot_status.battery_level.toFixed(1)}%
+        <div className={`font-mono ${getBatteryColor(currentData.robot_status?.battery_level || 0)}`}>
+          {(currentData.robot_status?.battery_level || 0).toFixed(1)}%
         </div>
       </div>
       <div>
         <div className="text-muted-foreground">Signal</div>
-        <div className="font-mono">{currentData.robot_status.signal_strength}%</div>
+        <div className="font-mono">{currentData.robot_status?.signal_strength || 0}%</div>
       </div>
       <div>
         <div className="text-muted-foreground">CPU</div>
-        <div className="font-mono">{currentData.robot_status.cpu_usage.toFixed(1)}%</div>
+        <div className="font-mono">{(currentData.robot_status?.cpu_usage || 0).toFixed(1)}%</div>
       </div>
       <div>
         <div className="text-muted-foreground">Temperature</div>
-        <div className="font-mono">{currentData.robot_status.temperature.toFixed(1)}°C</div>
+        <div className="font-mono">{(currentData.robot_status?.temperature || 0).toFixed(1)}°C</div>
       </div>
       <div>
         <div className="text-muted-foreground">Position</div>
         <div className="font-mono">
-          ({currentData.pose.position.x.toFixed(1)}, {currentData.pose.position.y.toFixed(1)})
+          ({(currentData.pose?.position?.x || 0).toFixed(1)}, {(currentData.pose?.position?.y || 0).toFixed(1)})
         </div>
       </div>
       <div>
         <div className="text-muted-foreground">Heading</div>
-        <div className="font-mono">{(currentData.pose.orientation.yaw * 180 / Math.PI).toFixed(0)}°</div>
+        <div className="font-mono">{((currentData.pose?.orientation?.yaw || 0) * 180 / Math.PI).toFixed(0)}°</div>
       </div>
-      {currentData.robot_status.warnings.length > 0 && (
+      {(currentData.robot_status?.warnings?.length || 0) > 0 && (
         <div className="col-span-2">
           <div className="text-muted-foreground">Warnings</div>
-          {currentData.robot_status.warnings.map((warning, index) => (
+          {currentData.robot_status?.warnings?.map((warning, index) => (
             <Badge key={index} variant="outline" className="text-xs text-yellow-600 mr-1">
               {warning}
             </Badge>
@@ -613,14 +613,14 @@ const RobotControls: React.FC<AriesModProps> = ({
             <Badge className={getStatusColor(currentData.connection_status)}>
               {currentData.connection_status}
             </Badge>
-            {currentData.robot_status.emergency_stop && (
+            {currentData.robot_status?.emergency_stop && (
               <Badge variant="destructive" className="text-xs animate-pulse">
                 E-STOP
               </Badge>
             )}
-            <div className={`flex items-center gap-1 ${getBatteryColor(currentData.robot_status.battery_level)}`}>
+            <div className={`flex items-center gap-1 ${getBatteryColor(currentData.robot_status?.battery_level || 0)}`}>
               <Battery className="h-3 w-3" />
-              <span className="text-xs">{currentData.robot_status.battery_level.toFixed(0)}%</span>
+              <span className="text-xs">{(currentData.robot_status?.battery_level || 0).toFixed(0)}%</span>
             </div>
             <Button
               variant="ghost"
@@ -673,16 +673,21 @@ const RobotControls: React.FC<AriesModProps> = ({
 export const RobotControlsMod: AriesMod = {
   metadata: {
     id: 'robot-controls',
+    name: 'RobotControls',
     displayName: 'Enhanced Robot Controls',
     description: 'Comprehensive robot control interface with movement, arm control, mission planning, and safety features',
     category: 'controls',
     tags: ['robot', 'control', 'movement', 'arm', 'mission', 'safety', 'navigation'],
     version: '1.0.0',
     author: 'AriesUI',
+    icon: Move,
     thumbnail: '/thumbnails/robot-controls.png',
-    defaultSize: { width: 450, height: 500 },
-    minSize: { width: 350, height: 400 },
-    maxSize: { width: 600, height: 700 },
+    defaultWidth: 450,
+    defaultHeight: 500,
+    minWidth: 350,
+    minHeight: 400,
+    maxWidth: 600,
+    maxHeight: 700,
     supportedDataTypes: ['robot', 'control', 'telemetry'],
     configurable: true,
     hardwareIntegrated: true

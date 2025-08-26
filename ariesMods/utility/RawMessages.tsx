@@ -213,7 +213,7 @@ const RawMessages: React.FC<AriesModProps> = ({
     })
   }
 
-  const filteredMessages = currentData.messages.filter(msg => {
+  const filteredMessages = (currentData.messages || []).filter(msg => {
     const levelMatch = messagesConfig?.filterLevel === 'all' || msg.level === messagesConfig?.filterLevel
     const searchMatch = !searchTerm || 
                        msg.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -267,7 +267,7 @@ const RawMessages: React.FC<AriesModProps> = ({
     if (messagesConfig?.autoScroll && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [currentData.messages.length, messagesConfig?.autoScroll])
+  }, [currentData.messages?.length, messagesConfig?.autoScroll])
 
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp)
@@ -401,8 +401,8 @@ const RawMessages: React.FC<AriesModProps> = ({
         </Select>
       </div>
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>Showing {filteredMessages.length} of {currentData.messages.length} messages</span>
-        <span>Rate: {currentData.messageRate.toFixed(1)}/s</span>
+        <span>Showing {filteredMessages.length} of {currentData.messages?.length || 0} messages</span>
+        <span>Rate: {(currentData.messageRate || 0).toFixed(1)}/s</span>
       </div>
     </div>
   )
@@ -411,21 +411,21 @@ const RawMessages: React.FC<AriesModProps> = ({
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div>
         <div className="text-muted-foreground">Total Messages</div>
-        <div className="font-mono">{currentData.totalMessages.toLocaleString()}</div>
+        <div className="font-mono">{(currentData.totalMessages || 0).toLocaleString()}</div>
       </div>
       <div>
         <div className="text-muted-foreground">Message Rate</div>
-        <div className="font-mono">{currentData.messageRate.toFixed(1)}/s</div>
+        <div className="font-mono">{(currentData.messageRate || 0).toFixed(1)}/s</div>
       </div>
       <div>
         <div className="text-muted-foreground">Buffer Usage</div>
-        <div className="font-mono">{currentData.bufferUsage.toFixed(1)}%</div>
+        <div className="font-mono">{(currentData.bufferUsage || 0).toFixed(1)}%</div>
       </div>
       <div>
         <div className="text-muted-foreground">Sources</div>
-        <div className="font-mono">{currentData.sources.length}</div>
+        <div className="font-mono">{currentData.sources?.length || 0}</div>
       </div>
-      {Object.entries(currentData.levels).map(([level, count]) => (
+      {Object.entries(currentData.levels || {}).map(([level, count]) => (
         <div key={level}>
           <div className="text-muted-foreground flex items-center gap-1">
             {getLevelIcon(level)}
@@ -608,16 +608,21 @@ const RawMessages: React.FC<AriesModProps> = ({
 export const RawMessagesMod: AriesMod = {
   metadata: {
     id: 'raw-messages',
+    name: 'RawMessages',
     displayName: 'Raw Messages Widget',
     description: 'Debug and inspect raw messages with filtering, search, and real-time monitoring',
     category: 'utility',
     tags: ['debug', 'messages', 'monitoring', 'logging', 'inspection', 'raw'],
     version: '1.0.0',
     author: 'AriesUI',
+    icon: MessageSquare,
     thumbnail: '/thumbnails/raw-messages.png',
-    defaultSize: { width: 500, height: 400 },
-    minSize: { width: 300, height: 250 },
-    maxSize: { width: 800, height: 600 },
+    defaultWidth: 500,
+    defaultHeight: 400,
+    minWidth: 300,
+    minHeight: 250,
+    maxWidth: 800,
+    maxHeight: 600,
     supportedDataTypes: ['messages', 'logs', 'debug'],
     configurable: true,
     hardwareIntegrated: true

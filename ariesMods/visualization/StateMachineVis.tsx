@@ -146,11 +146,11 @@ const StateMachineVis: React.FC<AriesModProps> = ({
   }
 
   const getCurrentState = () => {
-    return currentData.states.find(s => s.id === currentData.currentState)
+    return (currentData.states || []).find(s => s.id === currentData.currentState)
   }
 
   const getAvailableTransitions = () => {
-    return currentData.transitions.filter(t => t.from === currentData.currentState)
+    return (currentData.transitions || []).filter(t => t.from === currentData.currentState)
   }
 
   const handleTransition = (toState: string, trigger: string) => {
@@ -219,7 +219,7 @@ const StateMachineVis: React.FC<AriesModProps> = ({
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground mb-2">Available Transitions:</div>
         {transitions.map((transition, index) => {
-          const targetState = currentData.states.find(s => s.id === transition.to)
+          const targetState = (currentData.states || []).find(s => s.id === transition.to)
           return (
             <Button
               key={index}
@@ -248,7 +248,7 @@ const StateMachineVis: React.FC<AriesModProps> = ({
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground mb-2">Recent History:</div>
         {recentHistory.map((entry, index) => {
-          const state = currentData.states.find(s => s.id === entry.state)
+          const state = (currentData.states || []).find(s => s.id === entry.state)
           return (
             <div key={index} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded">
               <div className="flex items-center gap-2">
@@ -367,7 +367,7 @@ const StateMachineVis: React.FC<AriesModProps> = ({
         )}
 
         <div className="grid grid-cols-3 gap-2">
-          {currentData.states.map((state, index) => renderStateNode(state, index))}
+          {(currentData.states || []).map((state, index) => renderStateNode(state, index))}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -391,16 +391,21 @@ const StateMachineVis: React.FC<AriesModProps> = ({
 export const StateMachineVisMod: AriesMod = {
   metadata: {
     id: 'state-machine-vis',
+    name: 'StateMachineVis',
     displayName: 'State Machine Visualizer',
     description: 'Interactive visualization of system state machines with transitions and history',
     category: 'visualization',
     tags: ['state', 'machine', 'transitions', 'robotics', 'system'],
     version: '1.0.0',
     author: 'AriesUI',
+    icon: Activity,
     thumbnail: '/thumbnails/state-machine-vis.png',
-    defaultSize: { width: 400, height: 350 },
-    minSize: { width: 300, height: 250 },
-    maxSize: { width: 800, height: 600 },
+    defaultWidth: 400,
+    defaultHeight: 350,
+    minWidth: 300,
+    minHeight: 250,
+    maxWidth: 800,
+    maxHeight: 600,
     supportedDataTypes: ['state_machine', 'transitions', 'status'],
     configurable: true,
     hardwareIntegrated: true

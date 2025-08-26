@@ -38,13 +38,14 @@ export class AriesModsRegistry {
       // Import built-in AriesMods
       const { TemperatureSensorMod } = await import('@/ariesMods/sensors/TemperatureSensor')
       const { GenericSensorMod } = await import('@/ariesMods/sensors/GenericSensor')
+      const { EnhancedSensorMod } = await import('@/ariesMods/sensors/EnhancedSensor')
       const { ToggleControlMod } = await import('@/ariesMods/controls/ToggleControl')
       const { LineChartMod } = await import('@/ariesMods/visualization/LineChart')
       const { PlotlyChartMod } = await import('@/ariesMods/visualization/PlotlyChart')
       const { PointCloudVisMod } = await import('@/ariesMods/visualization/PointCloudVis')
       const { ClockMod } = await import('@/ariesMods/utility/Clock')
       
-      // Import new comprehensive AriesMods
+      // Import comprehensive AriesMods
       const { DataTableMod } = await import('@/ariesMods/utility/DataTable')
       const { DiagnosticsMod } = await import('@/ariesMods/utility/Diagnostics')
       const { RawMessagesMod } = await import('@/ariesMods/utility/RawMessages')
@@ -56,20 +57,32 @@ export class AriesModsRegistry {
       const { PlotChartMod } = await import('@/ariesMods/visualization/PlotChart')
       const { PublishControlMod } = await import('@/ariesMods/controls/PublishControl')
       const { RobotControlsMod } = await import('@/ariesMods/controls/RobotControls')
-      const { SpringDamperMod } = await import('@/ariesMods/physics/SpringDamper')
-      const { FluidSimulationMod } = await import('@/ariesMods/physics/FluidSimulation')
+      const { SpringDamperMod } = await import('@/ariesMods/physics/SpringDamperMod')
+      const { FluidSimulationMod } = await import('@/ariesMods/physics/FluidSimulationMod')
       const { LatexPhysicsMod } = await import('@/ariesMods/physics/LatexPhysics')
+      
+      // Import StarSim Physics AriesMods
+      const { PhysicsValueMonitorMod } = await import('@/ariesMods/physics/PhysicsValueMonitorMod')
+      const { PhysicsChartMod } = await import('@/ariesMods/physics/PhysicsChartMod')
+      const { PhysicsVectorFieldMod } = await import('@/ariesMods/physics/PhysicsVectorFieldMod')
+      const { PhysicsControlPanelMod } = await import('@/ariesMods/physics/PhysicsControlPanelMod')
+      
+      // Import Trading AriesMods
+      const { PortfolioMonitorMod } = await import('@/ariesMods/trading/PortfolioMonitorMod')
+      const { StockPriceMonitorMod } = await import('@/ariesMods/trading/StockPriceMonitorMod')
+      const { MarketStatusMod } = await import('@/ariesMods/trading/MarketStatusMod')
       
       // Register existing mods
       this.registerMod(TemperatureSensorMod)
       this.registerMod(GenericSensorMod)
+      this.registerMod(EnhancedSensorMod)
       this.registerMod(ToggleControlMod)
       this.registerMod(LineChartMod)
       this.registerMod(PlotlyChartMod)
       this.registerMod(PointCloudVisMod)
       this.registerMod(ClockMod)
       
-      // Register new comprehensive AriesMods
+      // Register comprehensive AriesMods
       this.registerMod(DataTableMod)
       this.registerMod(DiagnosticsMod)
       this.registerMod(RawMessagesMod)
@@ -84,6 +97,17 @@ export class AriesModsRegistry {
       this.registerMod(SpringDamperMod)
       this.registerMod(FluidSimulationMod)
       this.registerMod(LatexPhysicsMod)
+      
+      // Register StarSim Physics AriesMods
+      this.registerMod(PhysicsValueMonitorMod)
+      this.registerMod(PhysicsChartMod)
+      this.registerMod(PhysicsVectorFieldMod)
+      this.registerMod(PhysicsControlPanelMod)
+      
+      // Register Trading AriesMods
+      this.registerMod(PortfolioMonitorMod)
+      this.registerMod(StockPriceMonitorMod)
+      this.registerMod(MarketStatusMod)
     } catch (error) {
       console.warn('Some built-in AriesMods failed to load:', error)
     }

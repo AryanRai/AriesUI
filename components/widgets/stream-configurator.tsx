@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { Settings, Plus, X, Calculator, Zap } from 'lucide-react'
+import { Settings, Plus, X, Calculator, Zap, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -103,7 +103,27 @@ export function StreamConfigurator({
   }
 
   const handleSave = () => {
-    onMappingsChange(mappings)
+    // Validate all mappings before saving
+    const validMappings = mappings.filter(mapping => {
+      // Check if formula is valid
+      if (mapping.formula && mapping.formula.trim()) {
+        try {
+          const testFormula = mapping.formula.replace(/x/g, '1')
+          eval(testFormula)
+          return true
+        } catch (error) {
+          console.warn(`Invalid formula for ${mapping.streamName}:`, error)
+          return false
+        }
+      }
+      return true
+    })
+    
+    if (validMappings.length !== mappings.length) {
+      alert('Some mappings have invalid formulas and will be removed.')
+    }
+    
+    onMappingsChange(validMappings)
     onClose()
   }
 
@@ -119,18 +139,40 @@ export function StreamConfigurator({
   }
 
   return (
-    <Card className="w-full max-w-2xl">
+    <Card className="w-full max-w-3xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings className="h-5 w-5" />
-          Stream Configuration - Widget {widgetId}
+          Enhanced Stream Configuration - Widget {widgetId}
+          <Badge variant={isConnected ? "default" : "secondary"}>
+            {isConnected ? 'Connected' : 'Offline'}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         
+        {/* Quick Stats */}
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{availableStreams.length}</div>
+            <div className="text-sm text-muted-foreground">Available Streams</div>
+          </div>
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{mappings.filter(m => m.enabled).length}</div>
+            <div className="text-sm text-muted-foreground">Active Mappings</div>
+          </div>
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">{mappings.filter(m => m.formula && m.formula.trim()).length}</div>
+            <div className="text-sm text-muted-foreground">With Formulas</div>
+          </div>
+        </div>
+        
         {/* Current Mappings */}
         <div>
-          <h3 className="text-lg font-semibold mb-3">Current Stream Mappings</h3>
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            Current Stream Mappings
+            <Badge variant="outline">{mappings.length}</Badge>
+          </h3>
           {mappings.length === 0 ? (
             <p className="text-muted-foreground">No streams configured</p>
           ) : (
@@ -146,6 +188,11 @@ export function StreamConfigurator({
                         <span className="text-sm text-muted-foreground">
                           {mapping.streamId}
                         </span>
+                        {mapping.enabled ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-yellow-500" />
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-3 gap-2 text-sm">

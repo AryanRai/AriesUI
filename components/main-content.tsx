@@ -25,7 +25,7 @@ import { ViewportControls } from "@/components/grid/ViewportControls"
 import { PerformanceMonitor } from "@/components/grid/PerformanceMonitor"
 
 // Import enhanced hardware components
-import { EnhancedSensorWidget } from "@/components/widgets/enhanced-sensor-widget"
+// Enhanced Sensor Widget has been migrated to AriesMods system
 import { commsClient } from "@/lib/comms-stream-client"
 import { MovableDebugPanel } from "@/components/debug/movable-debug-panel"
 import { GridContainer } from "@/components/grid/grid-container"
@@ -287,36 +287,39 @@ export function MainContent({ gridState, setGridState }: MainContentProps) {
   // Add functions with collision detection
   const addWidget = useCallback(() => {
     const gridSize = gridState.gridSize
-    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers]
+    const existingItems = [...gridState.mainWidgets, ...gridState.nestContainers, ...gridState.mainAriesWidgets]
 
     const baseWidget = {
       x: Math.round((Math.random() * 400) / gridSize) * gridSize,
       y: Math.round((Math.random() * 300) / gridSize) * gridSize,
-      w: 200,
-      h: 150,
+      w: 250,
+      h: 200,
     }
 
     const nonCollidingPos = findNonCollidingPosition(baseWidget, existingItems, gridSize)
 
-    const newWidget: MainGridWidget = {
+    const newWidget: AriesWidget = {
       id: generateUniqueId("widget"),
-      type: "enhanced-sensor",
-      title: "Enhanced Sensor",
-      content: "Hardware-integrated sensor",
+      type: "ariesmods",
+      ariesModType: "", // Empty - will show selection menu
+      title: "Select AriesMod",
       x: nonCollidingPos.x,
       y: nonCollidingPos.y,
       w: 250,
-      h: 180,
+      h: 200,
       container: "main",
+      config: {},
+      data: null,
+      streamMappings: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
     updateGridState((prev) => ({
       ...prev,
-      mainWidgets: [...prev.mainWidgets, newWidget],
+      mainAriesWidgets: [...prev.mainAriesWidgets, newWidget],
     }))
-    dispatch({ type: "ADD_LOG", payload: `New widget created: ${newWidget.id}` })
-  }, [gridState.gridSize, gridState.mainWidgets, gridState.nestContainers, updateGridState, dispatch])
+    dispatch({ type: "ADD_LOG", payload: `New AriesMods widget created: ${newWidget.id}` })
+  }, [gridState.gridSize, gridState.mainWidgets, gridState.nestContainers, gridState.mainAriesWidgets, updateGridState, dispatch])
 
   const addNestContainer = useCallback(() => {
     const gridSize = gridState.gridSize

@@ -24,7 +24,7 @@ AriesMods is a high-performance, hardware-integrated widget system for AriesUI t
 
 ### Key Features in v3.1
 - ✅ **Performance Optimized**: Hardware acceleration, RAF-based animations, virtual rendering
-- ✅ **Hardware Ready**: Direct integration with Comms StreamHandler and Engine
+- ✅ **Unified Protocol v3.0**: Direct integration with Stream Handler v3.0 and StarSim Physics
 - ✅ **Smooth Interactions**: Ultra-responsive dragging (500fps), smooth zooming/panning
 - ✅ **Enhanced Widgets**: All widgets use `GridWidget` with hardware acceleration
 - ✅ **Stream Configuration**: Built-in stream configurator for hardware setup

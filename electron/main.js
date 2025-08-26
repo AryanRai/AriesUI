@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, dialog } = require('electron')
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require('electron')
 const path = require('path')
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -39,7 +39,7 @@ function createWindow() {
 
   // Load the app
   const startUrl = isDev 
-    ? (process.env.NEXT_DEV_URL || 'http://localhost:3000')
+    ? (process.env.NEXT_DEV_URL || 'http://localhost:3002')
     : `file://${path.join(__dirname, '../out/index.html')}`
   
   mainWindow.loadURL(startUrl)
@@ -70,8 +70,7 @@ function createWindow() {
     const parsedUrl = new URL(navigationUrl)
     const allowedOrigins = [
       new URL(startUrl).origin,
-      'http://localhost:3000',
-      'http://localhost:3001'
+      'http://localhost:3002'
     ]
     
     if (!allowedOrigins.includes(parsedUrl.origin)) {

@@ -31,7 +31,7 @@ export interface AriesModMetadata {
   description: string
   version: string
   author: string
-  category: 'sensors' | 'controls' | 'visualization' | 'utility' | 'custom'
+  category: 'sensors' | 'controls' | 'visualization' | 'utility' | 'physics' | 'custom'
   icon?: string
   defaultWidth: number
   defaultHeight: number
@@ -97,6 +97,11 @@ export const ARIESMODS_CATEGORIES = {
     label: 'Visualization',
     icon: '📈',
     description: 'Charts, graphs, displays'
+  },
+  physics: {
+    label: 'Physics',
+    icon: '⚛️',
+    description: 'Physics simulation widgets for StarSim'
   },
   utility: {
     label: 'Utilities',
