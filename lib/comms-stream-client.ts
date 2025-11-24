@@ -1,6 +1,74 @@
 // CommsStreamClient - WebSocket client for connecting to Comms backend
 // Handles connection to StreamHandler and Engine with automatic reconnection
 
+// MessageBatcher - Batches stream updates to reduce re-render storms
+class MessageBatcher {
+  private queue: Map<string, any> = new Map()
+  private rafId: number | null = null
+  private callbacks: Set<(batch: Map<string, any>) => void> = new Set()
+  private enabled: boolean = true
+
+  constructor(enabled: boolean = true) {
+    this.enabled = enabled
+  }
+
+  add(streamId: string, data: any) {
+    if (!this.enabled) {
+      // If batching disabled, notify immediately
+      const batch = new Map([[streamId, data]])
+      this.callbacks.forEach(cb => cb(batch))
+      return
+    }
+
+    this.queue.set(streamId, data)
+    this.scheduleFlush()
+  }
+
+  private scheduleFlush() {
+    if (this.rafId !== null) return
+    
+    this.rafId = requestAnimationFrame(() => {
+      this.flush()
+      this.rafId = null
+    })
+  }
+
+  private flush() {
+    if (this.queue.size === 0) return
+    
+    const batch = new Map(this.queue)
+    this.queue.clear()
+    
+    this.callbacks.forEach(cb => cb(batch))
+  }
+
+  onFlush(callback: (batch: Map<string, any>) => void) {
+    this.callbacks.add(callback)
+    return () => this.callbacks.delete(callback)
+  }
+
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled
+    // If disabling while there are queued items, flush them
+    if (!enabled && this.queue.size > 0) {
+      if (this.rafId !== null) {
+        cancelAnimationFrame(this.rafId)
+        this.rafId = null
+      }
+      this.flush()
+    }
+  }
+
+  destroy() {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId)
+      this.rafId = null
+    }
+    this.queue.clear()
+    this.callbacks.clear()
+  }
+}
+
 export interface CommsMessage {
   type: 'negotiation' | 'stream_update' | 'control' | 'status' | 'error' | 'physics_simulation' | 'ping' | 'pong' | 'query' | 'active_streams'
   status?: 'active' | 'inactive' | 'error' | 'connecting'
@@ -52,6 +120,11 @@ export interface StreamMapping {
   status: 'active' | 'inactive' | 'error'
 }
 
+export interface CommsStreamClientConfig {
+  url?: string
+  enableBatching?: boolean
+}
+
 export class CommsStreamClient {
   private ws: WebSocket | null = null
   private url: string
@@ -65,9 +138,41 @@ export class CommsStreamClient {
   private streamMappings: Map<string, StreamMapping> = new Map()
   private latestData: Map<string, any> = new Map()
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' = 'disconnected'
+  private batcher: MessageBatcher
+  private enableBatching: boolean
 
-  constructor(url: string = 'ws://localhost:3000') {
-    this.url = url
+  constructor(config?: CommsStreamClientConfig | string) {
+    // Support both old (string url) and new (config object) constructor signatures
+    const resolvedConfig = this.resolveConfig(config)
+    this.url = resolvedConfig.url
+    this.enableBatching = resolvedConfig.enableBatching
+    
+    this.batcher = new MessageBatcher(this.enableBatching)
+    this.setupBatcher()
+  }
+
+  private resolveConfig(config?: CommsStreamClientConfig | string): Required<CommsStreamClientConfig> {
+    if (typeof config === 'string') {
+      return { url: config, enableBatching: true }
+    }
+    return {
+      url: config?.url || 'ws://localhost:3000',
+      enableBatching: config?.enableBatching !== undefined ? config.enableBatching : true
+    }
+  }
+
+  private setupBatcher() {
+    this.batcher.onFlush((batch) => {
+      batch.forEach((data, streamId) => {
+        this.latestData.set(streamId, data)
+        
+        // Notify stream-specific listeners
+        const listeners = this.streamListeners.get(streamId)
+        if (listeners) {
+          listeners.forEach(listener => listener(data.value, data.metadata || {}))
+        }
+      })
+    })
   }
 
   // Connection Management
@@ -140,6 +245,7 @@ export class CommsStreamClient {
     }
     this.connectionStatus = 'disconnected'
     this.notifyConnectionListeners(false)
+    this.batcher.destroy()
   }
 
   private scheduleReconnect() {
@@ -195,7 +301,7 @@ export class CommsStreamClient {
     // Handle the unified stream format from stream handler v3.0
     if (message.data) {
       Object.entries(message.data).forEach(([streamId, streamData]) => {
-        this.latestData.set(streamId, {
+        const streamValue = {
           value: streamData.value,
           vector_value: streamData.vector_value,
           metadata: streamData.metadata || {},
@@ -203,13 +309,10 @@ export class CommsStreamClient {
           unit: streamData.unit,
           datatype: streamData.datatype,
           simulation_id: streamData.simulation_id
-        })
-        
-        // Notify stream-specific listeners
-        const listeners = this.streamListeners.get(streamId)
-        if (listeners) {
-          listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
         }
+        
+        // Use batcher to batch updates
+        this.batcher.add(streamId, streamValue)
       })
       
       console.log(`📡 Updated ${Object.keys(message.data).length} streams from negotiation`)
@@ -222,7 +325,7 @@ export class CommsStreamClient {
     
     if (message.data) {
       Object.entries(message.data).forEach(([streamId, streamData]) => {
-        this.latestData.set(streamId, {
+        const streamValue = {
           value: streamData.value,
           vector_value: streamData.vector_value,
           metadata: streamData.metadata || {},
@@ -230,13 +333,10 @@ export class CommsStreamClient {
           unit: streamData.unit,
           datatype: streamData.datatype,
           simulation_id: streamData.simulation_id
-        })
-        
-        // Notify stream-specific listeners
-        const listeners = this.streamListeners.get(streamId)
-        if (listeners) {
-          listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
         }
+        
+        // Use batcher to batch updates
+        this.batcher.add(streamId, streamValue)
       })
       
       console.log(`📡 Loaded ${Object.keys(message.data).length} active streams`)
@@ -257,13 +357,8 @@ export class CommsStreamClient {
           simulation_id: streamData.simulation_id
         }
         
-        this.latestData.set(streamId, streamValue)
-        
-        // Notify stream-specific listeners
-        const listeners = this.streamListeners.get(streamId)
-        if (listeners) {
-          listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
-        }
+        // Use batcher to batch updates
+        this.batcher.add(streamId, streamValue)
       })
       
       console.log(`📡 Updated ${Object.keys(message.data).length} streams`)
@@ -286,13 +381,8 @@ export class CommsStreamClient {
         simulation_id: message.simulation_id
       }
       
-      this.latestData.set(streamId, streamValue)
-      
-      // Notify stream-specific listeners
-      const listeners = this.streamListeners.get(streamId)
-      if (listeners) {
-        listeners.forEach(listener => listener(streamValue.value, streamValue.metadata))
-      }
+      // Use batcher to batch updates
+      this.batcher.add(streamId, streamValue)
     }
   }
 
@@ -429,7 +519,18 @@ export class CommsStreamClient {
   get status() {
     return this.connectionStatus
   }
+
+  // Batching control
+  setBatchingEnabled(enabled: boolean) {
+    this.enableBatching = enabled
+    this.batcher.setEnabled(enabled)
+  }
+
+  isBatchingEnabled() {
+    return this.enableBatching
+  }
 }
 
-// Global instance
+// Global instance - uses default configuration (ws://localhost:3000, batching enabled)
+// For custom configuration, create a new instance: new CommsStreamClient({ url: '...', enableBatching: false })
 export const commsClient = new CommsStreamClient() 
