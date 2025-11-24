@@ -143,16 +143,22 @@ export class CommsStreamClient {
 
   constructor(config?: CommsStreamClientConfig | string) {
     // Support both old (string url) and new (config object) constructor signatures
-    if (typeof config === 'string') {
-      this.url = config
-      this.enableBatching = true
-    } else {
-      this.url = config?.url || 'ws://localhost:3000'
-      this.enableBatching = config?.enableBatching !== undefined ? config.enableBatching : true
-    }
+    const resolvedConfig = this.resolveConfig(config)
+    this.url = resolvedConfig.url
+    this.enableBatching = resolvedConfig.enableBatching
     
     this.batcher = new MessageBatcher(this.enableBatching)
     this.setupBatcher()
+  }
+
+  private resolveConfig(config?: CommsStreamClientConfig | string): Required<CommsStreamClientConfig> {
+    if (typeof config === 'string') {
+      return { url: config, enableBatching: true }
+    }
+    return {
+      url: config?.url || 'ws://localhost:3000',
+      enableBatching: config?.enableBatching !== undefined ? config.enableBatching : true
+    }
   }
 
   private setupBatcher() {
@@ -525,5 +531,6 @@ export class CommsStreamClient {
   }
 }
 
-// Global instance
+// Global instance - uses default configuration (ws://localhost:3000, batching enabled)
+// For custom configuration, create a new instance: new CommsStreamClient({ url: '...', enableBatching: false })
 export const commsClient = new CommsStreamClient() 

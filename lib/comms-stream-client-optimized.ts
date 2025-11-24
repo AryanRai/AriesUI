@@ -7,7 +7,7 @@
  * 
  * Features:
  * - Collects stream updates in a queue
- * - Flushes queue every 16ms using requestAnimationFrame (~60fps)
+ * - Flushes queue using requestAnimationFrame (syncs with browser refresh rate, typically ~60fps)
  * - Deduplicates updates by streamId (last update wins)
  * - Can be disabled for immediate updates
  * 
