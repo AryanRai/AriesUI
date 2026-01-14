@@ -49,20 +49,29 @@ export function StreamConfigurator({
   // Format available streams for display
   const formattedStreams = React.useMemo(() => {
     return availableStreams.map(streamId => {
-      // Better stream name formatting
+      // Get stream data from comms client for metadata
+      const streamData = state.connectedModules?.get(streamId) || {}
+      
+      // Better stream name formatting: "cansat_xbee.altitude" -> "Cansat Xbee - Altitude"
       const parts = streamId.split('.')
-      const streamName = parts.length > 1 
-        ? `${parts[0]} - ${parts.slice(1).join('.')}`  // "module1 - temperature"
-        : streamId
+      let displayName = streamId
+      let unit = ''
+      let datatype = 'float'
+      
+      if (parts.length >= 2) {
+        const moduleName = parts[0].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        const streamName = parts.slice(1).join('.').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        displayName = `${moduleName} → ${streamName}`
+      }
       
       return {
         id: streamId,
-        name: streamName,
-        unit: '',
-        datatype: 'float'
+        name: displayName,
+        unit: unit,
+        datatype: datatype
       }
     })
-  }, [availableStreams])
+  }, [availableStreams, state.connectedModules])
 
   const addMapping = () => {
     if (!newMapping.streamId) return

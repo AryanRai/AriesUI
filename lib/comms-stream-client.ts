@@ -193,26 +193,62 @@ export class CommsStreamClient {
 
   private handleNegotiation(message: CommsMessage) {
     // Handle the unified stream format from stream handler v3.0
+    // Data can be either flat streams or nested modules with streams
     if (message.data) {
-      Object.entries(message.data).forEach(([streamId, streamData]) => {
-        this.latestData.set(streamId, {
-          value: streamData.value,
-          vector_value: streamData.vector_value,
-          metadata: streamData.metadata || {},
-          timestamp: streamData.timestamp || message['msg-sent-timestamp'],
-          unit: streamData.unit,
-          datatype: streamData.datatype,
-          simulation_id: streamData.simulation_id
-        })
-        
-        // Notify stream-specific listeners
-        const listeners = this.streamListeners.get(streamId)
-        if (listeners) {
-          listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
+      Object.entries(message.data).forEach(([moduleId, moduleData]: [string, any]) => {
+        // Check if this is a module with nested streams (from Engine)
+        if (moduleData.streams && typeof moduleData.streams === 'object') {
+          // This is a module - extract individual streams
+          Object.entries(moduleData.streams).forEach(([streamKey, streamData]: [string, any]) => {
+            // Create full stream ID: moduleId.streamKey
+            const fullStreamId = `${moduleId}.${streamKey}`
+            
+            this.latestData.set(fullStreamId, {
+              value: streamData.value,
+              vector_value: streamData.vector_value,
+              metadata: {
+                ...streamData.metadata,
+                moduleId: moduleId,
+                moduleName: moduleData.name,
+                streamName: streamData.name
+              },
+              timestamp: streamData['stream-update-timestamp'] || streamData.timestamp || message['msg-sent-timestamp'],
+              unit: streamData.unit,
+              datatype: streamData.datatype,
+              name: streamData.name,
+              status: streamData.status
+            })
+            
+            // Notify stream-specific listeners
+            const listeners = this.streamListeners.get(fullStreamId)
+            if (listeners) {
+              listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
+            }
+          })
+          
+          console.log(`📡 Module ${moduleId}: ${Object.keys(moduleData.streams).length} streams`)
+        } else {
+          // This is a flat stream (legacy format or physics streams)
+          const streamData = moduleData
+          this.latestData.set(moduleId, {
+            value: streamData.value,
+            vector_value: streamData.vector_value,
+            metadata: streamData.metadata || {},
+            timestamp: streamData.timestamp || message['msg-sent-timestamp'],
+            unit: streamData.unit,
+            datatype: streamData.datatype,
+            simulation_id: streamData.simulation_id
+          })
+          
+          // Notify stream-specific listeners
+          const listeners = this.streamListeners.get(moduleId)
+          if (listeners) {
+            listeners.forEach(listener => listener(streamData.value, streamData.metadata || {}))
+          }
         }
       })
       
-      console.log(`📡 Updated ${Object.keys(message.data).length} streams from negotiation`)
+      console.log(`📡 Total streams available: ${this.latestData.size}`)
     }
   }
 

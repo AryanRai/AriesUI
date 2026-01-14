@@ -252,6 +252,13 @@ export function useAvailableStreams() {
     }
 
     commsClient.onConnection(handleConnection)
+    
+    // Get initial streams if already connected
+    if (commsClient.isConnected) {
+      setIsConnected(true)
+      setAvailableStreams(commsClient.getAllStreams())
+    }
+    
     return () => commsClient.offConnection(handleConnection)
   }, [])
 
@@ -259,8 +266,12 @@ export function useAvailableStreams() {
   useEffect(() => {
     const handleMessage = (message: any) => {
       if (message.type === 'negotiation') {
-        const streams = commsClient.getAllStreams()
-        setAvailableStreams(streams)
+        // Small delay to allow client to process the message first
+        setTimeout(() => {
+          const streams = commsClient.getAllStreams()
+          setAvailableStreams(streams)
+          console.log('📡 Available streams updated:', streams)
+        }, 100)
       }
     }
 

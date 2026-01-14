@@ -10,6 +10,7 @@ import { Settings, Zap, ZapOff, TestTube, AlertCircle, GripVertical } from 'luci
 import { StreamConfigurator } from './stream-configurator'
 import { EditableTitle } from './editable-title'
 import { useComms } from '@/components/comms-context'
+import { commsClient } from '@/lib/comms-stream-client'
 
 interface StreamMapping {
   id: string
@@ -106,18 +107,28 @@ export function EnhancedWidgetBase({
             status: 'active' // Mock status
           })
         } else {
-          // Real stream data would go here
-          // Mock stream data since activeStreams doesn't exist in current CommsState
-          // In a real implementation, this would connect to the actual stream data
-          const mockStreamValue = Math.random() * 100 // Generate random data for demo
-          const processedValue = processStreamValue(mockStreamValue, mapping)
+          // Fetch REAL stream data from commsClient
+          const streamData = commsClient.getStreamValue(mapping.streamId)
           
-          newData.push({
-            value: processedValue,
-            unit: mapping.unit,
-            timestamp: new Date().toISOString(),
-            status: 'active' // Mock status
-          })
+          if (streamData && streamData.value !== undefined) {
+            // We have real data from the stream
+            const processedValue = processStreamValue(streamData.value, mapping)
+            
+            newData.push({
+              value: processedValue,
+              unit: mapping.unit || streamData.unit || '',
+              timestamp: streamData.timestamp || new Date().toISOString(),
+              status: 'active'
+            })
+          } else {
+            // No data available yet for this stream
+            newData.push({
+              value: 'No Data',
+              unit: mapping.unit,
+              timestamp: new Date().toISOString(),
+              status: 'inactive'
+            })
+          }
         }
       })
 
@@ -135,8 +146,8 @@ export function EnhancedWidgetBase({
   }, [stableStreamMappings, refreshRate, processStreamValue, isDummyMode])
 
   const isConnected = useMemo(() => {
-    // Mock connection status - in real implementation this would check actual connection
-    return !isDummyMode && stableStreamMappings.some(m => m.enabled)
+    // Check actual connection status from commsClient
+    return !isDummyMode && commsClient.isConnected && stableStreamMappings.some(m => m.enabled)
   }, [stableStreamMappings, isDummyMode])
 
   const hasActiveStreams = useMemo(() => {
